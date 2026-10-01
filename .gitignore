@@ -1,0 +1,14 @@
+references/
+node_modules/
+.local/
+.DS_Store
+android-plugin/.gradle/
+android-plugin/local.properties
+android-plugin/**/build/
+*.log
+dist/*private*.aix
+dist/*private*.aix.sha256
+
+# Generated import copies and build artifacts
+/dist/
+/aiui-agent-import/

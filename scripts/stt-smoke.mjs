@@ -1,0 +1,13 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import { Stt } from '../src/stt.mjs';
+const config = JSON.parse(fs.readFileSync('.local/config.json', 'utf8'));
+const pcm = fs.readFileSync(process.argv[2] ?? '.local/stt-smoke.pcm');
+const b = Buffer.alloc(44 + pcm.length);
+b.write('RIFF'); b.writeUInt32LE(b.length - 8, 4); b.write('WAVEfmt ', 8); b.writeUInt32LE(16, 16);
+b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(16000, 24); b.writeUInt32LE(32000, 28);
+b.writeUInt16LE(2, 32); b.writeUInt16LE(16, 34); b.write('data', 36); b.writeUInt32LE(pcm.length, 40); pcm.copy(b, 44);
+fs.writeFileSync('.local/stt-smoke.wav', b, { mode: 0o600 });
+const result = await new Stt(config.stt).transcribe(b);
+assert.match(result.text, /проект/i); assert.match(result.text, /задач/i);
+console.log(JSON.stringify({ pass: true, source: 'synthetic Russian speech; not RV101 microphone', ...result }, null, 2));

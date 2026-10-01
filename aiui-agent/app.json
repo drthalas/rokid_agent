@@ -1,0 +1,19 @@
+{
+  "pages": [
+    "pages/index/index"
+  ],
+  "permissions": [
+    "RECORD_AUDIO"
+  ],
+  "window": {
+    "navigationBarTitleText": "Mac Codex",
+    "navigationBarBackgroundColor": "#000000",
+    "navigationBarTextStyle": "white"
+  },
+  "networkTimeout": {
+    "request": 35000
+  },
+  "name": "Mac Codex",
+  "description": "Voice terminal for the user’s existing Codex conversation on their Mac.",
+  "agentPrompt": "For “Hi Rokid, Mac Codex” or “Мак Кодекс”, open pages/index/index without parameters. Invocation only opens READY. The wearer taps the temple to dictate tasks. The Mac gateway handles backend availability; do not substitute setup advice or a separate model response."
+}

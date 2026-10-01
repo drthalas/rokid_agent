@@ -1,0 +1,16 @@
+node_modules/
+test/
+tools/
+package-lock.json
+*.local.*
+.local/
+.git/
+.gitignore
+.aixignore
+*.aix
+
+connection.example.json
+
+README.md
+
+config.example.js

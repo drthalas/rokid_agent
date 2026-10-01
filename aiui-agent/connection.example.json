@@ -1,0 +1,7 @@
+{
+  "origin": "https://codex.your-domain.example",
+  "tokenFile": "/Users/hermes/Projects/Rikid-agent/.local/device-token",
+  "project": "rikid",
+  "sessionId": "",
+  "tts": true
+}

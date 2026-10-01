@@ -1,0 +1,20 @@
+{
+  "name": "rokid-mac-codex",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/main.mjs",
+    "test": "node --test test/*.test.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "setup": "node scripts/setup.mjs",
+    "ctl": "node scripts/ctl.mjs",
+    "deploy:rokid": "node scripts/rokid-deploy.mjs"
+  },
+  "dependencies": {
+    "ws": "8.22.0"
+  }
+}

@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import { spawn, execFileSync } from 'node:child_process';
+import { X509Certificate } from 'node:crypto';
+const [endpoint, serial] = process.argv.slice(2);
+const url = new URL(endpoint ?? 'invalid');
+if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || url.pathname !== '/') throw new Error('Provide https://MAC_LAN_IP:8443');
+const config = JSON.parse(fs.readFileSync('.local/config.json', 'utf8'));
+const args = serial ? ['-s', serial] : [];
+const payload = JSON.stringify({ endpoint: url.origin, pin: new X509Certificate(fs.readFileSync(config.certFile)).fingerprint256.replaceAll(':', '').toLowerCase(), token: fs.readFileSync(config.tokenFile, 'utf8').trim() });
+const child = spawn('adb', [...args, 'shell', 'run-as', 'local.rokid.codex', 'sh', '-c', "'mkdir -p files && cat > files/provision.json'"], { stdio: ['pipe', 'ignore', 'pipe'] });
+child.stderr.resume(); child.stdin.on('error', () => {}); child.stdin.end(payload);
+const code = await new Promise((resolve, reject) => { child.on('error', reject); child.on('exit', resolve); });
+if (code !== 0) throw new Error('ADB provisioning failed; install directDebug APK and authorize the connected device first.');
+execFileSync('adb', [...args, 'shell', 'am', 'start', '-n', 'local.rokid.codex/.SettingsActivity'], { stdio: 'ignore' });
+console.log('Private provisioning delivered. Open Mac Codex on the glasses.');

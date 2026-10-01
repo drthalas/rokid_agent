@@ -1,0 +1,6 @@
+node_modules/
+*.aix
+*.local.*
+
+# Local private smoke configuration; keep out of version control.
+/config.js
