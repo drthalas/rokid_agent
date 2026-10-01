@@ -1,0 +1,49 @@
+# Development workflow
+
+## Source and tools
+
+[GitHub main](https://github.com/drthalas/rokid_agent/tree/main) is the source of truth for reviewed source. Check local status/diff/branch and remote identity before changing files; preserve user work and staged state. A task may prepare local changes without committing or deploying. Push, review submission and cloud mutations require task authorization; never infer them from running a test or bootstrap.
+
+Use filesystem, shell, rg, npm, aix-cli and git for local code/documents. Use GitHub CLI/integration for repository operations. Browser/CDP is only a Rokid cloud fallback when an API/CLI path is unavailable; never edit local source in a browser. Do not change account binding, credentials, tunnel or gateway policy as a shortcut around a client problem.
+
+Read [context map](context-map.md) and [constitution](../.specify/memory/constitution.md). Requirements/specs express intended behavior; code/tests show implementation; [architecture](../ARCHITECTURE.md) and ADRs record decisions. Record conflicts explicitly instead of rewriting requirements to match a bug. Keep volatile state in [setup status](setup-status.md); do not duplicate a project journal.
+
+## Choose the process
+
+| Risk and uncertainty | Process |
+|---|---|
+| Small, clear, reversible local change | State goal, scope and verification; implement/review. No mandatory standalone spec/ADR. |
+| Bounded behavior requiring acceptance detail | Lightweight brief: goal, in/out, behavior, constraints, risks, files/contracts, checks and open questions. Use one issue/PR or future `specs/<id>-<name>/brief.md` (project convention, not a Spec Kit command). |
+| Medium/high risk, unclear architecture, privacy/permissions, public contracts, migrations or coupled components | Full Spec Kit: specify → clarify as needed → plan → tasks → analyze as needed → implement in small stages → converge and review. |
+
+For installed Codex skills, invocation is `$speckit-specify`, `$speckit-plan`, `$speckit-tasks`, `$speckit-implement`, `$speckit-converge`; optional `$speckit-clarify`, `$speckit-analyze`, `$speckit-checklist`. Check discovery first per setup status. These are agent skills, not shell commands. Constitution is already prepared; do not regenerate it on every task. Meeting transcription, camera/live vision and persistent actions require full specifications before implementation. No such feature workflow runs during bootstrap.
+
+Before implementation: agree observable behavior, boundaries and acceptance; resolve uncertainties that would change the design. Label reversible assumptions. Bound research by a question and expected evidence. Increase process depth if risk emerges. Choose tools/stack from constraints, not templates. Significant changed decisions merit an ADR; ordinary edits do not.
+
+## Verification and review
+
+Run relevant checks once after meaningful changes; repeat only for a new change/failure/concern. Documentation-only changes need link, factual consistency, secret and diff checks, not a new inference or physical test. Runtime tests should test behavior/contracts rather than mirror implementation; add a regression check for a reproducible bug when useful. Preserve checks rather than weakening them for a green run.
+
+| Changed area | Relevant verification before deployment |
+|---|---|
+| Gateway/protocol/security/Codex | `npm test`; `npm run smoke` for real integration changes, after accounting for local account usage/test history |
+| AIUI runtime/config/packaging | `npm --prefix aiui-agent test`, `npm --prefix aiui-agent run check`, isolated AIX packaging/readback |
+| Android | Flavor unit tests/build/lint in [runbook](../RUNBOOK.md); device acceptance when behavior changes |
+| Pure docs / Spec Kit service files | Relative links, source evidence, secret scan, diff/untracked review; shell syntax/manifests/template resolution for added tooling |
+
+Use fixtures/mocks and isolated safe configuration. Real smoke leaves Codex test history and is distinct from live glasses testing. Report passed/failed/skipped/unavailable and tested revision. Checklist/agent review is not a test or independent approval of one's own change. When independent review is required, self-review does not satisfy it. Do not require a universal coverage percentage.
+
+## Private deployment
+
+1. Review source diff and applicable tests. Preserve existing private runtime configuration; use isolated secret-free staging for template packaging, never overwrite working config to run tests.
+2. Inject device token, trusted HTTPS origin and optional project/session through the existing configure tool into a private build. Details: [AIUI setup](../AIUI_SETUP.md). No credentials/live endpoint in tracked source; no admin token on RV101.
+3. Only within an authorized deployment, upload/repackage/save for the existing private agent. Preserve approved permissions including Camera; do not submit for public review. The HTTP uploader is a prototype until its complete path is verified; cloud-only fallback has separate prerequisites.
+4. Download the active cloud AIX, check identity/version/hash, runtime files and exact private config equality in memory. Log booleans, not credentials. “Synced” or local AIX success alone is insufficient.
+5. Update resources through Hi Rokid and separately verify real RV101 invocation, two utterances in one thread, gestures, HUD, cancel/reconnect and TTS. Acknowledged update is not proof of installed version or completed behavior.
+6. Keep rollback targeted to the deployment; preserve gateway state/thread mappings. GitHub push does not auto-deploy AIUI. Never reset accounts/glasses or restart a working tunnel without scope/necessity.
+
+## Completion and future infrastructure
+
+Complete a task when scoped acceptance/checks/diff/docs are satisfied and limitations are explicit. Implemented locally, committed, merged, deployed and physically accepted are separate states. Before any push scan index and reachable history, not only working files; no force-push/history rewrite without explicit authorization.
+
+Tests already exist: CI is a recorded cleanup gap, not silently added here. When future changes introduce dependencies/CI, verify provenance/pin versions; prefer SHA-pinned third-party actions. Collaboration needs bounded branches/review; data changes need compatibility, migration and rollback; releases need diagnostics and targeted rollback. Do not prescribe Kubernetes/staging/SLOs without a concrete need. Skills/MCP require a relevant task and trusted source. Parallel agents, if explicitly authorized, need independent ownership and must not race shared Spec Kit feature state.

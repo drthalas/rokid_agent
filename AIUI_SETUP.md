@@ -1,6 +1,6 @@
 # Mac Codex на RV101 через AIUI Studio / Craft — без ADB
 
-Проверено по официальной документации Rokid 1 октября 2026 года. **Cloud UX 1.0.8 загружен и скачан обратно для проверки.** Следующий шаг — обновить ресурсы в Hi Rokid и выполнить физический acceptance test нового temple-driven UX.
+Руководство опирается на документацию и cloud-проверку 1 октября 2026 года. Актуальный зафиксированный статус версий/проверок — [setup status](docs/setup-status.md); архитектура — [ARCHITECTURE.md](ARCHITECTURE.md). В ходе architecture bootstrap облако и очки повторно не проверялись.
 
 ## Что создано
 
@@ -13,15 +13,15 @@
 Существующие `src/` gateway/Codex, конфигурация gateway, Android APK и протокол не изменены этой задачей.
 
 ```text
-«Hi Rokid, open Mac Codex»
+«Hi Rokid, Mac Codex»
     → зарегистрированный AIUI Agent → Ink Page на RV101
     → короткая PCM запись → WAV → HTTPS /v1/stt на Mac → transcript
     → /v1/sessions/:id/turns → существующий gateway → тот же Codex thread
     → polling snapshot → HUD Listening / Working / Done / Error
-    → кнопка «Озвучить» → штатный Rokid SpeechAudioPlayer, если доступен
+    → автоматический короткий TTS через штатный Rokid SpeechAudioPlayer, если доступен
 ```
 
-Если host передал реальный transcript задачи при запуске в `prompt` page data, страница может отправить его без повторной записи. Наличие такого параметра зависит от semantic routing AIUI; оно не гарантируется каждой фразой запуска. Основной предсказуемый путь — открыть агент, затем нажать и произнести задачу.
+Invocation только открывает READY и не отправляет `prompt` как задачу. После открытия нажмите на дужку, произнесите задачу и нажмите повторно для отправки.
 
 ## 1. Что переиспользовано из rokid-personal-ai
 
@@ -29,7 +29,7 @@ Reference закреплён на `23f98ff2946f7575997383929b87867503eab607`.
 
 | Компонент | Решение |
 |---|---|
-| `voice-aix-source/lib/one-shot-audio.mjs` | Переиспользован без изменения логики как `aiui-agent/lib/one-shot-audio.js`, с исходным MIT notice. Используем параметры 30 секунд / 960000 PCM bytes; VAD завершает после 900 ms тишины после обнаруженной речи. |
+| `voice-aix-source/lib/one-shot-audio.mjs` | Переиспользован без изменения логики как `aiui-agent/lib/one-shot-audio.js`, с исходным MIT notice. Используем параметры 30 секунд / 960000 PCM bytes; VAD определяет наличие речи; в текущей странице `automaticStopOnSilence: false`, запись завершается тапом или лимитом 30 секунд. |
 | `voice-aix-source/pages/index/index.ink` | Использованы структура Ink, lifecycle recorder callbacks и принцип управления жестами. Наша страница существенно меньше: только голосовой терминал, без эффектов и заметок. |
 | `prepare-voice-aix.mjs` | Референс состава AIX, а не скопированный zip pipeline. Упаковка через официальную AIX CLI с VERSION и manifest. |
 | Relay / Cloudflare / Obsidian / effect proposals / отдельный Codex session | Не нужны: используется уже работающий gateway. |
@@ -134,11 +134,13 @@ kill -TERM "$(cat .local/quick-tunnel.pid)"
 
 ## 4. Подготовить личный AIUI проект
 
-Исходный проект специально не содержит реального токена:
+Git checkout содержит безопасный `config.example.js`, но локальный ignored `config.js` может уже быть приватно настроен. Не перезаписывайте его. Следующие команды шаблонной упаковки выполняются только в свежем или изолированном checkout с пустым config:
 
 ```sh
 cd /Users/hermes/Projects/Rikid-agent/aiui-agent
 npm ci
+# Только в свежем/изолированном checkout, если config.js отсутствует:
+cp -n config.example.js config.js
 npm test
 npm run check
 npm run pack
@@ -180,7 +182,7 @@ npm run pack -- --private-package
 Если форма требует категорию или иконку, заполните их перед сохранением; для публичного review стандартную иконку нужно заменить своей.
 
 4. Сохраните созданный Agent ID. Если свежий агент пока не имеет файлов и показывает load failure, перейдите к привязке проекта, а не создавайте ещё одного.
-5. Семантическое назначение и необязательный `prompt` заданы в AGENTS.md и schema страницы. Оставьте узнаваемое имя **Mac Codex**, чтобы его можно было вызвать голосом.
+5. Семантическое назначение открытия READY без task prompt задано в AGENTS.md и schema страницы. Оставьте узнаваемое имя **Mac Codex**, чтобы его можно было вызвать голосом.
 
 Новая Studio также позволяет сразу импортировать локальный проект и работать без отдельного Craft. Это официальный альтернативный UI того же процесса. Точные подписи и доступность могут зависеть от версии и региона — [официальный обзор Rokid](https://global.rokid.com/es/blogs/academy-glasses/glasses-3-6-aiui).
 
@@ -190,7 +192,7 @@ npm run pack -- --private-package
 2. Импортируйте **только** `aiui-agent/` для шаблона или `.local/aiui-private/` для рабочего личного проекта. Можно импортировать соответствующий `.aix`. Не импортируйте корень Rikid-agent: в нём есть Mac tools и `.local` с приватными данными.
 3. Убедитесь, что в корне дерева видны AGENTS.md, app.json, app.js, config.js и pages/index/index.ink.
 4. Откройте **Settings → Local Management** и привяжите этот проект к **Mac Codex**, созданному в Studio. Сверьте Agent ID из Studio. `develop.rokid.agent.…`, который показывает локальный `aix show`, — локальная производная от VERSION, а не подтверждение привязки к облачному аккаунту.
-5. **Run Agent / Interactive Inview** позволяет проверить экран и кнопки. При импорте ненастроенного шаблона ожидается сообщение о ненастроенном соединении. Микрофон и native network в браузере не равнозначны RV101.
+5. **Run Agent / Interactive Inview** позволяет проверить экран и состояния. При импорте ненастроенного шаблона ожидается сообщение о ненастроенном соединении. Микрофон и native network в браузере не равнозначны RV101.
 
 Этот порядок привязки описан в [официальной документации AIUI Editor, раздел VII](https://github.com/yodaos-project/AIUI/blob/b1e9ff620b41b306bd50ef87d401f32d6c57edb5/documentation/7-tools/editor.en-US.md).
 
@@ -198,7 +200,7 @@ npm run pack -- --private-package
 
 1. В Craft используйте **Pack** для текущей привязанной папки. Если Pack объединён с deployment, следуйте следующему Upload-экрану. Для текущего smoke импортируйте **dist/mac-codex-aiui-private.aix** (не безопасный шаблон) и выберите Upload.
 2. Проверьте назначение — ваш **Mac Codex / Agent ID**, правильный account/region.
-3. На Upload-экране укажите реально используемые capabilities: **microphone, network, storage, audio/TTS** — согласно доступным категориям UI. Камера и location не нужны. В техническом `app.json.permissions` объявлен только поддерживаемый sensitive permission **RECORD_AUDIO**; не добавляйте несуществующие permission-строки NETWORK/TTS/STORAGE.
+3. На Upload-экране сохраните согласованные permissions **Network, Camera, Microphone, Speaker**. Camera оставлена по решению владельца; текущий voice runtime её не вызывает. Agent-local storage используется для session/pending state. Location не требуется. В техническом `app.json.permissions` объявлен только поддерживаемый sensitive permission **RECORD_AUDIO**; не добавляйте несуществующие permission-строки NETWORK/TTS/STORAGE.
 4. Сохраните описание и данные версии, дождитесь **Upload successful**.
 5. В новом интерфейсе AIUI Studio эквивалент — **Build & Review → Package AIX / AIX Packaging**, затем **Save** информации агента. Пакет синхронизируется в cloud, версия увеличивается сервером. Локальный package.json version не заменяет облачную version.
 6. Проверьте, что новая версия действительно появилась у нужного Agent ID. Простое сохранение файла в Craft без Pack/Upload не обновляет очки.
@@ -261,7 +263,7 @@ Backend unavailable: **Codex недоступен на Mac** и короткий
 - Официальный AIX pack выполнен, runtime файлы и MIT license присутствуют, tools/tests/node_modules в AIX отсутствуют.
 - 18 frontend-тестов (последний запуск): два prompt одного thread, reopen, lost ACK с прежним UUID, запись pending до network send, WAV совместимость, существующая session, wx headers/JSON parsing, реальный HTTPS gateway с mock Codex, 30-секундный лимит/отмена при hide, upstream audio tests.
 - Официальный browser preview runtime 0.18.0 отобразил страницу и ожидаемый setup error без credentials; ошибок JavaScript не выявлено. Это не проверка микрофона RV101.
-- Для новой UX-версии 1.0.8 ещё не выполнены: iPhone resource update и физическая проверка жестов/микрофона/HUD/автоматического TTS. Ранее backend-цепочка с очков была подтверждена; private Upload новой версии выполнен и read-back проверен. Доверенный HTTPS endpoint через Quick Tunnel теперь подготовлен и проверен с Mac; handshake непосредственно с RV101 ещё предстоит.
+- Для новой UX-версии 1.0.8 ещё не выполнены: iPhone resource update и физическая проверка жестов/микрофона/HUD/автоматического TTS. Ранее backend-цепочка с очков была подтверждена; private Upload новой версии выполнен и read-back проверен. Доверенный HTTPS endpoint через Quick Tunnel теперь подготовлен и проверен с Mac; сетевое поведение новой UX-сборки необходимо подтвердить отдельно от ранее работавшего backend-сценария.
 
 Ни gateway, ни Codex policy, ни approval маршруты не изменялись. Документированные native speech/API возможности не означают, что текущая прошивка ваших RV101 уже их поддерживает — окончательная проверка проводится после account deployment.
 
@@ -283,4 +285,4 @@ CLI читает agentId/expectedOwnerId из ignored `.local/rokid-deploy.json`
 
 **Граница проверки:** локальные tests/build и реальные metadata/STС API подтверждены. Полный HTTP upload-путь CLI пока не подтверждён реальным запуском: у текущего Chrome нет прямого CLI CDP listener, а попытка одноразового loopback auth bridge не завершилась; bridge остановлен, browser security не менялась. Не считать наличие скрипта доказательством рабочего unattended deploy. Для текущей 1.0.8 использованы детерминированные Playwright/CDP Repackage/Save в авторизованной Studio, затем обычный CLI download/verify. Cloud-only fallback требует уже загруженных исходников и принимает tab adapter с документированным Playwright/CDP интерфейсом; он не редактирует файлы.
 
-В текущем cloud AIX 1.0.8 проверены все шесть изменённых runtime/metadata файлов, отсутствие кнопок, автоматический вызов TTS, неизменность endpoint/token и permissions. Проверка JSON учитывает только форматирование упаковщика. Детальный отчёт — ignored `.local/voice-ux-deploy-result.json`. GitHub remote пока не настроен; автоматический GitHub→AIUI sync не предполагается.
+В текущем cloud AIX 1.0.8 проверены все шесть изменённых runtime/metadata файлов, отсутствие кнопок, автоматический вызов TTS, неизменность endpoint/token и permissions. Проверка JSON учитывает только форматирование упаковщика. Детальный отчёт — ignored `.local/voice-ux-deploy-result.json`. [GitHub main](https://github.com/drthalas/rokid_agent/tree/main) — source of truth; автоматический GitHub→AIUI sync не предполагается.

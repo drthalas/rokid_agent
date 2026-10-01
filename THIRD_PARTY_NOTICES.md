@@ -12,3 +12,7 @@ This MVP is a new integration layer with narrowly adapted reference components. 
 ## AIUI frontend addition
 
 `aiui-agent/lib/one-shot-audio.js` now includes the unmodified MIT OneShotAudioSession / PCM VAD module from rokid-personal-ai commit `23f98ff2946f7575997383929b87867503eab607` (only attribution comments added). Its tests are retained with an adjusted import path; its full license is inside the AIX. The AIUI page adapts the reference's recorder/lifecycle conventions. Official Rokid AIUI docs at commit `b1e9ff620b41b306bd50ef87d401f32d6c57edb5` and the aiui-dev skill were consulted. `@yodaos-pkg/aix-cli` 0.10.1 is a local development dependency for packaging, not bundled into the Agent. See AIUI_SETUP.md.
+
+## Development tooling: GitHub Spec Kit
+
+`.specify/` and `.agents/skills/speckit-*` were generated from official [github/spec-kit v1.0.13](https://github.com/github/spec-kit/tree/f1a548a39dba4e5e8600de1d2e0d3ff0c468d2a9), MIT. Full notice: [licenses/spec-kit-MIT.txt](licenses/spec-kit-MIT.txt). Constitution is project-authored; tooling is not packaged in AIUI or used by the gateway runtime.

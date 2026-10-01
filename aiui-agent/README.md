@@ -12,7 +12,7 @@ npm run check
 # The default pack refuses credentials; see private deployment in AIUI_SETUP.md.
 ```
 
-`../dist/mac-codex-aiui.aix` is deliberately **unconfigured and secret-free**. It shows a setup error until connected. For a working personal package, first prepare a trusted HTTPS origin for the existing Mac gateway, then follow the explicit private configuration steps in the setup guide. Do not place your real token in tracked config.js.
+`../dist/mac-codex-aiui.aix` is deliberately **unconfigured and secret-free**. It shows a setup error until connected. For a working personal package, first prepare a trusted HTTPS origin for the existing Mac gateway, then follow the explicit private configuration steps in the setup guide. `config.js` is ignored and private; never force-add it to Git.
 
 Reuse: the MIT `OneShotAudioSession` / PCM VAD module from ksuzukigh/rokid-personal-ai is retained, with its full license. Ink page and gesture conventions follow that reference and official Rokid AIUI documentation. `lib/gateway.js` maps to the existing gateway protocol without changing Mac source code. Audio is capped at 30 seconds and wrapped into WAV. Invocation opens READY without forwarding a launch prompt. Enter/GlobalHook drive capture; Backspace preserves native close.
 

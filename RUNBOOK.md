@@ -1,15 +1,17 @@
 # Запуск RV101 → Codex на macOS
 
-## Что готово и какой APK нужен
+## Основной AIUI путь и альтернативные APK
 
-У владельца iPhone основной вариант — **direct APK на самих RV101**. iPhone не участвует в передаче аудио. Nexus APK нужен только при наличии Android-телефона с Nexus phone hub и спаренных очков с Nexus glasses hub.
+Основной клиент — **AIUI через Hi Rokid на iPhone**, без ADB; установка и приёмка описаны в [AIUI_SETUP.md](AIUI_SETUP.md). Здесь описаны общий Mac gateway/STT и дополнительные APK. Каноническая архитектура — [ARCHITECTURE.md](ARCHITECTURE.md), актуальные границы проверки — [setup status](docs/setup-status.md).
+
+Direct APK устанавливается на RV101 и сам отправляет аудио на Mac. Nexus APK нужен только при наличии Android-телефона с Nexus phone hub и спаренных очков с Nexus glasses hub.
 
 Сборки:
 
 - `dist/rokid-mac-direct-debug.apk` — установить на RV101.
 - `dist/rokid-mac-nexus-debug.apk` — установить на Android-телефон, если используется Nexus.
 
-Это debug-сборки для MVP, не подписанные release-ключом. ADB provisioning использует `run-as`, доступный для debug APK. Проверка на физических очках ещё необходима; см. TEST_RESULTS.md.
+Это debug-сборки для MVP, не подписанные release-ключом. ADB provisioning использует `run-as`, доступный для debug APK. Физическая проверка именно APK ещё необходима; [TEST_RESULTS.md](TEST_RESULTS.md) хранит исторические результаты первой итерации.
 
 ## 1. Mac
 
@@ -39,7 +41,7 @@ npm run setup
 }
 ```
 
-Это **фрагмент** — сохраните остальные поля tokenFile/adminTokenFile/certFile/keyFile/stateFile/stt. Setup по умолчанию использует `host: 127.0.0.1`. В этой рабочей копии после подтверждения подключения очков выставлен LAN адрес Mac `192.168.1.66`. На другом Mac для очков замените на конкретный LAN IPv4 адрес Mac (предпочтительно) или `0.0.0.0`. Только HTTPS gateway будет доступен в LAN; app-server всегда жёстко привязан к 127.0.0.1. Admin HTTP тоже только 127.0.0.1. Не перенаправляйте порты роутера.
+Это **фрагмент** — сохраните остальные поля tokenFile/adminTokenFile/certFile/keyFile/stateFile/stt. Setup по умолчанию использует `host: 127.0.0.1`. Во время первой проверки был настроен LAN адрес Mac; текущий адрес проверяйте в приватной конфигурации, не выводя её секретные поля. На другом Mac для очков замените на конкретный LAN IPv4 адрес Mac (предпочтительно) или `0.0.0.0`. Только HTTPS gateway будет доступен в LAN; app-server всегда жёстко привязан к 127.0.0.1. Admin HTTP тоже только 127.0.0.1. Не перенаправляйте порты роутера.
 
 Проекты адресуются короткими aliases `[a-z0-9_-]`. Ни путь, ни произвольные параметры Codex клиент передавать не может. Путь canonicalized через realpath; подмена root симлинком отклоняется. Allowlist определяет cwd, а не отдельный контейнер для чтения файлов.
 
@@ -47,7 +49,7 @@ npm run setup
 npm start
 ```
 
-Успех: `gateway_ready`. Остановка: Ctrl-C. В конце этой итерации gateway оставлен работающим на 192.168.1.66:8443 для установки очков (Node PID 26390); перед повторным npm start остановите именно этот процесс, предварительно сверив его через lsof. Никаких токенов, prompt, raw RPC или stderr Codex в логах daemon нет. Если заняты 8390/8791/8443, выберите свободные порты в config. Gateway не присоединяется молча к чужому app-server.
+Успех: `gateway_ready`. Остановка: Ctrl-C. Перед повторным запуском проверьте занятость портов через lsof; не используйте PID из старого отчёта и не останавливайте работающий gateway без необходимости. Никаких токенов, prompt, raw RPC или stderr Codex в логах daemon нет. Если заняты 8390/8791/8443, выберите свободные порты в config. Gateway не присоединяется молча к чужому app-server.
 
 Проверка gateway в другом терминале (helper использует host из config; при 0.0.0.0 подключается к loopback):
 
@@ -63,7 +65,7 @@ node scripts/client.mjs watch SESSION_ID
 
 SESSION_ID — поле `id` из `new`, не `threadId`. В двух ответах `threadId` должен совпадать. Helper читает token из файла, не передаёт секрет в argv. `health` проверяет initialize/account-read; только завершённый smoke-turn доказывает работоспособность inference.
 
-## 2. Локальное STT для прямого RV101 APK
+## 2. Локальное STT для AIUI и прямого RV101 APK
 
 Установлены через Homebrew `openjdk@21`, `android-commandlinetools`, `whisper.cpp` и их зависимости. SDK platform 36, build-tools 35.0.0 и platform-tools также установлены. Пути этой машины:
 
@@ -115,7 +117,7 @@ export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
 
 Исходные outputs находятся в `app/build/outputs/apk/direct/debug/` и `app/build/outputs/apk/nexus/debug/`. Готовые копии первой итерации — в `dist/`, SHA256SUMS рядом. Проект не содержит private SDK/cache; local.properties не нужен при ANDROID_HOME.
 
-## 4. RV101 + iPhone: установка и настройка
+## 4. Fallback direct APK: установка через ADB
 
 На RV101 включите developer mode / USB debugging через доступный интерфейс Rokid. Подключите к Mac **кабелем с передачей данных**, разрешите отладку. Reference rokid-personal-ai указывает разработческий 5-pin кабель; штатный зарядный 3-pin может не передавать данные. Убедитесь, что Mac и RV101 в одной LAN и очки могут достучаться до Mac (guest Wi-Fi/client isolation может мешать).
 
