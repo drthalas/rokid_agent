@@ -1,14 +1,60 @@
-references/
+# Local runtime state, credentials and generated reference checkouts
+/.local/
+/references/
+/aiui-agent/config.js
+/aiui-agent-import/
+/dist/
+
+# Environment and authentication material (safe examples use *.example.js/json)
+**/.env
+**/.env.*
+**/.cloudflared/
+**/.aws/
+**/.ssh/
+**/auth.json
+**/cookies*.json
+**/cookies*.txt
+**/storage-state*.json
+**/storageState*.json
+**/auth-state*.json
+**/rokid-account-session*
+**/rokid-auth-*.json
+**/cloudflared-credentials*.json
+**/*-token
+**/*-token.txt
+**/*-token.json
+**/*.token
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.jks
+**/*.keystore
+
+# Private packages, captures and browser profiles
+**/*private*.aix
+**/*private*.aix.sha256
+**/*.har
+**/.browser/
+**/.playwright/
+**/browser-profile*/
+**/chrome-profile*/
+**/playwright/.auth/
+**/playwright-report/
+
+# Dependencies and Android outputs; keep the Gradle wrapper and source files
 node_modules/
-.local/
-.DS_Store
 android-plugin/.gradle/
 android-plugin/local.properties
 android-plugin/**/build/
-*.log
-dist/*private*.aix
-dist/*private*.aix.sha256
 
-# Generated import copies and build artifacts
-/dist/
-/aiui-agent-import/
+# Logs and OS/editor temporary files
+*.log
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+.idea/workspace.xml
