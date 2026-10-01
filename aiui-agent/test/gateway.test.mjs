@@ -17,7 +17,7 @@ function fixture() {
     }
     if (route.endsWith('/turns')) {
       if (!seen.has(data.requestId)) { turns++; seen.add(data.requestId); }
-      current.status = 'Done'; current.text = `answer ${turns}`;
+      current.status = 'Done'; current.text = `answer ${turns}`; current.turnId = 'turn-'+turns;
       if (lostAck) { lostAck=false; throw new Error('network_or_tls_error'); }
     }
     if (route === '/v1/stt') { validateWav(Buffer.from(data)); return {text:'А теперь найди TODO'}; }
@@ -87,4 +87,28 @@ test('cancel while turn start ACK is pending waits for ACK, then interrupts the 
  f.transport.request=async(m,r,d)=>{const answer=await original(m,r,d);if(r.endsWith('/turns'))await new Promise(resolve=>release=resolve);return answer};
  const pending=c.submit('test');await Promise.resolve();await c.stop();assert.equal(c.cancelRequested,true);release();await pending;
  assert.equal(f.calls.filter(x=>x.route.endsWith('/stop')).length,1);assert.equal(f.turns(),1);
+});
+
+test('six exchanges survive reopen/listening; replay does not duplicate; session changes isolate history',async()=>{
+ const f=fixture(),c=f.make();await c.open();
+ for(let i=0;i<8;i++)await c.submit('question '+i);
+ assert.equal(c.saved.history.exchanges.length,6);assert.equal(c.saved.history.exchanges[0].user,'question 2');
+ assert.equal(c.saved.history.exchanges.at(-1).assistant,'answer 8');
+ await c.refresh();assert.equal(c.saved.history.exchanges.length,6);c.close();
+ const reopened=f.make();await reopened.open();assert.equal(f.views.at(-1).state,'READY');
+ assert.equal(f.views.at(-1).history.length,6);
+ f.lose();await reopened.submit('lost ack question');await reopened.open();
+ assert.equal(reopened.saved.history.exchanges.filter(e=>e.user==='lost ack question').length,1);
+ assert.equal(reopened.saved.history.exchanges.at(-1).assistant,'answer 9');
+ const other=new Conversation({config:{...config,sessionId:randomUUID()},transport:f.transport,storage:f.storage,id:randomUUID,render:()=>{}});
+ assert.deepEqual(other.saved.history.exchanges,[]);
+});
+test('history bounds/redaction and thread mismatch are enforced without creating a new session',async()=>{
+ const {boundedHistory}=await import('../lib/history.js');const sid=randomUUID();
+ const h=boundedHistory({sessionId:sid,threadId:'t',exchanges:[{requestId:randomUUID(),user:config.token,assistant:'Bearer abcsecret '+ 'x'.repeat(20000),completed:true}]},sid,config.token);
+ assert.ok(!JSON.stringify(h).includes(config.token));assert.ok(!JSON.stringify(h).includes('abcsecret'));
+ assert.equal(h.exchanges[0].assistant.length,16000);
+ const f=fixture(),c=f.make();await c.open();
+ assert.throws(()=>c.validateSnapshot({id:c.saved.sessionId,threadId:'different',status:'Done'}),/thread_mismatch/);
+ assert.equal(f.calls.filter(x=>x.route==='/v1/sessions').length,1);
 });

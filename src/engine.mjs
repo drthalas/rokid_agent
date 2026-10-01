@@ -9,6 +9,7 @@ export class Engine {
     this.config = config; this.codex = codex; this.approvals = new Map(); this.locks = new Set();
     this.data = fs.existsSync(config.stateFile) ? JSON.parse(fs.readFileSync(config.stateFile, 'utf8')) : { version: 1, sessions: {}, requests: {} };
     requireValue(this.data.version === 1 && this.data.sessions && this.data.requests, 'invalid_state');
+    this.timings = new Map();
     this.recovered = false;
     codex.on('notification', m => this.event(m));
     codex.on('request', m => this.approval(m));
@@ -31,7 +32,8 @@ export class Engine {
   snapshot(s) {
     return { id: s.id, project: s.project, threadId: s.threadId, turnId: s.turnId, status: s.status,
       text: s.text, partial: s.partial, error: s.error, uncertain: s.uncertain, revision: s.revision,
-      pendingApproval: [...this.approvals.values()].some(a => a.sessionId === s.id) };
+      pendingApproval: [...this.approvals.values()].some(a => a.sessionId === s.id),
+      ...(this.timings.has(s.id) ? {timing:{...this.timings.get(s.id)}} : {}) };
   }
   ready() { requireValue(this.codex.ready && this.recovered, 'codex_unavailable', 503); }
   async once(id, body, action) {
@@ -81,8 +83,12 @@ export class Engine {
         s.status = 'Thinking'; s.error = null; s.text = ''; s.partial = ''; s.turnId = null; s.revision++;
         this.save();
         try {
+          const timing = { requestId: body.requestId, T5: Date.now() };
+          this.timings.delete(id); this.timings.set(id, timing);
+          if (this.timings.size > 32) this.timings.delete(this.timings.keys().next().value);
           const r = await this.codex.request('turn/start', { threadId: s.threadId, cwd, ...turnPolicy,
             input: [{ type: 'text', text, text_elements: [] }] });
+          timing.T6 = Date.now(); timing.turnId = r.turn.id;
           s.turnId = r.turn.id;
           if (s.status === 'Thinking') s.status = 'Working';
         } catch {
@@ -100,6 +106,11 @@ export class Engine {
   }
   event({ method, params: p = {} }) {
     for (const s of Object.values(this.data.sessions)) if (reduceEvent(s, method, p)) {
+      const timing = this.timings.get(s.id);
+      if (timing) {
+        if (method === 'item/agentMessage/delta' && !timing.T7) timing.T7 = Date.now();
+        if (method === 'turn/completed') timing.T8 = Date.now();
+      }
       if (!busy(s)) this.clearApprovals(s.id);
       // Stream deltas live; persist terminal transitions, not every token.
       if (method !== 'item/agentMessage/delta') this.save();

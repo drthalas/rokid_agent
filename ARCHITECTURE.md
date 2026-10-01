@@ -55,11 +55,11 @@ Creation and turn requests record their UUID/fingerprint before side effects. Sa
 
 ## Session, voice and thread lifecycle
 
-1. Invocation opens the page without forwarding an invocation prompt. Health/session restoration may briefly show connecting; idle historical answers are hidden and the page becomes READY.
+1. Invocation opens the page without forwarding an invocation prompt. Health/session restoration may briefly show connecting; uncaptured backend-only historical answers are hidden, local same-session history is restored without TTS, and the page becomes READY.
 2. Tap in READY/DONE starts LISTENING and stops TTS first. Tap ends recording → TRANSCRIBING → THINKING → WORKING → DONE or ERROR. No separate menu buttons. Capture has a 30-second cap; VAD detects speech but silence auto-stop is disabled in this page.
 3. The recorder builds bounded WAV; Mac Whisper supplies transcript. Only final transcript is submitted. Nexus instead supplies final hub STT text.
 4. Codex notifications update live snapshots; clients poll with retry backoff. Only final non-commentary assistant messages become results. Failed/interrupted turns are not successful completions.
-5. DONE shows an extractive preview (up to 300 characters), automatically spoken once per turn if native TTS is available; full gateway text (up to 16,000 characters) remains scrollable. This is not another summarization model call. Audio generation/service location is owned by Rokid, not guaranteed offline by this repository.
+5. HUD retains the last six locally captured exchanges for the same session, with user transcript (up to 8,000 characters) and one complete assistant final (up to 16,000 characters). History survives recording/reopen and is scrollable; new exchanges receive focus. A separate extractive preview (up to 300 characters) is automatically spoken once per new completed turn if native TTS is available; it is never a second HUD answer. This is not another summarization model call. Audio generation/service location is owned by Rokid, not guaranteed offline by this repository.
 6. Next tap continues the same gateway session/thread. Tap while busy requests cancellation; long press is not assigned. Backspace preserves native host close, cleans up capture/TTS/polling, and cancels delayed unsent audio. Closing does not delete a thread or guarantee cancellation of a task already sent.
 
 Enter/GlobalHook are deduplicated; ArrowUp/ArrowDown scroll. A 650 ms send delay allows host Backspace classification. Physical double-tap→Backspace, microphone, HUD and automatic TTS remain acceptance gates for the new UX, not proven by mocked events. A local 32-entry event trace contains only key/edge/state/time.
@@ -83,6 +83,19 @@ See [ADR-002](docs/adr/ADR-002-loopback-boundary.md) and [ADR-003](docs/adr/ADR-
 Client retries retain UUID/session, refresh snapshots and never silently create a replacement thread. Endpoint changes alter AIUI storage namespace; use an explicit existing gateway session to preserve continuity. STT validation/busy/no-speech/timeout yields bounded errors, never a speculative turn. TTS failure falls back to HUD.
 
 RPC disconnect rejects outstanding calls, clears local approval handles, marks active work uncertain, then attempts resume/read recovery. Only matching known turn history resolves uncertainty; otherwise local review/reconcile is required. Approval expiry declines. Corrupt state fails startup; **missing state currently initializes an empty store**, so deleting it loses gateway mappings/dedupe records and is not a recovery procedure. Sessions without any turn may lack a resumable Codex rollout. Capacity errors preserve dedupe records rather than silently evicting them (normal creation: 100 sessions; mutations: 10,000 UUIDs; import does not apply the session cap).
+
+## Bounded latency diagnosis
+
+Optional `clock`/`timing` response metadata measures short voice requests without changing task
+semantics. Authenticated `POST /v1/diagnostics` accepts only capped numeric timestamps, UUIDs and
+allowlisted error codes; local admin `GET /admin/diagnostics` returns at most 32 samples. A separate
+mode-0600 `stateFile + '.latency.json'` stores that bounded diagnostic set; it is not conversation
+state and is not loaded as thread history. Native agent storage keeps at most 12 samples and a safe
+last-error code. No prompts/transcripts/answers/audio/credentials enter diagnostic payloads.
+History content itself is private agent-local data; known configured tokens/common credential forms
+are redacted, which is not a general guarantee of detecting every secret in free-form conversation.
+Cross-clock upload/poll estimates carry RTT-derived uncertainty; T10 is the data-update callback and
+T11 is the TTS play request, not measured physical display/audio onset. See [bounded UX spec](specs/001-hud-history-latency/spec.md).
 
 ## Capability direction — not implemented abstractions
 

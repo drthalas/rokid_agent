@@ -3,6 +3,7 @@ import https from 'node:https';
 import http from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { Fault, requireValue, object } from './protocol.mjs';
+import { Diagnostics } from './diagnostics.mjs';
 import { Stt, MAX_AUDIO } from './stt.mjs';
 
 function authorized(req, token) {
@@ -21,9 +22,11 @@ export async function serve(config, engine) {
   const token = fs.readFileSync(config.tokenFile, 'utf8').trim(), adminToken = fs.readFileSync(config.adminTokenFile, 'utf8').trim();
   requireValue(token.length >= 43 && adminToken.length >= 43 && token !== adminToken, 'invalid_tokens');
   const stt = new Stt(config.stt);
+  const diagnostics = new Diagnostics(config.stateFile + '.latency.json');
   let inflight = 0;
   const handler = admin => async (req, res) => {
-    const reply = (status, data) => { res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' }); res.end(JSON.stringify(data)); };
+    const received = Date.now();
+    const reply = (status, data) => { if (status === 200 && !Array.isArray(data)) data = { ...data, clock: { received, sent: Date.now() } }; res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' }); res.end(JSON.stringify(data)); };
     if (!authorized(req, admin ? adminToken : token)) { reply(401, { error: 'unauthorized' }); req.resume(); return; }
     if (req.headers.origin) { reply(403, { error: 'browser_origin_forbidden' }); req.resume(); return; }
     if (inflight >= 16) { reply(429, { error: 'busy' }); req.resume(); return; }
@@ -32,7 +35,8 @@ export async function serve(config, engine) {
       const url = new URL(req.url, 'https://gateway.invalid'); requireValue(!url.search, 'query_not_supported');
       const p = url.pathname; let result;
       if (admin) {
-        if (req.method === 'GET' && p === '/admin/approvals') result = engine.listApprovals();
+        if (req.method === 'GET' && p === '/admin/diagnostics') result = { samples: diagnostics.samples };
+        else if (req.method === 'GET' && p === '/admin/approvals') result = engine.listApprovals();
         else if (req.method === 'GET' && p === '/admin/sessions') result = Object.values(engine.data.sessions).map(s => engine.snapshot(s));
         else if (req.method === 'POST' && p === '/admin/import') result = await engine.importThread(object(await body(req, 32768), ['project', 'threadId']));
         else if (req.method === 'POST' && p === '/admin/reconcile') { await engine.recover(); result = { ok: true }; }
@@ -45,9 +49,11 @@ export async function serve(config, engine) {
         if (engine.codex.ready) { const account = await engine.codex.request('account/read', { refreshToken: false }); loggedIn = !!account.account; }
         result = { protocol: 1, codex: engine.codex.ready && engine.recovered, loggedIn, stt: !!config.stt?.model };
       } else if (req.method === 'GET' && p === '/v1/projects') result = { projects: Object.keys(config.projects), defaultProject: config.defaultProject };
+      else if (req.method === 'POST' && p === '/v1/diagnostics') result = diagnostics.add(await body(req, 4096));
       else if (req.method === 'POST' && p === '/v1/stt') {
         requireValue(req.headers['content-type'] === 'audio/wav', 'wav_required', 415);
-        result = await stt.transcribe(await body(req, MAX_AUDIO, false));
+        const audio = await body(req, MAX_AUDIO, false), T2 = Date.now();
+        result = await stt.transcribe(audio); result.timing.T2 = T2;
       } else if (req.method === 'POST' && p === '/v1/sessions') result = await engine.create(object(await body(req, 32768), ['requestId', 'project']));
       else {
         const match = /^\/v1\/sessions\/([a-f0-9-]{36})(?:\/(turns|stop))?$/.exec(p);

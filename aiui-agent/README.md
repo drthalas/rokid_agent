@@ -28,4 +28,4 @@ TTS uses native `speechSynthesis.synthesize` / `SpeechAudioPlayer` automatically
 
 Do not confuse successful packaging or browser preview with installation into a Rokid account or proof of physical RV101 voice behavior.
 
-Frontend 0.2.0 removes the four-button menu. Tap while ready/done records, tap while listening sends, tap while working cancels. A short extractive answer is spoken; the full answer remains scrollable. Physical event mappings and TTS still require RV101 acceptance after resource update.
+Frontend 0.3.0 removes the four-button menu. Tap while ready/done records, tap while listening sends, tap while working cancels. Six bounded same-session exchanges are retained across recording/reopen. Each assistant answer appears once; a short extractive version is used only for TTS. The newest exchange receives focus; temple swipe scrolls history. The wearer confirmed tap recording/send and states on the earlier build; history rendering and automatic TTS remain a separate acceptance step for this build. Timing telemetry contains only bounded UUIDs/numbers/safe codes; see the task spec and AIUI setup.

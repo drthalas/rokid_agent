@@ -7,13 +7,14 @@
 </script>
 <script setup>
 import config from '../../config.js';
+import { Latency } from '../../lib/latency.js';
 import { OneShotAudioSession, PcmVoiceActivityDetector, VOICE_ACTIVITY_LIMITS } from '../../lib/one-shot-audio.js';
 import { pcmToWav } from '../../lib/wav.js';
 import { Conversation, createTransport } from '../../lib/gateway.js';
 import { TempleControls, LABELS, BUSY_STATES, briefAnswer, errorView } from '../../lib/voice-ui.js';
 
 export default {
-  data: { phase: 'THINKING', label: '● Подключаюсь', summary: '', fullText: '', longAnswer: false, hint: '', scroll: 0 },
+  data: { phase: 'THINKING', label: '● Подключаюсь', history: [], errorText: '', hint: '', scroll: 0, scrollTarget: '' },
   onLoad() {
     this.pageEpoch = 0; this.visible = false; this.spokenTurn = null; this.awaitingStop = false; this.trace = [];
     this.audio = new OneShotAudioSession({
@@ -21,7 +22,8 @@ export default {
       voiceDetector: new PcmVoiceActivityDetector({ limits: { ...VOICE_ACTIVITY_LIMITS, automaticStopOnSilence: false } })
     });
     try {
-      this.client = new Conversation({ config, transport: createTransport(wx, config),
+      this.latency = new Latency({storage:{set:(k,v)=>wx.setStorageSync(k,v)},transport:createTransport(wx,config),id:()=>crypto.randomUUID()});
+      this.client = new Conversation({ diagnostics: this.latency, config, transport: createTransport(wx, config),
         storage: { get: key => wx.getStorageSync(key), set: (key, value) => wx.setStorageSync(key, value) },
         id: () => crypto.randomUUID(), render: value => this.renderState(value) });
       this.recorder = wx.media.getRecorderManager();
@@ -31,7 +33,7 @@ export default {
   onShow() {
     this.visible = true;
     this.controls = new TempleControls({ tap: () => this.tap(), exit: () => this.cleanup(),
-      scroll: direction => { if (this.data.phase === 'DONE') this.setData({ scroll: Math.max(0, this.data.scroll + direction * 110) }); },
+      scroll: direction => { if (this.data.history.length) this.setData({ scrollTarget: '', scroll: Math.max(0, (this.scrollPosition || 0) + direction * 110) }); },
       trace: entry => {
         // Only key codes/state, never speech, prompts, credentials or answers.
         this.trace.push({ ...entry, phase: this.data.phase, at: Date.now() });
@@ -42,25 +44,37 @@ export default {
   },
   renderState(value) {
     if (!this.visible) return;
-    if (value.state === 'ERROR') { this.showError(value.detail); return; }
+    const history = value.history || this.data.history;
+    const latest = history.at(-1);
+    const revision = latest ? latest.requestId + ':' + latest.completed + ':' + latest.assistant.length : '';
+    const changed = revision !== this.historyRevision;
+    this.historyRevision = revision;
+    const update = { history, ...(changed && latest ? { scrollTarget: 'exchange-' + latest.requestId } : {}) };
+    if (value.state === 'ERROR') { this.setData(update); this.showError(value.detail); return; }
     const phase = value.state;
-    const text = phase === 'DONE' ? String(value.text || '').slice(0, 16000) : '';
-    const summary = phase === 'DONE' ? briefAnswer(text) : '';
-    this.setData({ phase, label: LABELS[phase] || LABELS.ERROR, summary,
-      fullText: text, longAnswer: text.length > 320, scroll: 0,
+    this.setData({ ...update, phase, label: LABELS[phase] || LABELS.ERROR, errorText: '',
       hint: phase === 'READY' ? 'Нажмите на дужку и говорите' :
         phase === 'DONE' ? 'Нажмите для следующей реплики' :
         value.pendingApproval ? 'Ожидает подтверждения на Mac' :
-        BUSY_STATES.includes(phase) ? (value.detail === 'Останавливаю…' ? value.detail : 'Нажатие — отмена') : '' });
-    if (phase === 'DONE' && summary && value.turnId && this.spokenTurn !== value.turnId) {
+        BUSY_STATES.includes(phase) ? (value.detail === 'Останавливаю…' ? value.detail : 'Нажатие — отмена') : '' }, () => {
+        if (phase === 'DONE' && this.latency?.sample?.turnId === value.turnId && this.latency.sample.T9 && !this.latency.sample.T10) { this.latency.mark('T10'); this.latency.finish(); }
+      });
+    const ttsText = phase === 'DONE' && latest?.completed && latest.turnId === value.turnId ? briefAnswer(latest.assistant) : '';
+    if (ttsText && value.turnId && this.spokenTurn !== value.turnId) {
       this.spokenTurn = value.turnId;
-      this.speak(summary);
+      this.speak(ttsText);
     }
+  },
+  handleScroll(event) {
+    const top = event.detail?.scrollTop;
+    if (Number.isFinite(top)) this.scrollPosition = Math.max(0, top);
   },
   showError(reason) {
     const error = errorView(reason);
-    this.setData({ phase: 'ERROR', label: LABELS.ERROR, summary: error.title, fullText: '', longAnswer: false,
-      hint: error.reason || 'Нажмите, чтобы подключиться', scroll: 0 });
+    this.safeError = error.code; this.latency?.finish(error.code);
+    try { wx.setStorageSync('mac-codex-last-error', {code:error.code,at:Date.now()}); } catch (_) {}
+    this.setData({ phase: 'ERROR', label: LABELS.ERROR, errorText: error.title,
+      hint: 'Нажмите, чтобы подключиться' });
   },
   bindRecorder() {
     this.recorder.onFrameRecorded(payload => {
@@ -72,6 +86,7 @@ export default {
       this.awaitingStop = false;
       if (!this.visible || !['recording', 'stopping'].includes(this.audio.phase)) return;
       if (!this.audio.voiceDetector.summary().speechDetected) { this.audio.cancel('no_speech', { stopRecorder: false }); this.showError('no_speech'); return; }
+      this.latency?.begin();
       const epoch = this.pageEpoch;
       // A second tap can become Backspace. Give the host time to classify it before sending.
       this.sendTimer = setTimeout(() => {
@@ -100,12 +115,12 @@ export default {
     if (this.data.phase === 'ERROR') { this.client.open(); return; }
     if (!['READY', 'DONE'].includes(this.data.phase) || this.awaitingStop || this.client.operation) return;
     if (!this.recorder) { this.showError('microphone_unavailable'); return; }
-    this.stopSpeech(); this.audio.reset(); this.awaitingStop = true;
+    this.stopSpeech(); this.latency.sample = null; this.audio.reset(); this.awaitingStop = true;
     this.audio.begin({ requestId: crypto.randomUUID(), stopRecorder: () => {
-      if (this.visible) this.setData({ phase: 'TRANSCRIBING', label: LABELS.TRANSCRIBING, summary: '', hint: 'Нажатие — отмена' });
+      if (this.visible) this.setData({ phase: 'TRANSCRIBING', label: LABELS.TRANSCRIBING, errorText: '', hint: 'Нажатие — отмена' });
       this.recorder.stop().catch(() => { this.awaitingStop = false; this.recordingError('recording_failed'); });
     }});
-    this.setData({ phase: 'LISTENING', label: LABELS.LISTENING, summary: '', fullText: '', longAnswer: false, scroll: 0, hint: 'Нажмите, чтобы отправить' });
+    this.setData({ phase: 'LISTENING', label: LABELS.LISTENING, errorText: '', hint: 'Нажмите, чтобы отправить' });
     // Invocation only opens READY. Microphone acquisition stays inside this physical input event.
     this.recorder.start({ sampleRate: 16000, numberOfChannels: 1, format: 'pcm' }).catch(() => { this.awaitingStop = false; this.recordingError('microphone_unavailable'); });
   },
@@ -119,6 +134,7 @@ export default {
       task.finished.catch(() => {});
       if (!this.visible || epoch !== this.pageEpoch) { task.abort(); return; }
       this.speechTask = task; this.player = new SpeechAudioPlayer(task); this.player.play();
+      if (this.latency?.sample?.turnId === this.spokenTurn) { this.latency.mark('T11'); this.latency.finish(); }
     } catch (_) { if (this.visible && epoch === this.pageEpoch) this.setData({ hint: 'TTS недоступен · Нажмите для следующей реплики' }); }
   },
   stopSpeech() {
@@ -141,10 +157,15 @@ export default {
   <view class="screen">
     <text class="brand">Mac Codex</text>
     <text class="state">{{label}}</text>
-    <scroll-view class="answer" scroll-y="true" scroll-top="{{scroll}}">
+    <text wx:if="{{errorText}}" class="error">{{errorText}}</text>
+    <scroll-view class="answer" scroll-y="true" scroll-top="{{scroll}}" scroll-into-view="{{scrollTarget}}" bindscroll="handleScroll">
       <view class="content">
-        <text class="summary">{{summary}}</text>
-        <view wx:if="{{longAnswer}}" class="full"><text class="caption">Полный ответ</text><text class="body">{{fullText}}</text></view>
+        <view wx:for="{{history}}" wx:key="requestId" id="exchange-{{item.requestId}}" class="exchange">
+          <text class="caption">Ты:</text>
+          <text class="body">{{item.user}}</text>
+          <text wx:if="{{item.completed}}" class="caption">Codex:</text>
+          <text wx:if="{{item.completed}}" class="body">{{item.assistant}}</text>
+        </view>
       </view>
     </scroll-view>
     <text class="hint">{{hint}}</text>
@@ -155,9 +176,9 @@ export default {
 .brand { font-size: 16px; }
 .state { font-size: 22px; font-weight: 600; }
 .answer { width: 100%; flex-grow: 1; flex-shrink: 1; flex-basis: 0px; }
-.content, .full { display: flex; flex-direction: column; width: 100%; gap: 12px; }
-.full { margin-top: 24px; }
-.summary, .body { width: 100%; font-size: 19px; line-height: 1.35; }
+.content, .exchange { display: flex; flex-direction: column; width: 100%; gap: 12px; }
+.exchange { margin-bottom: 20px; }
+.error, .body { width: 100%; font-size: 19px; line-height: 1.35; }
 .caption { font-size: 13px; color: rgba(64,255,94,0.72); }
 .hint { font-size: 16px; color: rgba(64,255,94,0.72); }
 </style>

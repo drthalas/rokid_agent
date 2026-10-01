@@ -74,13 +74,13 @@ function build(){
 }
 function verify(file,built){
  const names=execFileSync('/usr/bin/unzip',['-Z1',file],{encoding:'utf8'}).trim().split('\n');
- for(const name of ['app.json','AGENTS.md','config.js','pages/index/index.ink','lib/gateway.js','lib/voice-ui.js','lib/one-shot-audio.js','lib/wav.js'])check(names.includes(name),'cloud_missing_runtime');
+ for(const name of ['app.json','AGENTS.md','config.js','pages/index/index.ink','lib/gateway.js','lib/voice-ui.js', 'lib/history.js', 'lib/latency.js','lib/one-shot-audio.js','lib/wav.js'])check(names.includes(name),'cloud_missing_runtime');
  const read=name=>execFileSync('/usr/bin/unzip',['-p',file,name],{encoding:'utf8'});
- const page=read('pages/index/index.ink');check(!page.includes('<button')&&page.includes('TempleControls')&&page.includes('this.speak(summary)'),'cloud_ux_mismatch');
+ const page=read('pages/index/index.ink');check(!page.includes('<button')&&page.includes('TempleControls')&&page.includes('this.speak(ttsText)')&&page.includes('{{item.assistant}}')&&!page.includes('{{summary}}'),'cloud_ux_mismatch');
  const config=read('config.js');const gateway=JSON.parse(fs.readFileSync('.local/config.json'));const token=fs.readFileSync(gateway.tokenFile,'utf8').trim();const endpoint=fs.readFileSync('.local/quick-tunnel-url','utf8').trim();
  check(config.includes(token)&&config.includes(endpoint),'cloud_private_config_mismatch');
  check(read('VERSION').trim()===built.version,'cloud_package_version_mismatch');
- for(const name of ['app.json','AGENTS.md','pages/index/index.ink'])check(read(name).trim()===fs.readFileSync(path.join('aiui-agent',name),'utf8').trim(),'cloud_source_mismatch');
+ for(const name of ['app.json','AGENTS.md','pages/index/index.ink','lib/gateway.js','lib/voice-ui.js','lib/history.js','lib/latency.js'])check(read(name).trim()===execFileSync('/usr/bin/unzip',['-p',built.aix,name],{encoding:'utf8'}).trim(),'cloud_source_mismatch');
  return {endpointMatches:true,authMatches:true,newUX:true};
 }
 async function main(){

@@ -9,7 +9,7 @@ import { Engine } from '../../src/engine.mjs';
 import { serve } from '../../src/server.mjs';
 import { fixture, mockCodex, delay } from '../../test/helpers.mjs';
 
-test('AIUI wx adapter → unchanged HTTPS gateway → mock app-server, two turns and reconnect', async t => {
+test('AIUI wx adapter → unchanged HTTPS gateway → mock app-server, three turns, bounded history and reconnect', async t => {
   const f=fixture(), mock=await mockCodex(), codex=new Codex({port:mock.port,attach:true});
   const engine=new Engine(f.config,codex);let servers,client;
   t.after(async()=>{client?.close();engine.close();await servers?.close();await codex.close();await mock.close();f.cleanup()});
@@ -30,6 +30,9 @@ test('AIUI wx adapter → unchanged HTTPS gateway → mock app-server, two turns
   await client.submit('Read README');const first=engine.get(id).threadId;
   mock.finish(first,'README answer');await delay(10);await client.refresh();client.close();
   client=build();await client.open();await client.submit('Now find TODO');mock.finish(first,'TODO answer');await delay(10);await client.refresh();
-  assert.equal(client.saved.sessionId,id);assert.equal(client.last.text,'TODO answer');assert.equal(client.last.threadId,first);
-  const starts=mock.calls.filter(x=>x.method==='turn/start');assert.equal(starts.length,2);assert.equal(starts[0].params.threadId,starts[1].params.threadId);
+  await client.submit('Third follow-up');mock.finish(first,'Third answer');await delay(10);await client.refresh();
+  assert.equal(client.saved.history.exchanges.length,3);assert.equal(new Set(client.saved.history.exchanges.map(e=>e.turnId)).size,3);
+  assert.ok(client.last.timing.T5);assert.ok(client.last.timing.T6);assert.ok(client.last.timing.T7);assert.ok(client.last.timing.T8);
+  assert.equal(client.saved.sessionId,id);assert.equal(client.last.text,'Third answer');assert.equal(client.last.threadId,first);
+  const starts=mock.calls.filter(x=>x.method==='turn/start');assert.equal(starts.length,3);assert.equal(starts[0].params.threadId,starts[1].params.threadId);
 });

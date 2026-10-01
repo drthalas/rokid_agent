@@ -20,16 +20,25 @@ export class Stt {
     validateWav(bytes);
     requireValue(this.config?.binary && this.config?.model, 'stt_not_configured', 503);
     requireValue(!this.running, 'stt_busy', 429); this.running = true;
-    let dir;
+    let dir; const T3 = Date.now();
     try {
       dir = await fs.mkdtemp(path.join(os.tmpdir(), 'rokid-stt-'));
       const input = path.join(dir, 'input.wav'), out = path.join(dir, 'result');
       await fs.writeFile(input, bytes, { mode: 0o600 });
-      await run(this.config.binary, ['-m', this.config.model, '-f', input, '-l', this.config.language ?? 'auto', '-otxt', '-of', out, '-nt', ...(this.config.gpu === true ? [] : ['-ng'])],
+      const processStart = Date.now();
+      const { stderr } = await run(this.config.binary, ['-m', this.config.model, '-f', input, '-l', this.config.language ?? 'auto', '-otxt', '-of', out, '-nt', ...(this.config.gpu === true ? [] : ['-ng'])],
         { timeout: 90000, maxBuffer: 1024 * 1024, env: { PATH: process.env.PATH, HOME: process.env.HOME, TMPDIR: process.env.TMPDIR }, shell: false });
+      const processEnd = Date.now();
       const text = (await fs.readFile(out + '.txt', 'utf8')).trim();
       requireValue(text.length > 0 && text.length <= 8000, 'no_speech', 422);
-      return { text };
+      const T4 = Date.now();
+      // Extract only known numeric profiler fields. Never retain/emit raw stdout/stderr.
+      const parse = label => {
+        const m = stderr.match(new RegExp('whisper_print_timings:\\s+' + label + ' time\\s*=\\s*([0-9.]+) ms'));
+        const n = m ? Number(m[1]) : NaN; return Number.isFinite(n) && n >= 0 ? n : undefined;
+      };
+      return { text, timing: { T3, T4, sttPrepareMs: processStart - T3, sttProcessMs: processEnd - processStart,
+        sttReadMs: T4 - processEnd, sttLoadMs: parse('load'), sttInternalMs: parse('total') } };
     } catch (e) { throw e instanceof Fault ? e : new Fault('stt_failed', 502); }
     finally { this.running = false; if (dir) await fs.rm(dir, { recursive: true, force: true }); }
   }

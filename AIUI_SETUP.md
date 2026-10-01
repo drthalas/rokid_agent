@@ -224,7 +224,7 @@ npm run pack -- --private-package
 2. На HUD: **Mac Codex / ● Готов / Нажмите на дужку и говорите**. Сохранённый старый ответ при открытии не показывается.
 3. Один тап → LISTENING. Говорите; следующий тап завершает запись. Автоотправка по паузе выключена, верхний лимит — 30 секунд.
 4. TRANSCRIBING → THINKING → WORKING → DONE. На экране только текущее состояние; меню кнопок отсутствует.
-5. Ответ появляется на HUD и автоматически озвучивается один раз за turn. Для длинного ответа используется короткий фрагмент из первых законченных предложений; полный текст доступен прокруткой. Это extractive preview, а не дополнительная задача Codex.
+5. Ответ появляется на HUD и автоматически озвучивается один раз за turn. На HUD ответ выводится один раз полностью; сокращение используется только для TTS. Последние шесть exchanges сохраняются в agent-local storage для той же session, доступны прокруткой и не исчезают при новой записи. Это extractive preview, а не дополнительная задача Codex.
 6. Тап после DONE останавливает озвучку и начинает следующую запись в том же gateway session/thread.
 7. Тап во время выполнения отменяет текущий запрос/turn. Этот жест использует документированный Enter/GlobalHook; недокументированный long press не назначен.
 8. Двойной тап, который host выдаёт как Backspace, закрывает агент штатным действием host. Запись и отложенная отправка отменяются; сохранённый Codex thread не удаляется. Закрытие экрана само по себе не гарантирует отмену уже выполняемого turn: для этого предусмотрен тап во время выполнения.
@@ -286,3 +286,23 @@ CLI читает agentId/expectedOwnerId из ignored `.local/rokid-deploy.json`
 **Граница проверки:** локальные tests/build и реальные metadata/STС API подтверждены. Полный HTTP upload-путь CLI пока не подтверждён реальным запуском: у текущего Chrome нет прямого CLI CDP listener, а попытка одноразового loopback auth bridge не завершилась; bridge остановлен, browser security не менялась. Не считать наличие скрипта доказательством рабочего unattended deploy. Для текущей 1.0.8 использованы детерминированные Playwright/CDP Repackage/Save в авторизованной Studio, затем обычный CLI download/verify. Cloud-only fallback требует уже загруженных исходников и принимает tab adapter с документированным Playwright/CDP интерфейсом; он не редактирует файлы.
 
 В текущем cloud AIX 1.0.8 проверены все шесть изменённых runtime/metadata файлов, отсутствие кнопок, автоматический вызов TTS, неизменность endpoint/token и permissions. Проверка JSON учитывает только форматирование упаковщика. Детальный отчёт — ignored `.local/voice-ux-deploy-result.json`. [GitHub main](https://github.com/drthalas/rokid_agent/tree/main) — source of truth; автоматический GitHub→AIUI sync не предполагается.
+
+## Диагностика UX и задержки (frontend 0.3.0)
+
+Подтверждение пользователя для предыдущей версии: tap→record→tap→send и states работают;
+дубль длинного ответа и отсутствие истории исправляются текущей bounded задачей.
+[Спецификация и измерения](specs/001-hud-history-latency/spec.md) отделяют local/mock от physical.
+После установки новой private сборки нужны минимум три коротких физических запроса.
+Gateway с timing instrumentation и frontend должны быть обновлены вместе; tunnel/token не меняются.
+
+`node scripts/latency-report.mjs` читает только отдельный приватный diagnostic JSON: T0–T11,
+UUIDs, безопасные причины, median/range и погрешность часов. Не направляйте на state.json.
+T10 — завершение setData, T11 — вызов playback; услышанный звук подтверждает пользователь отдельно.
+Если telemetry недоступна, task/HUD продолжают работать; до 12 samples есть в native storage
+`mac-codex-latency-v1`, последняя нормализованная ошибка — `mac-codex-last-error`.
+No raw “Glasses 4060 …” или Gmail payload в diagnostic logs. Gmail не воспроизводился и не включался.
+
+`node scripts/continuity-smoke.mjs` — отдельный real-account three-turn check; создаёт тестовый
+thread, печатает только IDs/времена/PASS. `node scripts/stt-profile.mjs /absolute/path/to/test.wav`
+профилирует три локальных STT запуска без вывода transcript; это не physical test.
+650 ms debounce, 1000 ms polling, модель/effort и whisper process strategy пока сохранены.

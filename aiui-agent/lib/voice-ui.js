@@ -12,10 +12,21 @@ export function briefAnswer(text, limit = 300) {
   const cut = plain.slice(0, limit - 1); const boundary = cut.lastIndexOf(' ');
   return cut.slice(0, boundary > limit / 2 ? boundary : cut.length).trim() + '…';
 }
+const ERROR_MESSAGES = {
+  codex_not_ready: 'Codex недоступен на Mac', codex_unavailable: 'Codex недоступен на Mac', resume_failed: 'Codex недоступен на Mac',
+  network_or_tls_error: 'Нет связи с Mac', unauthorized: 'Доступ к Mac отклонён', stt_failed: 'Не удалось распознать речь',
+  stt_not_configured: 'Распознавание на Mac недоступно', stt_busy: 'Распознавание занято. Повторите позже', no_speech: 'Речь не обнаружена',
+  microphone_unavailable: 'Микрофон недоступен', recording_failed: 'Запись прервана', invalid_audio_size: 'Слишком короткая запись',
+  session_busy_or_uncertain: 'Нужно проверить задачу на Mac', turn_delivery_uncertain: 'Нужно проверить доставку на Mac',
+  recovery_requires_local_review: 'Нужно проверить задачу на Mac', pending_request_needs_review: 'Нужно проверить задачу на Mac',
+  session_mismatch: 'Диалог изменился. Проверьте Mac', thread_mismatch: 'Диалог изменился. Проверьте Mac',
+  session_not_found: 'Диалог не найден на Mac', connection_not_configured: 'Подключение к Mac не настроено',
+  invalid_response: 'Не удалось прочитать ответ Mac', invalid_snapshot: 'Не удалось прочитать ответ Mac',
+  client_error: 'Не удалось выполнить запрос', gateway_error: 'Ошибка на Mac', turn_interrupted: 'Задача остановлена'
+};
 export function errorView(reason) {
-  if (['codex_not_ready', 'codex_unavailable', 'resume_failed'].includes(reason)) return { title: 'Codex недоступен на Mac', reason: reason === 'codex_not_ready' ? 'Нет готовой авторизованной сессии' : 'Нет соединения с app-server' };
-  const known = { network_or_tls_error: 'Нет связи с Mac', unauthorized: 'Доступ к Mac отклонён', stt_failed: 'Не удалось распознать речь', stt_not_configured: 'Распознавание на Mac недоступно', no_speech: 'Речь не обнаружена', microphone_unavailable: 'Микрофон недоступен', recording_failed: 'Запись прервана', invalid_audio_size: 'Слишком короткая запись', session_busy_or_uncertain: 'Нужно проверить задачу на Mac', turn_delivery_uncertain: 'Проверяю доставку запроса', recovery_requires_local_review: 'Нужно проверить задачу на Mac' };
-  return { title: known[reason] || 'Не удалось выполнить запрос', reason: known[reason] ? '' : String(reason || 'client_error').replace(/[^a-z_]/gi, '').slice(0, 48) };
+  const code = Object.hasOwn(ERROR_MESSAGES, reason) ? reason : 'client_error';
+  return { title: ERROR_MESSAGES[code], reason: '', code };
 }
 export class TempleControls {
   constructor({ tap, exit, scroll, trace = () => {}, now = Date.now }) {

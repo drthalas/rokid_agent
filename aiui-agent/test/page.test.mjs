@@ -13,15 +13,16 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
 async function waitFor(check){for(let n=0;n<150;n++){if(check())return;await pause(10);}throw Error('page timeout')}
 function harness(){
  const db=new Map(),calls=[],states=[],callbacks={},spoken=[],order=[];let time=1000,reads=0;
- let session={id:randomUUID(),threadId:'same-thread',turnId:'old-turn',status:'Done',text:'Old setup advice from an earlier conversation'};
+ let session={id:randomUUID(),threadId:randomUUID(),turnId:'old-turn',status:'Done',text:'Old setup advice from an earlier conversation'};
  const wx={getStorageSync:k=>db.get(k),setStorageSync:(k,v)=>db.set(k,structuredClone(v)),
   request(o){calls.push({url:o.url,method:o.method,data:o.data});let aborted=false;queueMicrotask(()=>{
    if(aborted){o.fail({});o.complete();return;}const route=new URL(o.url).pathname;let data;
    if(route==='/v1/health')data={codex:true,loggedIn:true};
-   else if(route==='/v1/stt')data={text:'Скажи одним предложением, что ты работаешь через мой Mac'};
-   else if(route.endsWith('/turns')){reads=0;session={...session,status:'Working',turnId:randomUUID(),text:''};data={...session};}
+   else if(route==='/v1/diagnostics')data={ok:true};
+   else if(route==='/v1/stt')data={text:'Скажи одним предложением, что ты работаешь через мой Mac',timing:{T2:Date.now(),T3:Date.now(),T4:Date.now()}};
+   else if(route.endsWith('/turns')){reads=0;session={...session,status:'Working',turnId:randomUUID(),text:'',timing:{requestId:o.data.requestId,T5:Date.now(),T6:Date.now(),T7:Date.now()}};data={...session};}
    else if(route.endsWith('/stop')){session={...session,status:'Error',error:'turn_interrupted'};data={...session};}
-   else{if(session.status==='Working'&&++reads>=2)session={...session,status:'Done',text:'Я работаю через ваш Mac.'};data={...session};}
+   else{if(session.status==='Working'&&++reads>=2)session={...session,status:'Done',text:'Я работаю через ваш Mac.',timing:{...session.timing,T8:Date.now()}};data={...session};}
    o.success({statusCode:200,data});o.complete();});return{abort(){aborted=true}};
   },media:{getRecorderManager:()=>({
    start(){order.push('record');return Promise.resolve()},stop(){callbacks.stop();return Promise.resolve()},
@@ -31,7 +32,7 @@ function harness(){
  globalThis.SpeechSynthesisUtterance=class{constructor(text){this.text=text}};
  globalThis.speechSynthesis={async synthesize(utterance){spoken.push(utterance.text);return{finished:Promise.resolve(),abort(){order.push('abortTts')}}}};
  globalThis.SpeechAudioPlayer=class{play(){order.push('speak')}destroy(){order.push('stopTts')}};
- const page={...spec,data:{...spec.data},setData(value){Object.assign(this.data,value);if(value.phase)states.push(value.phase)}};
+ const page={...spec,data:{...spec.data},setData(value,done){Object.assign(this.data,value);if(value.phase)states.push(value.phase);done?.()}};
  page.onLoad({prompt:'Open the app'});page.onShow();page.controls.now=()=>time;
  page.client.schedule=f=>setTimeout(f,0);
  const event=code=>({code,preventDefault(){}});
@@ -42,13 +43,16 @@ function harness(){
 
 test('invocation shows READY, two tap-driven turns retain thread, automatic TTS stops before next recording',async()=>{
  const h=harness();try{
-  await waitFor(()=>h.page.data.phase==='READY');assert.equal(h.page.data.summary,'');assert.equal(h.calls.filter(c=>c.url.endsWith('/turns')).length,0);
+  await waitFor(()=>h.page.data.phase==='READY');assert.deepEqual(h.page.data.history,[]);assert.equal(h.calls.filter(c=>c.url.endsWith('/turns')).length,0);
   h.tap();assert.equal(h.page.data.phase,'LISTENING');h.voice();h.tap();assert.equal(h.page.data.phase,'TRANSCRIBING');
   await waitFor(()=>h.page.data.phase==='DONE');await pause(0);
-  assert.equal(h.page.data.summary,'Я работаю через ваш Mac.');assert.deepEqual(h.spoken,['Я работаю через ваш Mac.']);
+  assert.equal(h.page.data.history[0].assistant,'Я работаю через ваш Mac.');assert.deepEqual(h.spoken,['Я работаю через ваш Mac.']);
+  const diagnostic=h.calls.filter(c=>c.url.endsWith('/diagnostics')).at(-1).data;
+  for(let i=0;i<=11;i++)assert.ok(Number.isFinite(diagnostic['T'+i]),'missing T'+i);
+  assert.ok(!JSON.stringify(diagnostic).includes('Mac'));assert.ok(!('text' in diagnostic));
   assert.ok(h.states.includes('TRANSCRIBING'));assert.ok(h.states.includes('THINKING'));assert.ok(h.states.includes('WORKING'));
   await h.page.client.refresh();assert.equal(h.spoken.length,1);
-  h.tap();assert.equal(h.page.data.phase,'LISTENING');assert.ok(h.order.lastIndexOf('stopTts')<h.order.lastIndexOf('record'));
+  h.tap();assert.equal(h.page.data.phase,'LISTENING');assert.equal(h.page.data.history.length,1);assert.ok(h.order.lastIndexOf('stopTts')<h.order.lastIndexOf('record'));
   h.voice();h.tap();await waitFor(()=>h.page.data.phase==='DONE');
   const turns=h.calls.filter(c=>c.url.endsWith('/turns'));assert.equal(turns.length,2);assert.equal(turns[0].url,turns[1].url);
   h.back();assert.equal(h.page.visible,false);assert.equal(h.page.client.active,false);
@@ -60,5 +64,22 @@ test('double tap/Backspace after recording completion cancels delayed upload',as
  }finally{h.page.cleanup()}
 });
 test('fresh opening does not display or speak a completed historical response',async()=>{
- const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');assert.equal(h.page.data.fullText,'');assert.equal(h.spoken.length,0);h.back();}finally{h.page.cleanup()}
+ const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');assert.deepEqual(h.page.data.history,[]);assert.equal(h.spoken.length,0);h.back();}finally{h.page.cleanup()}
+});
+
+test('HUD renders each assistant once, retains full long answer and scroll position',async()=>{
+ const markup=fs.readFileSync(path.join(root,'pages/index/index.ink'),'utf8').match(/<page>([\s\S]*?)<\/page>/)[1];
+ assert.equal((markup.match(/{{item.assistant}}/g)||[]).length,1);
+ assert.ok(!/summary|fullText|Полный ответ/.test(markup));
+ const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');
+ const answer='Длинный ответ. '.repeat(100),requestId=randomUUID();
+ const value={state:'DONE',turnId:'new-turn',history:[{requestId,turnId:'new-turn',user:'Вопрос',assistant:answer,completed:true}]};
+ h.page.renderState(value);assert.equal(h.page.data.history[0].assistant,answer);
+ assert.equal(h.page.data.scrollTarget,'exchange-'+requestId);
+ h.page.handleScroll({detail:{scrollTop:500}});h.page.onKeyUp({code:'ArrowUp',preventDefault(){}});
+ assert.equal(h.page.data.scroll,390);assert.equal(h.page.data.scrollTarget,'');
+ h.page.renderState(value);assert.equal(h.page.data.scroll,390);assert.equal(h.page.data.scrollTarget,'');
+ h.page.showError('Glasses 4060 (sensitive detail)');assert.equal(h.page.safeError,'client_error');
+ assert.ok(!h.page.data.errorText.includes('4060'));assert.equal(h.page.data.history.length,1);
+ }finally{h.page.cleanup()}
 });

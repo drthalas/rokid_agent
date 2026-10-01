@@ -1,3 +1,4 @@
+import { boundedHistory, addQuestion, applyAnswer } from './history.js';
 export function validConfig(c) {
   if (!c || typeof c.origin !== 'string' || typeof c.token !== 'string') throw new Error('connection_not_configured');
   const u = new URL(c.origin);
@@ -11,9 +12,9 @@ export function createTransport(wx, config) {
   const c = validConfig(config), tasks = new Set();
   return {
     request(method, route, data, audio = false) {
-      if (!/^\/v1\/(health|stt|sessions(?:\/[a-f0-9-]{36}(?:\/(turns|stop))?)?)$/.test(route)) return Promise.reject(new Error('invalid_route'));
+      if (!/^\/v1\/(health|stt|diagnostics|sessions(?:\/[a-f0-9-]{36}(?:\/(turns|stop))?)?)$/.test(route)) return Promise.reject(new Error('invalid_route'));
       return new Promise((resolve, reject) => {
-        let task;
+        let task; const startedAt = Date.now();
         task = wx.request({ url: c.origin + route, method, data,
           header: { authorization: 'Bearer ' + c.token, 'content-type': audio ? 'audio/wav' : 'application/json' },
           // wx defaults to arraybuffer, even with dataType=json. Both must be explicit.
@@ -25,7 +26,7 @@ export function createTransport(wx, config) {
             if (res.statusCode !== 200) {
               const error = new Error(typeof body.error === 'string' && /^[a-z_]+$/.test(body.error) ? body.error : 'gateway_error');
               error.status = res.statusCode; reject(error);
-            } else resolve(body);
+            } else { Object.defineProperties(body, { _startedAt: {value:startedAt}, _receivedAt: {value:Date.now()} }); resolve(body); }
           },
           fail() { reject(new Error('network_or_tls_error')); },
           complete() { tasks.delete(task); }
@@ -37,18 +38,19 @@ export function createTransport(wx, config) {
   };
 }
 export class Conversation {
-  constructor({ config, transport, storage, id, render, schedule = setTimeout, unschedule = clearTimeout }) {
+  constructor({ config, transport, storage, id, render, diagnostics = null, schedule = setTimeout, unschedule = clearTimeout }) {
     this.config = validConfig(config); this.transport = transport; this.storage = storage;
-    Object.assign(this, { id, render, schedule, unschedule });
+    Object.assign(this, { id, render, schedule, unschedule, diagnostics });
     this.key = 'mac-codex-session:' + this.config.origin;
     this.saved = storage.get(this.key) || { sessionId: null, seed: '', pending: null };
     if (this.config.sessionId && this.saved.seed !== this.config.sessionId) {
       if (this.saved.pending) throw new Error('pending_request_needs_review');
       this.saved = { sessionId: this.config.sessionId, seed: this.config.sessionId, pending: null };
     }
+    this.saved.history = boundedHistory(this.saved.history, this.saved.sessionId, this.config.token);
     this.active = false; this.generation = 0; this.poll = null; this.busy = false; this.retryMs = 1000; this.operation = false; this.phase = 'READY'; this.cancelRequested = false;
   }
-  emit(value) { this.phase = value.state; this.render(value); }
+  emit(value) { this.phase = value.state; this.render({ ...value, sessionId: this.saved.sessionId, history: this.saved.history.exchanges.map(e => ({ ...e })) }); }
   persist() { this.storage.set(this.key, this.saved); }
   assertLive(g) { if (!this.active || g !== this.generation) throw new Error('page_closed'); }
   async open() {
@@ -56,7 +58,7 @@ export class Conversation {
     this.clearPoll(); this.active = true; const g = ++this.generation; this.operation = true;
     this.emit({ state: 'THINKING', detail: '', ready: false });
     try {
-      const health = await this.transport.request('GET', '/v1/health'); this.assertLive(g);
+      const health = await this.transport.request('GET', '/v1/health'); this.assertLive(g); this.diagnostics?.clock(health);
       if (!health.codex || !health.loggedIn) throw new Error('codex_not_ready');
       const resumingPending = !!this.saved.pending;
       if (resumingPending) await this.replay(g);
@@ -68,7 +70,9 @@ export class Conversation {
     finally { if (g === this.generation) this.operation = false; }
   }
   async mutate(route, body, g) {
+    if (route.endsWith('/turns')) addQuestion(this.saved.history, body.requestId, body.text, this.config.token);
     this.saved.pending = { route, body }; this.persist(); // write before any network send
+    if (route.endsWith('/turns')) this.emit({state:'THINKING', ready:false});
     return this.replay(g);
   }
   async replay(g) {
@@ -76,20 +80,30 @@ export class Conversation {
     const result = await this.transport.request('POST', p.route, p.body);
     // Persist ACK even if hidden; reopen must not replace a successfully created session.
     this.validateSnapshot(result);
-    this.saved.sessionId = result.id; this.saved.pending = null; this.persist();
+    this.saved.sessionId = result.id;
+    this.saved.history = boundedHistory(this.saved.history, result.id, this.config.token);
+    applyAnswer(this.saved.history, result, this.config.token, p.route.endsWith('/turns') ? p.body.requestId : undefined);
+    this.saved.pending = null; this.persist();
+    if (p.route.endsWith('/turns')) { this.diagnostics?.correlate({sessionId:result.id,threadId:result.threadId,turnId:result.turnId,requestId:p.body.requestId}); this.diagnostics?.server(result); }
     this.assertLive(g); return result;
   }
   validateSnapshot(s) {
     if (!s || !/^[a-f0-9-]{36}$/.test(s.id) || typeof s.threadId !== 'string' || !['Thinking', 'Working', 'Done', 'Error'].includes(s.status)) throw new Error('invalid_snapshot');
+    if (this.saved.history.threadId && s.id === this.saved.history.sessionId && s.threadId !== this.saved.history.threadId) throw new Error('thread_mismatch');
     if (this.saved.sessionId && s.id !== this.saved.sessionId && !this.saved.pending?.route?.endsWith('/sessions')) throw new Error('session_mismatch');
   }
   async refresh(g = this.generation, restoring = false) {
     const s = await this.transport.request('GET', '/v1/sessions/' + this.saved.sessionId);
     this.assertLive(g); this.validateSnapshot(s); this.last = s;
+    if (applyAnswer(this.saved.history, s, this.config.token)) this.persist();
     this.busy = s.status === 'Working' || s.status === 'Thinking' || s.uncertain === true;
     this.retryMs = 1000;
     const phase = s.status === 'Thinking' ? 'THINKING' : s.status === 'Working' ? 'WORKING' : s.status === 'Done' ? 'DONE' : 'ERROR';
     const idleRestore = restoring && !this.busy;
+    if (this.diagnostics?.sample?.requestId && this.diagnostics.sample.requestId === s.timing?.requestId) {
+      this.diagnostics.correlate({sessionId:s.id,threadId:s.threadId,turnId:s.turnId}); this.diagnostics.server(s);
+      if (s.status === 'Done' && !idleRestore) this.diagnostics.mark('T9');
+    }
     this.emit({ state: idleRestore ? 'READY' : (s.error === 'turn_interrupted' ? 'READY' : phase),
       detail: idleRestore ? '' : s.pendingApproval ? 'Ожидает подтверждения на Mac' : (s.error || ''),
       ready: !this.busy, text: idleRestore ? '' : (s.text || ''), project: s.project, threadId: s.threadId, turnId: s.turnId,
@@ -119,7 +133,8 @@ export class Conversation {
     this.emit({ state: 'TRANSCRIBING', detail: '', text: '', ready: false });
     let transcript;
     try {
-      const result = await this.transport.request('POST', '/v1/stt', wav, true); this.assertLive(g);
+      this.diagnostics?.mark('T1');
+      const result = await this.transport.request('POST', '/v1/stt', wav, true); this.assertLive(g); this.diagnostics?.server(result);
       if (typeof result.text !== 'string' || !result.text.trim()) throw new Error('no_speech');
       transcript = result.text;
     } catch (e) { this.failure(e, g); }

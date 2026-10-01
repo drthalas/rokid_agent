@@ -18,3 +18,5 @@ Read the relevant row, not every document on every task.
 | Attribution | [Notices](../THIRD_PARTY_NOTICES.md), [licenses](../licenses) |
 
 No product feature spec or `specs/` directory has been created by this bootstrap. Future specs describe intended changes, not retroactive claims that all existing behavior is desired. Installation artifacts do not establish agent discovery or hardware success.
+
+Current bounded task: [HUD history and latency diagnosis](../specs/001-hud-history-latency/spec.md), including physical feedback, acceptance, plan and verification.

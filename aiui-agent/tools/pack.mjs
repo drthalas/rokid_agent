@@ -16,7 +16,7 @@ fs.mkdirSync(path.dirname(output), { recursive: true });
 execFileSync(path.join(root, 'node_modules/.bin/aix'), ['pack', input, '-o', output], { stdio: 'inherit' });
 fs.chmodSync(output, privatePackage ? 0o600 : 0o644);
 const listing = execFileSync(path.join(root, 'node_modules/.bin/aix'), ['list', output], { encoding: 'utf8' });
-for (const required of ['AGENTS.md', 'app.json', 'app.js', 'config.js', 'pages/index/index.ink', 'lib/gateway.js', 'lib/voice-ui.js', 'lib/wav.js', 'lib/one-shot-audio.js', 'licenses/rokid-personal-ai-MIT.txt']) if (!listing.includes(required)) throw new Error('package_missing_' + required);
+for (const required of ['AGENTS.md', 'app.json', 'app.js', 'config.js', 'pages/index/index.ink', 'lib/gateway.js', 'lib/voice-ui.js', 'lib/history.js', 'lib/latency.js', 'lib/wav.js', 'lib/one-shot-audio.js', 'licenses/rokid-personal-ai-MIT.txt']) if (!listing.includes(required)) throw new Error('package_missing_' + required);
 if (/node_modules\/|tools\/|test\/|\.local\//.test(listing)) throw new Error('package_contains_dev_files');
 fs.writeFileSync(output + '.sha256', createHash('sha256').update(fs.readFileSync(output)).digest('hex') + '  ' + path.basename(output) + '\n');
 console.log('Package contents verified: ' + output);
