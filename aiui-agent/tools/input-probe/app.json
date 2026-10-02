@@ -1,0 +1,1 @@
+{"name":"RV101 Input Probe","pages":["pages/index/index"],"permissions":[],"window":{"navigationBarTitleText":"RV101 Input Probe","navigationBarBackgroundColor":"#000000"},"agentPrompt":"Open the diagnostic page without any task. The page measures event codes/timing only; no microphone, network or Codex calls."}
