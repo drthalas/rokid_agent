@@ -60,3 +60,6 @@ own schema-safe local input flow.
 
 No constitution exceptions. Two small policy/approval modules isolate security decisions for testability;
 no integration framework or service adapters. Research agent was used for read-only schema/policy analysis.
+
+
+ALE-453 safety refinement: ordinary and plugin-bundled MCP tools always use `prompt`, including per-tool overrides. Native `node_repl.js` advertises readOnlyHint despite accepting general code, so annotation-based `writes` is insufficient for opaque MCP runners. Connected apps retain at least `writes` with human reviewer (stricter inherited prompt preserved). This is intentionally stricter than normal read policy for MCP; separate local approval is required even for a harmless MCP read. Tool availability and user-disabled settings are unchanged.

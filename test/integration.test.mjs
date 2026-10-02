@@ -30,7 +30,7 @@ test('HTTPS → gateway → actual mock WebSocket: continuity, safety, dedupe, r
   assert.equal((await call('/v1/sessions', { requestId: createId })).body.id, s.id);
   assert.equal(mock.calls.filter(m => m.method === 'thread/start').length, 1);
   assert.equal(mock.calls.find(m => m.method === 'thread/start').params.config['mcp_servers.risky.enabled'], undefined);
-  assert.equal(mock.calls.find(m => m.method === 'thread/start').params.config.mcp_servers.risky.default_tools_approval_mode, 'writes');
+  assert.equal(mock.calls.find(m => m.method === 'thread/start').params.config.mcp_servers.risky.default_tools_approval_mode, 'prompt');
   const id = randomUUID(), route = `/v1/sessions/${s.id}`;
   const first = await call(route + '/turns', { requestId: id, text: 'Read README' }); assert.equal(first.body.status, 'Working');
   await call(route + '/turns', { requestId: id, text: 'Read README' });

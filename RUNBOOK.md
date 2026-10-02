@@ -163,7 +163,7 @@ npm run ctl -- accept APPROVAL_UUID
 
 Прочитайте точную команду и пути, а не только reason от модели. Accept разрешает **одно** действие, которое может выйти из sandbox; это не обещание защиты за пределами approved action. Для опасного действия отдельное решение необходимо. Device API не содержит маршрута approval; даже device token не работает на admin API. Не запускайте gateway с auto-review или danger-full-access.
 
-Allowlist ограничивает выбор рабочего проекта, но read-only Codex может читать и другие доступные локальные файлы. Этот MVP предназначен одному владельцу, не для недоверенных пользователей и не для multi-tenant isolation. MCP/apps/plugins/skills наследуются из effective Codex config; user-disabled capabilities остаются выключенными. Native hook trust сохраняется, но side effects доверенных startup/hooks не ограничиваются tool approvals. Gateway задаёт human reviewer и как минимум writes approval mode, сохраняя более строгий prompt; shell network остаётся запрещён. Credentials не копируются; child environment сохраняет прежний allowlist (env-only credentials вне него недоступны).
+Allowlist ограничивает выбор рабочего проекта, но read-only Codex может читать и другие доступные локальные файлы. Этот MVP предназначен одному владельцу, не для недоверенных пользователей и не для multi-tenant isolation. MCP/apps/plugins/skills наследуются из effective Codex config; user-disabled capabilities остаются выключенными. Native hook trust сохраняется, но side effects доверенных startup/hooks не ограничиваются tool approvals. Gateway задаёт human reviewer: MCP требуют prompt для каждого вызова, connected apps — как минимум writes с сохранением более строгого prompt; shell network остаётся запрещён. Credentials не копируются; child environment сохраняет прежний allowlist (env-only credentials вне него недоступны).
 
 Gateway не пишет prompts/ответы в stdout, но последние ограниченные ответы и request fingerprints сохраняются в приватном state.json, а история сохраняется самим Codex. Android сохраняет pending prompt в приватных preferences до подтверждения доставки, чтобы не повторить turn. Аудио не сохраняется как архив.
 
@@ -246,3 +246,5 @@ Tool events содержат только bounded identifiers/status, не по�
 Endpoint/token/private AIX менять не требуется. Проверяйте прежние session/thread IDs и реальный tool event,
 а не только текст ответа модели. Не все Desktop host callbacks доступны standalone app-server; точные
 ограничения и результаты — [validation](specs/004-ale-453-tool-parity/validation.md).
+
+Для обычных/plugin MCP локальное подтверждение требуется даже для read: универсальный node_repl.js помечен readOnlyHint, поэтому одной метки недостаточно для защиты от side effects произвольного кода. Это сознательно более строгая политика; enable/disable пользователя не меняется.

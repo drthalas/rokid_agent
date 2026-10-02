@@ -186,3 +186,6 @@ MCP definitions or credentials. CLI-only whole-server definitions are not a supp
 source; inherited user/project files are. New project-scoped plugin servers not covered by the pre-load
 policy fail closed with capability_policy_changed. Do not substitute raw tool/call RPC for approval-aware
 model turns. Hook process startup and model-selected skill execution retain their native trust boundaries.
+
+
+ALE-453 safety refinement: ordinary and plugin-bundled MCP tools always use `prompt`, including per-tool overrides. Native `node_repl.js` advertises readOnlyHint despite accepting general code, so annotation-based `writes` is insufficient for opaque MCP runners. Connected apps retain at least `writes` with human reviewer (stricter inherited prompt preserved). This is intentionally stricter than normal read policy for MCP; separate local approval is required even for a harmless MCP read. Tool availability and user-disabled settings are unchanged.

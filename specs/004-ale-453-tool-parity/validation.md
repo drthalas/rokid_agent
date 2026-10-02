@@ -1,17 +1,22 @@
 # ALE-453 validation evidence
 
-Date: 2026-10-02. Candidate atop 5e38d93; production not yet updated at this checkpoint.
+Date: 2026-10-02. Implementation/runtime commit 10d0c6b; production gateway updated with accepted Jarvis AIX 1.0.19 unchanged.
 
 | Gate | Result | Evidence / limit |
 |---|---|---|
 | Inventory before runtime changes | PASS | Sanitized inventory.json; isolated stdio + ephemeral thread with production environment allowlist |
 | Native Gmail read | PASS, diagnostic only | get_profile tool completed; no personal result logged; writes policy no approval, prompt policy declined before execution |
-| Unit/integration | PASS | 27 root tests incl policies, auth/loopback, history/dedupe/recovery, pending MCP approval and negative cases |
+| Unit/integration | PASS | 28 root tests incl policies, auth/loopback, history/dedupe/recovery, pending MCP approval and negative cases |
 | AIUI unchanged regression | PASS | 36 tests; no frontend/runtime/private AIX changes |
 | Real continuity smoke | PASS | thread 01a0fdda-9955-79e0-838d-813b026bf123, two completed turns across gateway/app-server restart, synthetic project |
 | Native write approval | PASS, harmless fixture | Real model turns/MCP with in-memory counter: decline → 0, explicit local test accept → 1; native mcp_tool_call marker observed |
 | Dynamic configuration | PASS, scoped fixture | Existing node_repl disabled → zero tools; enabled after new process → connected/four tools; global user config unchanged |
-| Production Gmail/Drive/GitHub/MCP/skill | NOT RUN | Must use current gateway/thread after safe deployment |
+| Production Gmail READ | PASS (Mac-triggered) | gmail.search_email_ids + gmail.batch_read_email completed, same Jarvis session/thread, Done |
+| Production GitHub READ | PASS (Mac-triggered) | github.fetch_file completed, Done |
+| Production MCP | PASS on 10d0c6b; final prompt policy NEEDS TEST | existing node_repl.js arithmetic read completed; subsequent security refinement requires explicit local approval for every opaque MCP call |
+| Production skill | PASS (Mac-triggered) | speckit-analyze SKILL.md read, prerequisites executed, feature artifacts read; six command items, completed turn |
+| Production Drive READ | NOT RUN | Awaiting owner-selected safe document |
+| Production deployment | PASS | PID37467/owned Codex37468, 127.0.0.1:8390; health true; three existing sessions/thread/history counts retained; protected configuration hashes unchanged |
 | Real Gmail draft with owner approval | NOT RUN | No real draft/write executed by diagnostic tests |
 | Physical Jarvis tool parity | NOT RUN | Accepted UX baseline 1.0.19 preserved; this feature still needs wearer tests |
 
@@ -26,3 +31,19 @@ services disabled; provider catalog metadata timeout observed; unsupported nativ
 forms fail closed. No claim of universal Desktop tool parity or credential availability from environment
 variables stripped by the existing child allowlist. No new provider login, hook trust, unrestricted shell
 networking or public cloud publication performed.
+
+
+Production runtime visibility: 18 callable apps and codex_apps connected with 552 tools in the existing
+Jarvis thread. node_repl/cua_repl connected; user-disabled computer-use disabled. codex_app/code-review
+Desktop helpers fail with zero tools on this production surface (diagnostic launch previously reported
+disabled), and standalone Vercel MCP remains authenticationRequired. These are explicit limits.
+
+The first restart checker used 127.0.0.1 for an HTTPS listener bound to its configured LAN address,
+so reported replacement_not_ready despite successful startup. Verification against the existing configured
+address passed; no second gateway/tunnel restart or config mutation was required. Device/admin TLS/auth
+boundaries are unchanged. Cloud update/resource reload is unnecessary for this backend feature.
+
+Physical reads and real draft acceptance remain NOT RUN; the Mac-triggered production checks do not
+prove HUD/TTS for provider results. Full task remains Needs Test in Linear, not Done.
+
+Security review found native node_repl.js readOnlyHint=true despite arbitrary code capability. Ordinary/plugin MCP policy tightened to prompt for every call; connected apps retain writes/human. Final production MCP read therefore needs a separate owner decision after redeploy.

@@ -74,3 +74,8 @@ into derived overrides. A native Gmail read completed under `writes` policy with
 The separate `prompt` test declined a real callback before invocation. Side-effect proof remains gated.
 
 Legacy user `notify` is configured separately from hooks/list. Its program/arguments are not copied into evidence; native behavior is preserved, not claimed covered by tool-call approval policy.
+
+
+ALE-453 safety refinement: ordinary and plugin-bundled MCP tools always use `prompt`, including per-tool overrides. Native `node_repl.js` advertises readOnlyHint despite accepting general code, so annotation-based `writes` is insufficient for opaque MCP runners. Connected apps retain at least `writes` with human reviewer (stricter inherited prompt preserved). This is intentionally stricter than normal read policy for MCP; separate local approval is required even for a harmless MCP read. Tool availability and user-disabled settings are unchanged.
+
+Unclassified host MCP bridges fail closed. The native codex_apps bridge is governed by apps policy; configured MCPs and plugin-owned servers get prompt. This distinguishes policy surfaces, not a provider allowlist.

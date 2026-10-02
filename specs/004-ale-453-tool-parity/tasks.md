@@ -39,7 +39,7 @@ Independent test: isolated disable/re-enable and production same-thread recovery
 ## Phase 6 — Delivery and acceptance
 - [x] T019 Update `ARCHITECTURE.md`, `RUNBOOK.md`, `docs/setup-status.md` with supported surface, approval limits and evidence.
 - [x] T020 Run root/AIUI checks, real app-server smoke, secret scan and diff review; record `specs/004-ale-453-tool-parity/validation.md`.
-- [ ] T021 Deploy gateway with preserved state/IDs/tunnel/private config and record rollback/readiness in `specs/004-ale-453-tool-parity/validation.md`; Linear Needs Test.
+- [x] T021 Deploy gateway with preserved state/IDs/tunnel/private config and record rollback/readiness in `specs/004-ale-453-tool-parity/validation.md`; Linear Needs Test.
 - [ ] T022 Execute physical Jarvis read/skill/MCP/draft acceptance with wearer and record results in `specs/004-ale-453-tool-parity/validation.md` and Linear; Done only if accepted.
 
 ## Dependencies/execution
