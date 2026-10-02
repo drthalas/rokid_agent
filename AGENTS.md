@@ -4,7 +4,7 @@
 
 Rokid Agent — персональный голосовой интерфейс для владельца RV101 и Mac mini: RV101 → **AIUI** → authenticated HTTPS → Mac gateway → local Codex app-server → persistent thread → HUD/TTS. Direct RV101 Android APK и Nexus — optional/fallback, не primary. Вне текущего MVP: запись встреч, длинная транскрипция, live vision и автономные фоновые действия до отдельной реализации feature.
 
-Базовая ветка — `main`; [GitHub main](https://github.com/drthalas/rokid_agent/tree/main) — source of truth. [README](README.md) — вход для человека; [brief](docs/project-brief.md) — продукт; [ARCHITECTURE](ARCHITECTURE.md) — каноническая техническая архитектура. По задаче читай [context map](docs/context-map.md), [workflow](docs/development-workflow.md), [setup status](docs/setup-status.md), [constitution](.specify/memory/constitution.md). Процедуры: [RUNBOOK](RUNBOOK.md), [AIUI_SETUP](AIUI_SETUP.md).
+Базовая ветка — `main`; [GitHub main](https://github.com/drthalas/rokid_agent/tree/main) — source of truth для кода/history. [Linear Rokid_agent](https://linear.app/drthalas/project/rokid-agent-8d46c39dc1d2) — канонический product/task tracker. [README](README.md) — вход для человека; [brief](docs/project-brief.md) — продукт; [ARCHITECTURE](ARCHITECTURE.md) — каноническая техническая архитектура. По задаче читай [context map](docs/context-map.md), [workflow](docs/development-workflow.md), [setup status](docs/setup-status.md), [constitution](.specify/memory/constitution.md). Процедуры: [RUNBOOK](RUNBOOK.md), [AIUI_SETUP](AIUI_SETUP.md).
 
 Без необходимости задачи не меняй `aiui-agent/config.js`, `.local/`, private AIX, credentials/tokens/session state, active Cloudflare/tunnel configuration, generated cloud artifacts, vendored/reference checkouts и licenses. `config.js` локальный, untracked: **никогда не заменяй его example-конфигом для тестирования рабочей машины**. Frontend-задача не оправдывает изменение gateway/Codex protocol или thread lifecycle без доказанной необходимости. Сохраняй endpoint/process, account/device binding, Camera и другие согласованные permissions.
 
@@ -33,6 +33,8 @@ Local development: filesystem → shell/CLI → npm/aix-cli/Gradle → git/GitHu
 
 ## 3. Работа над задачей
 
+До meaningful work открой существующую Linear issue, проверь description/status и обнови фактический статус; не создавай дубликаты. В конце оставь краткие результат/проверки и актуальный статус по [workflow](docs/development-workflow.md#linear-task-lifecycle).
+
 До изменения проверь `pwd`, `git rev-parse --show-toplevel`, `git status`, `git diff` и staged diff; прочитай применимые AGENTS, требования/spec, релевантный код и тесты. Не читай весь repository без причины. Определи observable result, границы, acceptance criteria и проверку. Существенную продуктовую неоднозначность уточни, обратимое техническое допущение обозначь.
 
 Нетривиальная задача: plan → implement → verify → diff review. Исправляй внесённые регрессии; посторонние дефекты сообщай отдельно. При одинаковом failure без новых данных смени гипотезу/способ проверки. Блокер описывай через проверенное и недостающее; продолжай независимую работу. Предпочитай корректность, проверяемость и поддерживаемость скорости.
@@ -41,7 +43,7 @@ Local development: filesystem → shell/CLI → npm/aix-cli/Gradle → git/GitHu
 
 Минимальный связанный diff, принятые паттерны, без побочного refactor/abstraction/dependency. Необходимую зависимость обоснуй и согласуй lockfile. Сохраняй чужие изменения, untracked и staged state; при конкурентных правках перечитай актуальные файлы.
 
-Commit/push/merge/release — только по явному поручению; перед интеграцией проверь актуальную базу и результат объединения. Не force-push, не переписывай историю, не удаляй чужие ветки/данные. Перед разрешённым push сканируй index и reachable history: `.gitignore` не удаляет прежнюю утечку.
+Ссылайся на Linear ID в commit/PR, когда применимо. Commit/push/merge/release — только по явному поручению; перед интеграцией проверь актуальную базу и результат объединения. Не force-push, не переписывай историю, не удаляй чужие ветки/данные. Перед разрешённым push сканируй index и reachable history: `.gitignore` не удаляет прежнюю утечку.
 
 ## 5. Проверки
 
@@ -65,4 +67,4 @@ Codex app-server и admin API — **loopback only**; network boundary — аут
 
 Основа — AGENTS_COMPACT_V3_FINAL.md, адаптированная к Rokid Agent. Здесь только устойчивые operational instructions и ссылки; архитектура, процедуры, история, временные URL/версии и содержимое skills остаются в канонических документах. Не создавай дубликаты правил.
 
-Используй релевантный/обязательный skill; наличие skill не расширяет полномочия. Spec Kit нужен будущим bounded changes, не ретроспективному описанию всего кода. Не запускай feature workflows во время bootstrap и не переустанавливай toolkit при повторном запуске; статус discovery см. setup status.
+Используй релевантный/обязательный skill; наличие skill не расширяет полномочия. Spec Kit spec → plan → tasks нужен medium/high-risk features; bounded low-risk work может использовать лёгкую spec по workflow. Не запускай feature workflows во время bootstrap и не переустанавливай toolkit при повторном запуске; статус discovery см. setup status.

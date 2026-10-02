@@ -2,11 +2,33 @@
 
 ## Source and tools
 
+[Linear project Rokid_agent](https://linear.app/drthalas/project/rokid-agent-8d46c39dc1d2) owns product/task status.
+GitHub main owns code/history; Spec Kit owns versioned spec/plan/tasks for medium/high-risk features.
+Architecture remains in ARCHITECTURE.md. Repository reports are dated evidence, not a parallel live backlog.
+
 [GitHub main](https://github.com/drthalas/rokid_agent/tree/main) is the source of truth for reviewed source. Check local status/diff/branch and remote identity before changing files; preserve user work and staged state. A task may prepare local changes without committing or deploying. Push, review submission and cloud mutations require task authorization; never infer them from running a test or bootstrap.
 
 Use filesystem, shell, rg, npm, aix-cli and git for local code/documents. Use GitHub CLI/integration for repository operations. Browser/CDP is only a Rokid cloud fallback when an API/CLI path is unavailable; never edit local source in a browser. Do not change account binding, credentials, tunnel or gateway policy as a shortcut around a client problem.
 
-Read [context map](context-map.md) and [constitution](../.specify/memory/constitution.md). Requirements/specs express intended behavior; code/tests show implementation; [architecture](../ARCHITECTURE.md) and ADRs record decisions. Record conflicts explicitly instead of rewriting requirements to match a bug. Keep volatile state in [setup status](setup-status.md); do not duplicate a project journal.
+Read [context map](context-map.md) and [constitution](../.specify/memory/constitution.md). Requirements/specs express intended behavior; code/tests show implementation; [architecture](../ARCHITECTURE.md) and ADRs record decisions. Record conflicts explicitly instead of rewriting requirements to match a bug. Keep environment/tool readiness and dated verification evidence in [setup status](setup-status.md); current product/task status lives in Linear.
+
+## Linear task lifecycle
+
+Before meaningful work, open the corresponding existing issue, read description/status/comments needed
+for scope, and set the actual working state (for this team, `In Codex`). Search/reuse existing issues;
+create one only when the work has none. A local spec/plan links the issue and supports it without
+becoming another status tracker. Parent milestone: [ALE-451](https://linear.app/drthalas/issue/ALE-451).
+
+At each stage, leave a concise result, checks, commit/PR link, limitations and next issue in Linear.
+Use `Spec Needed`, `Ready for Codex`, `In Codex`, `Needs Test`, `Done` or other available states according
+to actual evidence. Unit/build/cloud-package success does not imply physical RV101 acceptance.
+If hardware acceptance is required and pending, use `Needs Test`, not `Done`; docs-only acceptance
+can be Done after its checks and requested delivery. Never invent physical results to close an issue.
+Reference the Linear identifier in commit subjects/PRs when practical. Keep credentials, private
+config/AIX and conversation contents out of Linear as well as Git. Use one issue as the ongoing task
+record, with linked repository specifications/evidence where needed.
+
+Stage report: LINEAR → RESULT → CHECKS → GIT → PHYSICAL (PASS / NEEDS TEST / NOT RUN) → NEXT LINEAR ISSUE.
 
 ## Choose the process
 

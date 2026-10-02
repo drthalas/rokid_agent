@@ -4,6 +4,7 @@ Read the relevant row, not every document on every task.
 
 | Task | Canonical context / implementation |
 |---|---|
+| Product/task status | [Linear Rokid_agent](https://linear.app/drthalas/project/rokid-agent-8d46c39dc1d2), [ALE-451 milestone](https://linear.app/drthalas/issue/ALE-451); lifecycle in [workflow](development-workflow.md#linear-task-lifecycle) |
 | Product intent / scope | [Project brief](project-brief.md) |
 | Technical architecture / gaps | [Architecture](../ARCHITECTURE.md), [AIUI ADR](adr/ADR-001-aiui-primary.md), [network ADR](adr/ADR-002-loopback-boundary.md), [private deployment ADR](adr/ADR-003-private-deployment.md) |
 | Local development / process | [Workflow](development-workflow.md), [root instructions](../AGENTS.md), [constitution](../.specify/memory/constitution.md) |
@@ -19,4 +20,4 @@ Read the relevant row, not every document on every task.
 
 No product feature spec or `specs/` directory has been created by this bootstrap. Future specs describe intended changes, not retroactive claims that all existing behavior is desired. Installation artifacts do not establish agent discovery or hardware success.
 
-Current bounded task: [HUD history and latency diagnosis](../specs/001-hud-history-latency/spec.md), including physical feedback, acceptance, plan and verification.
+Historical bounded task artifact: [HUD history and latency diagnosis](../specs/001-hud-history-latency/spec.md), including physical feedback, acceptance, plan and verification.

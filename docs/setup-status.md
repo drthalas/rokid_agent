@@ -1,5 +1,10 @@
 # Setup status
 
+Product/task status is canonical in [Linear Rokid_agent](https://linear.app/drthalas/project/rokid-agent-8d46c39dc1d2).
+This file records environment readiness and dated verification evidence. GitHub main is code/history;
+Spec Kit carries medium/high-risk spec/plan/tasks. See [task lifecycle](development-workflow.md#linear-task-lifecycle).
+The snapshot below is historical bootstrap evidence, not current issue completion or physical acceptance.
+
 Evidence snapshot for architecture reconciliation on 2026-10-01, adapted from bootstrap methodology V5.0.0 for an existing product. This is not a fresh deployment or production-readiness claim. Do not refresh dates/versions without new evidence.
 
 ## Repository and environment
@@ -60,4 +65,4 @@ Overall bootstrap status: **COMPLETE** for architecture reconciliation and Spec 
 
 Known runtime gaps and follow-up acceptance live in [architecture](../ARCHITECTURE.md#migration--architecture-gaps). Major limits: single owner/shared token, allowlist is routing not read isolation, uncertain send recovery requires local review, missing-state recovery policy is incomplete, response/capture bounded, no meeting/camera/notification implementation. Firmware/TTS and future privacy/retention policies remain TBD with conditions in [project brief](project-brief.md).
 
-Recommended next bounded spec: **unexpected gateway-state loss and uncertain-turn recovery**. Define first-run vs lost/corrupt state, preserved thread ownership, restart/ACK crash cases and no-duplicate acceptance before implementation. No feature spec has been started here.
+Bootstrap-era recommendation (current priorities are set in Linear): **unexpected gateway-state loss and uncertain-turn recovery**. Define first-run vs lost/corrupt state, preserved thread ownership, restart/ACK crash cases and no-duplicate acceptance before implementation. No feature spec has been started here.

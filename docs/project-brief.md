@@ -15,7 +15,7 @@ Open “Hi Rokid, Mac Codex”, tap and ask to describe the selected project's R
 - Primary acceptance: READY → tap/LISTENING → tap/transcribe/THINKING/WORKING → DONE; visible answer and independently verified automatic TTS; next utterance same thread; cancel, close and reconnect without duplicate submission.
 - Optional direct Android APK and Nexus clients share gateway contracts; their own physical validation is separate.
 
-Implementation/test/cloud/hardware statuses are maintained in [setup status](setup-status.md), not inferred from these requirements.
+Current product/task status is maintained in [Linear Rokid_agent](https://linear.app/drthalas/project/rokid-agent-8d46c39dc1d2). [Setup status](setup-status.md) preserves dated environment/test evidence; physical acceptance is not inferred from these requirements or a package build.
 
 ## Non-goals for the current MVP
 
