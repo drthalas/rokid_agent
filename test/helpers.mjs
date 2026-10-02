@@ -23,9 +23,9 @@ export async function mockCodex() {
         case 'account/read': result = { account: { type: 'chatgpt' } }; break;
         case 'thread/start': {
           const thread = { id: 'thread-' + ++serial, cwd: m.params.cwd, turns: [], status: { type: 'idle' } };
-          threads.set(thread.id, thread); result = { thread }; break;
+          threads.set(thread.id, thread); result = { thread, approvalPolicy:m.params.approvalPolicy,approvalsReviewer:m.params.approvalsReviewer,sandbox:{type:'workspaceWrite',writableRoots:[],networkAccess:false,excludeSlashTmp:false,excludeTmpdirEnvVar:false} }; break;
         }
-        case 'thread/read': case 'thread/resume': result = { thread: threads.get(m.params.threadId) }; break;
+        case 'thread/read': case 'thread/resume': result = { thread: threads.get(m.params.threadId),approvalPolicy:m.params.approvalPolicy,approvalsReviewer:m.params.approvalsReviewer,sandbox:{type:'workspaceWrite',writableRoots:[],networkAccess:false,excludeSlashTmp:false,excludeTmpdirEnvVar:false} }; break;
         case 'turn/start': {
           const thread = threads.get(m.params.threadId);
           const turn = { id: 'turn-' + ++serial, status: 'inProgress', items: [] };

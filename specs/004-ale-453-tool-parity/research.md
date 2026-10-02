@@ -1,81 +1,64 @@
-# ALE-453 research and decisions
+# ALE-453 research — native permission revision
 
-## Actual surface (2026-10-02)
+Owner explicitly superseded the earlier read-only/user and blanket MCP prompt requirements on2026-10-02.
+Historical implementation/evidence remains in Git4e8d784 and validation.md; this document describes the
+current decision. Existing feature directory is retained.
 
-CLI 0.157.1; generated installed-version experimental JSON schema inspected. Temporary stdio app-server
-used the same environment allowlist as production, safety policy only, and an ephemeral thread.
-Production remained on accepted 5e38d93 / cloud AIX 1.0.19. Sanitized [inventory](inventory.json).
+## Normal profile evidence before production changes
 
-| Class | Evidence | Classification |
-|---|---|---|
-| Effective config | config/read succeeded: user + system + diagnostic session flags; no project config or managed requirements | AVAILABLE |
-| MCP | codex_apps connected, 552 tools; node_repl/cua_repl connected; user-disabled computer-use disabled | AVAILABLE; per-server limits |
-| Standalone Vercel MCP | authenticationRequired, zero tools | NOT AVAILABLE with current login; no new OAuth attempted |
-| Desktop-local helpers | codex_app/code-review disabled in diagnostic runtime | NOT AVAILABLE on this launch surface |
-| Plugins | plugin/list reports installed/enabled local and remote marketplace entries | AVAILABLE for inventory; under-development API not a production dependency |
-| Apps | app/installed returns 18 enabled/callable apps including Gmail/Drive/Calendar/GitHub/Linear | AVAILABLE catalog; execution evidence separate |
-| Skills | loaded discovery returns 133 entries, 115 attributed to plugins, including 10 project Spec Kit skills | AVAILABLE |
-| Hooks | hooks/list returns none, no errors/warnings | Discovery AVAILABLE; execution untested/not needed |
+- ~/.codex/config.toml: workspace-write / on-request / guardian_subagent (legacy reviewer alias).
+- Zero-override native config/read: workspace-write / on-request / auto_review; no managed requirements;
+  apps/browser_use/computer_use tables null; no explicit user MCP approval modes.
+- Ephemeral thread/start without overrides returns workspaceWrite, additional writableRoots=[], networkAccess=false,
+  both temp exclusions false; project cwd is implicitly writable. Desktop is not a writable root.
+- Actual current Desktop turn_context confirms on-request/auto_review and a managed restricted filesystem
+  profile. It adds a per-chat visualization root, temp roots and protected metadata subpaths. This is
+  session/UI state, not an enterprise requirements file or a global permission setting.
+- Normal Desktop execution created a new workspace file and, with native elevated tool review, a new
+  Desktop Hello World file. No existing file overwritten; no Desktop root added.
 
-App-list metadata timed out on one diagnostic launch; app/installed/runtime listing succeeded. This is
-not proof of full Desktop equivalence. UI/server-host dependencies may remain unavailable even though
-packages are installed. Gmail get_profile completed through diagnostic mcpServer/tool/call; no profile
-content was logged. This read bypassed turn approval callbacks, so it is NOT a safe production tool route.
-Gateway must never expose direct arbitrary MCP tool calls to RV101.
+[Sanitized inventory](permission-inventory.json). User config was not modified or copied wholesale.
 
-## Approval contract
+## Decision
 
-A real read-only model turn with native app `prompt` policy requested Gmail get_profile and emitted
-`mcpServer/elicitation/request`, mode `form`, requestedSchema `{type:object,properties:{}}`. Diagnostic
-client declined; native MCP tool completed failed. This proves a per-call confirmation path, not a write
-acceptance. Normal `writes` mode and side-effect gating require their own tests before production enablement.
+Select workspace-write/on-request/auto_review at native launch/thread/turn boundaries, matching the
+observed normal profile. Remove ALL Jarvis apps/MCP/plugin approval table overrides. Preserve disabled
+state verification, native credential ownership and the existing environment allowlist. Turns inherit
+resolved thread sandbox/root/network configuration; host/app/MCP/browser networking is independent.
+Full Access and never are excluded. Native APIs may refuse a profile prohibited by managed requirements.
 
-Decision: inherit configuration, overlay only local-human review and at-least-write approval policy;
-retain a user's stricter `prompt` policy, never copy credentials or turn disabled tools on. Apply defaults
-and existing per-tool/per-account overrides so `approve` or `auto_review` cannot bypass the owner.
-Use effective configured identities plus native MCP plugin metadata, not provider names.
+## Review flow
 
-Decision: support the observed empty confirmation form through existing loopback local admin accept/decline.
-Return `{action:accept,content:{}}` only for a separately approved supported form. Other MCP form inputs,
-URL/device-verification challenges, generic requestUserInput and dynamic tool execution fail closed;
-never fabricate OAuth proof or choose an arbitrary answer. Command/file per-call approval remains intact.
-Match thread and any supplied turn; expiry, disconnect and terminal events invalidate handles. Device
-snapshot keeps only pendingApproval; raw elicitation payload never reaches HUD or persisted evidence.
+Native item/autoApprovalReview started/completed notifications are evidence, not requests to accept.
+Record bounded action-type/status/risk/IDs/timestamps only; never rationale/command/input/provider data.
+Real remaining command/file/native empty-form confirmations still go to the loopback-only owner flow.
+Pending is immediate; no default120s expiry. Optional explicit timeout remains supported. Lifecycle
+resolution/cancel/disconnect invalidates the handle. Voice text cannot resolve it.
 
-Alternative rejected: remove isolation flags alone (breaks approvals); blanket remote-tool approval;
-service-specific Gmail/Drive adapters; opening shell networking for host MCP; forwarding local bearer
-or provider credentials to glasses; automatic authorization refresh/login.
+Auto-review denial does not necessarily produce a new human RPC. The installed ClientRequest schema
+has no public equivalent of the TUI /approve denied-action retry marker; do not fake that marker using
+prompt text. Unsupported auth/input/device-proof forms remain fail-closed and are reported as a limit.
 
-## Runtime policy and limits
+## Browser and Computer
 
-Keep IPv4 loopback listener, read-only filesystem, shell networkAccess:false and on-request human review.
-Host MCP/app networking is independent of the command sandbox. Existing hook trust remains native;
-no hooks discovered, no new trust action or assertion that hook process side effects are tool-gated.
-Startup of user-installed MCP processes can itself have effects, as in normal Codex: this is a trusted
-single-owner environment, not a hostile-server sandbox.
+Core app-server schemas have no direct browser/computer action methods; availability depends on host
+integration. Runtime tests proved native Chrome via cua_repl opened example.com and returned Example
+Domain. Calculator Computer Use was initially refused because app access had not been granted; after
+an explicit owner decision on the native empty confirmation, controls were returned without input.
+These are actual app-server MCP invocations, not shell/web-search substitutes. A separate built-in IAB probe failed with the exact native error “Browser is not available: iab”. No Chrome fallback was used in that probe.
 
-Configuration changes load on restart; dynamic tests use scoped diagnostic overrides rather than edit
-normal user config. Production recovery resumes the existing threads with refreshed scoped policy.
-Neither exact capability invocation nor physical acceptance is inferred from visibility.
+Official docs describe built-in Browser as Desktop-only and Computer Use app grants as direct human
+prompts even with auto-review. The installed Desktop-backed MCP bridge may expose additional surfaces;
+its observed behavior, not installation metadata, determines the local result.
 
-Sources: [app-server](https://learn.chatgpt.com/docs/app-server),
-[config reference](https://learn.chatgpt.com/docs/config-file/config-reference), generated 0.157.1 schemas.
-The installed RPC name is `item/tool/requestUserInput`; generic `item/tool/requestApproval` does not exist.
+## Safe probes / limits
 
+Native harmless MCP write probe: auto-review approved, counter incremented once, no gateway human
+request/accept. Dynamic existing node_repl disable/re-enable across isolated restarts passed; normal
+user config unchanged. Synthetic human/unsafe requests validate pending/decline plumbing without an
+executable destructive action. They do not prove that stock auto-review denies every possible risky action.
+Production file/draft and read matrix must be verified after deployment; physical acceptance is separate.
 
-## Implementation verification so far
-
-Nested JSON tables are required for thread config overrides with dynamic MCP/plugin identities. Quoted
-TOML segments in RPC map keys create literal quote-bearing names and fail transport validation; real
-thread/start proved the nested form. Thread overrides of CLI-injected entire server tables can replace
-that diagnostic transport; native fake-server tests therefore use an isolated trusted project config.
-User/project file configuration remains the supported inherited source. No transport/auth values are copied
-into derived overrides. A native Gmail read completed under `writes` policy with no approval request.
-The separate `prompt` test declined a real callback before invocation. Side-effect proof remains gated.
-
-Legacy user `notify` is configured separately from hooks/list. Its program/arguments are not copied into evidence; native behavior is preserved, not claimed covered by tool-call approval policy.
-
-
-ALE-453 safety refinement: ordinary and plugin-bundled MCP tools always use `prompt`, including per-tool overrides. Native `node_repl.js` advertises readOnlyHint despite accepting general code, so annotation-based `writes` is insufficient for opaque MCP runners. Connected apps retain at least `writes` with human reviewer (stricter inherited prompt preserved). This is intentionally stricter than normal read policy for MCP; separate local approval is required even for a harmless MCP read. Tool availability and user-disabled settings are unchanged.
-
-Unclassified host MCP bridges fail closed. The native codex_apps bridge is governed by apps policy; configured MCPs and plugin-owned servers get prompt. This distinguishes policy surfaces, not a provider allowlist.
+Sources: [auto-review](https://learn.chatgpt.com/docs/sandboxing/auto-review),
+[permission modes](https://learn.chatgpt.com/docs/permission-modes),
+[app-server](https://learn.chatgpt.com/docs/app-server), installed0.157.1 schemas and actual native probes.

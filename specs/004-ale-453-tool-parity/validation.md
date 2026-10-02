@@ -1,4 +1,32 @@
-# ALE-453 validation evidence
+# ALE-453 validation — current native permission revision
+
+2026-10-02 owner revision supersedes prior read-only/user/blanket-prompt constraints.
+Production not yet updated at this checkpoint; prior runtime is08ab1a4 / Git4e8d784.
+
+| Gate before deployment | Result / evidence |
+|---|---|
+| Normal Desktop effective mode | turn_context on-request/auto_review, managed workspace semantics plus per-chat auxiliary roots |
+| Normal zero-override native config/thread | workspace-write/on-request/auto_review; shell network false; additional writable roots[]; no Desktop root |
+| Normal workspace / Desktop safe write | PASS; exclusive new Hello World files, Desktop operation through current App's elevated review |
+| Gateway root tests | 30/30 PASS |
+| Accepted AIUI regression | 37/37 PASS; runtime/config/AIX unchanged |
+| Native workspace write | PASS, no human request/review needed |
+| Native outside/Desktop write | PASS, command auto-review approved/low; zero human requests; no roots workaround |
+| Native MCP auto-review | PASS, in-memory write counter1; zero gateway-generated accept/human prompt |
+| Dynamic MCP/config | PASS, node_repl disabled0 tools / enabled4 tools across separate processes; native app prompt setting preserved |
+| Real restart continuity | PASS, two turns retained thread01a0fe7f-1674-75b1-86db-80d67ffb7e39 across restart |
+| Browser Chrome | PASS via app-server cua_repl; Example Domain title in tool result, test tab closed |
+| Built-in IAB | SURFACE LIMITATION: native “Browser is not available: iab”; no substitute used |
+| Computer Use | PASS after explicit owner Calculator grant; initial denial blocked access, subsequent controls read succeeded without input |
+| Remaining human flow | Mock unsafe-shaped request pending immediately (<100ms assertion), no default expiry, explicit decline; actual native Calculator permission independently required owner |
+| Destructive execution | NOT RUN; prohibited by test design |
+
+Current production matrix/physical acceptance will be appended after deployment. Native review denial
+need not generate a new human RPC; do not claim arbitrary unsafe-action classification from a harmless
+fixture. Unknown auth/input/special-root grant shapes remain unsupported and are never fabricated.
+
+## Historical capability iteration (superseded policy)
+
 
 Date: 2026-10-02. Current runtime commit 08ab1a4 (initial implementation 10d0c6b); production gateway updated with accepted Jarvis AIX 1.0.19 unchanged.
 

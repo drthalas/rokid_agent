@@ -1,17 +1,18 @@
-# Approval and transport contract
+# Native approval contract
 
-Public `/v1/*` unchanged. No tool-call proxy or approve endpoint is exposed to glasses.
-Authenticated `/admin/approvals` remains loopback-only; local POST decision accepts `accept|decline`
-for one opaque pending handle. Never accept decision/input through voice or task payload.
+Native auto-review notifications are observations, never approval requests to answer. Eligible safe
+operations execute under native policy; gateway does not manufacture local approvals or native accepts.
+Remaining human RPCs immediately set pendingApproval. Existing authenticated loopback accept/decline
+resolves one matching live request, never an entire session. Voice prompt is not this decision.
 
-Native command/file request: `{decision:accept|decline}` only; no acceptForSession/rule amendment.
-Native permissions request: empty granted permissions, scope turn (deny expansion).
-Native `mcpServer/elicitation/request`: supported empty form waits for owner;
-accept → `{action:accept,content:{}}`; decline/expiry → `{action:decline,content:null}`.
-Unsupported modes/shapes are declined; unrelated native request methods return a safe RPC error.
-Turn mismatch/terminal/disconnect must invalidate approvals; one decision cannot authorize a future call.
+Supported command/file requests and native mcp_tool_call empty-form confirmations retain their specific
+response types. Unknown auth/input/URL/device-proof shapes are not fabricated. Permission grants remain
+bounded to supported requested subsets; unsupported expansion is reported rather than silently broadening.
 
-Optional local-only capability event inspection returns bounded safe metadata, never raw tool arguments/results.
-No generic JSON-RPC or direct mcpServer/tool/call endpoint is added.
+Default human wait follows native lifecycle, without a gateway-invented120s denial. Explicit configured
+timeout is optional. Disconnection/terminal/resolved events invalidate handles. Reviewer denied/timedOut
+notifications do not automatically become a human RPC; this native surface distinction must be reported.
 
-Native confirmation additionally requires `_meta.codex_approval_kind = mcp_tool_call`; arbitrary empty input forms are not approved. This marker was observed in the real native write probe.
+Public `/v1` and Jarvis runtime unchanged. Local-only review metadata supports timing/acceptance evidence.
+
+Native permissions requests with literal absolute path read/write lists/entries or an explicit network boolean may remain pending. Local acceptance returns only that validated requested subset, scope turn; glob/special-root/unknown shapes are never fabricated or broadened. Native auto-review normally resolves eligible escalation before such a human request reaches gateway.

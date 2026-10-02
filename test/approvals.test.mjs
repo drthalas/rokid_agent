@@ -19,3 +19,14 @@ test('existing command/file approval stays per-request and permission expansion 
  assert.deepEqual(nativeApprovalResponse('item/fileChange/requestApproval',{},true),{decision:'accept'});
  assert.deepEqual(nativeApprovalResponse('item/permissions/requestApproval',{},true),{permissions:{},scope:'turn'});
 });
+
+test('genuine native permission requests grant only validated requested subsets after local accept',()=>{
+ const method='item/permissions/requestApproval',p={turnId:'turn',permissions:{fileSystem:{write:['/tmp/exact-file']}}};
+ assert.equal(supportedApproval(method,p),true);
+ assert.deepEqual(nativeApprovalResponse(method,p,false),{permissions:{},scope:'turn'});
+ assert.deepEqual(nativeApprovalResponse(method,p,true),{permissions:p.permissions,scope:'turn'});
+ for(const permissions of [{fileSystem:{write:['relative']}},{fileSystem:{entries:[{path:{type:'special',value:{kind:'root'}},access:'write'}]}},{fileSystem:{write:['/tmp/ok'],secret:'unexpected'}},{network:{enabled:true,token:'secret'}}]){
+  assert.equal(supportedApproval(method,{turnId:'turn',permissions}),false);
+  assert.deepEqual(nativeApprovalResponse(method,{turnId:'turn',permissions},true).permissions,{});
+ }
+});

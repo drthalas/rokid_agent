@@ -29,8 +29,8 @@ test('HTTPS → gateway → actual mock WebSocket: continuity, safety, dedupe, r
   const s = created.body;
   assert.equal((await call('/v1/sessions', { requestId: createId })).body.id, s.id);
   assert.equal(mock.calls.filter(m => m.method === 'thread/start').length, 1);
-  assert.equal(mock.calls.find(m => m.method === 'thread/start').params.config['mcp_servers.risky.enabled'], undefined);
-  assert.equal(mock.calls.find(m => m.method === 'thread/start').params.config.mcp_servers.risky.default_tools_approval_mode, 'prompt');
+  assert.equal(mock.calls.find(m => m.method === 'thread/start').params.config, undefined);
+  assert.equal(mock.calls.find(m => m.method === 'thread/start').params.approvalsReviewer, 'auto_review');
   const id = randomUUID(), route = `/v1/sessions/${s.id}`;
   const first = await call(route + '/turns', { requestId: id, text: 'Read README' }); assert.equal(first.body.status, 'Working');
   await call(route + '/turns', { requestId: id, text: 'Read README' });
@@ -53,7 +53,8 @@ test('HTTPS → gateway → actual mock WebSocket: continuity, safety, dedupe, r
   await call(route + '/turns', { requestId: randomUUID(), text: 'Now find TODO' });
   const turns = mock.calls.filter(m => m.method === 'turn/start');
   assert.equal(turns.length, 2); assert.equal(turns[0].params.threadId, turns[1].params.threadId);
-  assert.equal(turns[1].params.sandboxPolicy.type, 'readOnly');
+  assert.equal(turns[1].params.sandboxPolicy, undefined);
+  assert.equal(turns[1].params.approvalsReviewer, 'auto_review');
   await call(route + '/stop', {}); await delay(10); assert.equal((await call(route)).body.error, 'turn_interrupted');
   assert.equal(fs.statSync(f.config.stateFile).mode & 0o777, 0o600);
   // Recover into a new engine, as on a daemon restart. No old prompt is replayed.
@@ -137,4 +138,17 @@ test('MCP confirmations require one local decision and never expose params to de
  assert.deepEqual(mock.responses.find(r=>r.id===203).result,{action:'decline',content:null});
  mock.send({id:204,method:'mcpServer/elicitation/request',params});await delay(10);const late=engine.listApprovals()[0];
  mock.finish(s.threadId);await delay(10);assert.throws(()=>engine.decide(late.id,true),/approval_not_found/);
+});
+
+test('native review notifications do not create/accept human approvals; genuine pending has no default expiry',async t=>{
+ const f=fixture(),mock=await mockCodex(),codex=new Codex({port:mock.port,attach:true});delete f.config.approvalTimeoutMs;
+ const engine=new Engine(f.config,codex);t.after(async()=>{engine.close();await codex.close();await mock.close();f.cleanup()});
+ await codex.start();await engine.recover();const s=await engine.create({requestId:randomUUID()});await engine.turn(s.id,{requestId:randomUUID(),text:'safe task'});
+ const turnId=engine.get(s.id).turnId;
+ mock.send({method:'item/autoApprovalReview/completed',params:{threadId:s.threadId,turnId,reviewId:'review-1',action:{type:'command',command:'private'},review:{status:'approved',rationale:'private'}}});await delay(10);
+ assert.equal(engine.listApprovals().length,0);assert.equal(mock.responses.length,0);assert.equal(engine.reviewEvents.at(-1).status,'approved');
+ mock.send({id:300,method:'item/commandExecution/requestApproval',params:{threadId:s.threadId,turnId,command:'SIMULATED unsafe action; never executed'}});await delay(10);
+ const a=engine.listApprovals()[0];assert.equal(a.expiresAt,null);assert.equal(engine.snapshot(engine.get(s.id)).pendingApproval,true);
+ const event=engine.reviewEvents.at(-1);assert.ok(event.at-event.receivedAt<100);
+ engine.decide(a.id,false);await delay(10);assert.equal(mock.responses.find(r=>r.id===300).result.decision,'decline');
 });

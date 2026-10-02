@@ -1,6 +1,7 @@
 // Read-only, sanitized inventory. Separate process/ephemeral thread; never attaches to production.
 import net from 'node:net';
 import {Codex} from '../src/codex.mjs';
+import {policy} from '../src/protocol.mjs';
 const listener=net.createServer();await new Promise(r=>listener.listen(0,'127.0.0.1',r));
 const port=listener.address().port;await new Promise(r=>listener.close(r));
 const codex=new Codex({port,experimentalApi:true,timeout:60000});
@@ -13,8 +14,8 @@ try{
  await capture('managed',async()=>{const r=await codex.request('configRequirements/read');return{present:!!r.requirements}});
  await capture('hooks',async()=>{const r=await codex.request('hooks/list',{cwds:[cwd]});return{count:r.data.reduce((n,x)=>n+x.hooks.length,0),errors:r.data.reduce((n,x)=>n+x.errors.length,0)}});
  // Creating a thread uses native hook trust. This script never adds trust or changes config.
- const {thread}=await codex.request('thread/start',{cwd,ephemeral:true,sandbox:'read-only',approvalPolicy:'on-request',approvalsReviewer:'user',config:await codex.approvalOverrides(cwd)});
- await codex.verifyToolPolicy(thread.id,cwd);
+ const {thread}=await codex.request('thread/start',{cwd,ephemeral:true,...policy});
+ await codex.verifyCapabilities(thread.id,cwd);
  await capture('apps',async()=>{const r=await codex.request('app/installed',{threadId:thread.id,forceRefresh:true});return{apps:r.apps.map(a=>({name:a.runtimeName,enabled:a.enabled,callable:a.callable}))}});
  await capture('mcp',async()=>({servers:(await codex.serverStatus(thread.id)).map(s=>({name:s.name,pluginId:s.pluginId,status:s.runtimeStatus,authStatus:s.authStatus,tools:Object.keys(s.tools??{}).length,discoveryFailed:!!s.toolsError}))}));
  await capture('skills',async()=>{const r=await codex.request('skills/list',{cwds:[cwd],forceReload:true});return{skills:r.data.flatMap(x=>x.skills.map(s=>({name:s.name,enabled:s.enabled,scope:s.scope,pluginId:s.pluginId})))}});

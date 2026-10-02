@@ -4,14 +4,12 @@ import { EventEmitter } from 'node:events';
 import { spawn } from 'node:child_process';
 import WebSocket from 'ws';
 import { Fault } from './protocol.mjs';
-import { toolPolicyOverrides } from './tool-policy.mjs';
-import { isDeepStrictEqual } from 'node:util';
+import { assertDisabledCapabilities } from './tool-policy.mjs';
 
 export function spawnSpec(binary, port) {
   return { command: binary, args: ['app-server', '--listen', `ws://127.0.0.1:${port}`,
-    '-c', 'sandbox_mode="read-only"', '-c', 'approval_policy="on-request"',
-    '-c', 'approvals_reviewer="user"',
-    '-c', 'apps._default.approvals_reviewer="user"'],
+    '-c', 'sandbox_mode="workspace-write"', '-c', 'approval_policy="on-request"',
+    '-c', 'approvals_reviewer="auto_review"'],
   options: { shell: false, stdio: 'ignore' } };
 }
 export function childEnv() {
@@ -101,23 +99,15 @@ export class Codex extends EventEmitter {
     } while(cursor);
     return servers;
   }
-  async approvalOverrides(cwd) {
-    const effective=await this.request('config/read',{includeLayers:false,cwd});
-    const overrides=toolPolicyOverrides(effective.config,await this.serverStatus());
-    this.policiesByCwd ??= new Map();this.policiesByCwd.set(cwd,overrides);
-    return overrides;
-  }
-  async verifyToolPolicy(threadId,cwd) {
+  async verifyCapabilities(threadId,cwd) {
     const {config={}}=await this.request('config/read',{includeLayers:false,cwd});
-    const servers=await this.serverStatus(threadId);
-    const expected=toolPolicyOverrides(config,servers),applied=this.policiesByCwd?.get(cwd);
-    // A newly discovered project/plugin server must not execute under an unreviewed default.
-    if(!applied||!isDeepStrictEqual(expected,applied))throw new Fault('capability_policy_changed',503);
-    for(const server of servers) {
-      const plugin=server.pluginId&&config.plugins?.[server.pluginId];
-      const disabled=config.mcp_servers?.[server.name]?.enabled===false || plugin?.enabled===false || plugin?.mcp_servers?.[server.name]?.enabled===false;
-      if(disabled && (server.runtimeStatus!=='disabled'||Object.keys(server.tools??{}).length))throw new Fault('disabled_capability_active',503);
-    }
+    assertDisabledCapabilities(config,await this.serverStatus(threadId));
+  }
+  recordProfile(result) {
+    const reviewer=result.approvalsReviewer==='guardian_subagent'?'auto_review':result.approvalsReviewer;
+    if(result.sandbox?.type!=='workspaceWrite'||result.approvalPolicy!=='on-request'||reviewer!=='auto_review')throw new Fault('permission_profile_unavailable',503);
+    this.permissionProfiles ??= new Map();
+    this.permissionProfiles.set(result.thread.id,{threadId:result.thread.id,sandbox:{type:result.sandbox.type,writableRoots:result.sandbox.writableRoots??[],networkAccess:result.sandbox.networkAccess===true,excludeTmpdirEnvVar:result.sandbox.excludeTmpdirEnvVar===true,excludeSlashTmp:result.sandbox.excludeSlashTmp===true},approvalPolicy:result.approvalPolicy,approvalsReviewer:reviewer});
   }
   message(data) {
     let m; try { m = JSON.parse(data.toString()); } catch { return; }

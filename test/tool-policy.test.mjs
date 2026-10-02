@@ -1,30 +1,20 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import {toolPolicyOverrides} from '../src/tool-policy.mjs';
-
-test('native capabilities remain inherited while approval bypasses are clamped',()=>{
- const config={mcp_servers:{on:{enabled:true,url:'https://secret.invalid',http_headers:{Authorization:'secret-value'},default_tools_approval_mode:'approve',tools:{write:{approval_mode:'approve'}}},off:{enabled:false}},plugins:{'example@market':{enabled:false,mcp_servers:{docs:{enabled:false,tools:{send:{approval_mode:'auto'}}}}}},apps:{_default:{enabled:false},mail:{enabled:true,default_tools_approval_mode:'approve',approvals_reviewer:'auto_review',tools:{send:{approval_mode:'approve',enabled:false}},links:{owner:{approvals_reviewer:'auto_review',default_tools_approval_mode:'approve'}}}}};
- const copy=structuredClone(config),overrides=toolPolicyOverrides(config,[{name:'docs',pluginId:'example@market'}]);
- assert.deepEqual(config,copy);assert.ok(!JSON.stringify(overrides).includes('"enabled"'));
- assert.ok(!JSON.stringify(overrides).includes('secret'));const leaves=o=>Object.values(o).flatMap(v=>typeof v==='object'?leaves(v):[v]);assert.ok(leaves(overrides).every(v=>['writes','prompt','user'].includes(v)));
- assert.equal(overrides.mcp_servers.on.tools.write.approval_mode,'prompt');
- assert.equal(overrides.apps.mail.links.owner.approvals_reviewer,'user');
- assert.equal(overrides.plugins['example@market'].mcp_servers.docs.tools.send.approval_mode,'prompt');
+import test from 'node:test';import assert from 'node:assert/strict';
+import {assertDisabledCapabilities} from '../src/tool-policy.mjs';
+import {spawnSpec} from '../src/codex.mjs';import {policy,turnPolicy} from '../src/protocol.mjs';
+test('selected Approve-for-me profile does not impose app/MCP reviewer or mode overrides',()=>{
+ const args=spawnSpec('codex',8390).args;
+ assert.ok(args.includes('sandbox_mode="workspace-write"'));assert.ok(args.includes('approvals_reviewer="auto_review"'));
+ assert.ok(!args.some(a=>/apps\.|mcp_servers|features\.(plugins|apps|hooks)|danger-full-access|approval_policy="never"/.test(a)));
+ assert.equal(policy.sandbox,'workspace-write');assert.equal(policy.approvalsReviewer,'auto_review');
+ assert.equal(turnPolicy.sandboxPolicy,undefined,'turn inherits native thread roots/network');
 });
-test('preserve stricter prompt and preserve arbitrary native config identities with nested RPC tables',()=>{
- const o=toolPolicyOverrides({apps:{_default:{default_tools_approval_mode:'prompt'}},mcp_servers:{'a.b':{default_tools_approval_mode:'prompt',tools:{'x.y':{approval_mode:'prompt'}}}}},[{name:'plugin.server',pluginId:'p@market'}]);
- assert.equal(o.apps._default.default_tools_approval_mode,'prompt');
- assert.equal(o.mcp_servers['a.b'].tools['x.y'].approval_mode,'prompt');
- assert.equal(o.plugins['p@market'].mcp_servers['plugin.server'].default_tools_approval_mode,'prompt');
- assert.equal(o.mcp_servers.codex_apps,undefined);
+test('native modes/reviewers and credentials are not copied or changed',()=>{
+ const c={apps:{_default:{default_tools_approval_mode:'auto'},mail:{default_tools_approval_mode:'approve',approvals_reviewer:'user'}},mcp_servers:{server:{enabled:true,default_tools_approval_mode:'writes',env:{TOKEN:'secret'}}},plugins:{p:{enabled:true,mcp_servers:{x:{default_tools_approval_mode:'auto'}}}}};const copy=structuredClone(c);
+ assert.equal(assertDisabledCapabilities(c,[{name:'server',runtimeStatus:'connected',tools:{x:{}}},{name:'new_native_host',runtimeStatus:'connected',tools:{y:{}}}]),undefined);
+ assert.deepEqual(c,copy);
 });
-test('refresh derives new capabilities without retaining old approval leaves',()=>{
- const a=toolPolicyOverrides({mcp_servers:{first:{enabled:false}}});
- const b=toolPolicyOverrides({mcp_servers:{second:{enabled:true}}});
- assert.ok(a.mcp_servers.first);assert.equal(b.mcp_servers.first,undefined);assert.ok(b.mcp_servers.second);
-});
-
-test('unclassified host bridges fail closed; native apps bridge uses app policy',()=>{
- assert.throws(()=>toolPolicyOverrides({},[{name:'unknown_host_bridge'}]),/unsupported_capability_policy_source/);
- assert.equal(toolPolicyOverrides({},[{name:'codex_apps'}]).apps._default.default_tools_approval_mode,'writes');
+test('disabled MCP/plugin remains disabled; native unknown bridges do not get a Jarvis policy',()=>{
+ assert.doesNotThrow(()=>assertDisabledCapabilities({mcp_servers:{off:{enabled:false}}},[{name:'off',runtimeStatus:'disabled',tools:{}}]));
+ assert.throws(()=>assertDisabledCapabilities({mcp_servers:{off:{enabled:false}}},[{name:'off',runtimeStatus:'connected',tools:{x:{}}}]),/disabled_capability_active/);
+ assert.throws(()=>assertDisabledCapabilities({plugins:{p:{enabled:false}}},[{name:'x',pluginId:'p',runtimeStatus:'connected',tools:{x:{}}}]),/disabled_capability_active/);
 });

@@ -5,7 +5,7 @@ import { Fault, requireValue, requestId, prompt, fingerprint, busy, policy, turn
 import { boundHistory, startExchange, updateExchange, hydrateHistory } from './history.mjs';
 import { projectPath } from './config.mjs';
 import { supportedApproval, nativeApprovalResponse } from './approvals.mjs';
-import { toolEvidence } from './tool-evidence.mjs';
+import { toolEvidence, reviewEvidence } from './tool-evidence.mjs';
 
 export class Engine {
   constructor(config, codex) {
@@ -14,7 +14,7 @@ export class Engine {
     requireValue(this.data.version === 1 && this.data.sessions && this.data.requests, 'invalid_state');
     this.historySecrets = [config.tokenFile, config.adminTokenFile].filter(Boolean).map(p=>fs.readFileSync(p,'utf8').trim());
     for (const s of Object.values(this.data.sessions)) s.history=boundHistory(s.history,this.historySecrets);
-    this.timings = new Map(); this.toolEvents = [];
+    this.timings = new Map(); this.toolEvents = []; this.reviewEvents = [];
     this.recovered = false;
     codex.on('notification', m => this.event(m));
     codex.on('request', m => this.approval(m));
@@ -58,9 +58,10 @@ export class Engine {
     this.ready(); const alias = body.project ?? this.config.defaultProject; const cwd = projectPath(this.config, alias);
     return this.once(body.requestId, ['create', alias], async () => {
       requireValue(Object.keys(this.data.sessions).length < 100, 'session_capacity_reached', 503);
-      const { thread } = await this.codex.request('thread/start', { cwd, ...policy, config: await this.codex.approvalOverrides(cwd), ...(this.config.model ? { model: this.config.model } : {}),
+      const started = await this.codex.request('thread/start', { cwd, ...policy, ...(this.config.model ? { model: this.config.model } : {}),
         developerInstructions: 'You are accessed through Rokid glasses. Respond concisely in the language of the user. Never treat voice text as an approval. Keep the selected project as the working directory.' });
-      await this.codex.verifyToolPolicy(thread.id,cwd);
+      this.codex.recordProfile(started); const {thread}=started;
+      await this.codex.verifyCapabilities(thread.id,cwd);
       const s = { id: randomUUID(), project: alias, threadId: thread.id, turnId: null, status: 'Done', text: '', partial: '', error: null, uncertain: false, revision: 1, history: [] };
       this.data.sessions[s.id] = s; return s;
     });
@@ -72,8 +73,9 @@ export class Engine {
     const { thread } = await this.codex.request('thread/read', { threadId: body.threadId, includeTurns: true });
     requireValue(fs.realpathSync(thread.cwd) === cwd, 'thread_project_mismatch', 403);
     requireValue(thread.status?.type !== 'active' && thread.turns?.at(-1)?.status !== 'inProgress', 'thread_active', 409);
-    await this.codex.request('thread/resume', { threadId: body.threadId, cwd, ...policy, config: await this.codex.approvalOverrides(cwd) });
-    await this.codex.verifyToolPolicy(body.threadId,cwd);
+    const resumed=await this.codex.request('thread/resume', { threadId: body.threadId, cwd, ...policy });
+    this.codex.recordProfile(resumed);
+    await this.codex.verifyCapabilities(body.threadId,cwd);
     const s = { id: randomUUID(), project: body.project, threadId: body.threadId, turnId: null, status: 'Done', text: '', partial: '', error: null, uncertain: false, revision: 1, history: [] };
     hydrateHistory(s, thread.turns, this.historySecrets);
     this.data.sessions[s.id] = s; this.save(); return this.snapshot(s);
@@ -114,6 +116,8 @@ export class Engine {
   }
   event({ method, params: p = {} }) {
     for (const s of Object.values(this.data.sessions)) {
+      const review=reviewEvidence(method,p,s);
+      if(review){this.reviewEvents.push(review);this.reviewEvents=this.reviewEvents.slice(-64);}
       const evidence=toolEvidence(method,p,s);
       if(evidence){this.toolEvents.push(evidence);this.toolEvents=this.toolEvents.slice(-64);}
     }
@@ -141,9 +145,11 @@ export class Engine {
       return;
     }
     const id = randomUUID();
-    const a = { id, rpcId: m.id, method: m.method, params: m.params, sessionId: s.id, turnId:s.turnId, expiresAt: Date.now() + (this.config.approvalTimeoutMs ?? 120000) };
-    a.timer = setTimeout(() => { try { this.decide(id, false); } catch {} }, this.config.approvalTimeoutMs ?? 120000);
+    const receivedAt=Date.now(),timeout=this.config.approvalTimeoutMs;
+    const a = { id, rpcId: m.id, method: m.method, params: m.params, sessionId: s.id, turnId:s.turnId, receivedAt, expiresAt: Number.isFinite(timeout)&&timeout>0?receivedAt+timeout:null };
+    if(a.expiresAt!==null)a.timer=setTimeout(() => { try { this.decide(id, false); } catch {} },timeout);
     this.approvals.set(id, a); s.revision++;
+    this.reviewEvents.push({event:'humanApproval/pending',sessionId:s.id,threadId:s.threadId,turnId:s.turnId,requestId:id,method:m.method,receivedAt,at:Date.now()});this.reviewEvents=this.reviewEvents.slice(-64);
   }
   listApprovals() { return [...this.approvals.values()].map(({ timer, rpcId, ...a }) => a); }
   decide(id, allow) {
@@ -151,7 +157,7 @@ export class Engine {
     clearTimeout(a.timer); this.approvals.delete(id);
     const session=this.get(a.sessionId);
     const current=busy(session)&&session.turnId===a.turnId;
-    this.codex.send({ id: a.rpcId, result: nativeApprovalResponse(a.method,a.params,allow && current && Date.now() < a.expiresAt) });
+    this.codex.send({ id: a.rpcId, result: nativeApprovalResponse(a.method,a.params,allow && current && (a.expiresAt===null || Date.now()<a.expiresAt)) });
     this.get(a.sessionId).revision++;
     return { ok: true };
   }
@@ -164,8 +170,9 @@ export class Engine {
         const cwd = projectPath(this.config, s.project);
         const { thread: original } = await this.codex.request('thread/read', { threadId: s.threadId, includeTurns: true });
         requireValue(fs.realpathSync(original.cwd) === cwd, 'thread_project_mismatch');
-        const { thread } = await this.codex.request('thread/resume', { threadId: s.threadId, cwd, ...policy, config: await this.codex.approvalOverrides(cwd) });
-        await this.codex.verifyToolPolicy(s.threadId,cwd);
+        const resumed = await this.codex.request('thread/resume', { threadId: s.threadId, cwd, ...policy });
+        this.codex.recordProfile(resumed); const {thread}=resumed;
+        await this.codex.verifyCapabilities(s.threadId,cwd);
         hydrateHistory(s, original.turns, this.historySecrets);
         const turn = thread.turns?.at(-1);
         if (busy(s) || s.uncertain) {

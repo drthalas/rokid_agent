@@ -12,4 +12,4 @@ Expose only the authenticated HTTPS device gateway. The gateway owns sessions, r
 
 ## Alternatives and consequences
 
-Direct network app-server exposure lacks this boundary. Stateless exec per utterance would discard the selected lifecycle. Shared desktop active-thread control would create ownership races. A separate gateway adds persisted mapping/reconciliation work; cwd allowlist/read-only sandbox are not complete filesystem isolation. Import is limited to existing idle threads. Details and caveats: [architecture](../../ARCHITECTURE.md).
+Direct network app-server exposure lacks this boundary. Stateless exec per utterance would discard the selected lifecycle. Shared desktop active-thread control would create ownership races. A separate gateway adds persisted mapping/reconciliation work; cwd allowlist/native sandbox are not complete filesystem isolation. Import is limited to existing idle threads. Details and caveats: [architecture](../../ARCHITECTURE.md).

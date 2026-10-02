@@ -1,14 +1,12 @@
-# Specification quality: ALE-453
+# Specification quality: ALE-453 permission revision
 
-Created 2026-10-02. Feature: [spec](../spec.md). Reviewed during speckit-specify.
+Reviewed2026-10-02 against owner revision. [Spec](../spec.md).
 
-- [x] User value and scope are explicit; implementation design deferred to plan.
-- [x] All mandatory sections are present.
-- [x] No unresolved product clarification markers remain.
-- [x] Requirements and six acceptance categories are testable.
-- [x] Success criteria distinguish visibility, invocation and physical evidence.
-- [x] Approval, privacy, disabled-capability and reconnect edge cases are covered.
-- [x] Dependencies/assumptions and excluded work are explicit.
-- [x] Every story has independent acceptance scenarios.
-
-Surface/runtime uncertainties are research tasks, not missing user requirements. Checklist confirms specification quality only, not implementation or physical acceptance.
+- [x] Product goal distinguishes native Approve for me from Limited/Full Access.
+- [x] Existing feature updated; previous manual-only requirements explicitly superseded.
+- [x] Capability policy is separate from shell/filesystem sandbox.
+- [x] Normal Desktop/config/runtime evidence required before deployment.
+- [x] Acceptance A–L and physical-vs-Mac evidence are explicit.
+- [x] Human/auto-review/auth-input semantics and safe probe limits are defined.
+- [x] Loopback/auth/ownership/privacy/UX constraints preserved.
+- [x] Native surface limitations are reported without fabricated PASS or approval.

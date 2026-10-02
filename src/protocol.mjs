@@ -21,11 +21,11 @@ export function prompt(value) {
 }
 export function fingerprint(value) { return createHash('sha256').update(JSON.stringify(value)).digest('hex'); }
 export const busy = s => ['Thinking', 'Working'].includes(s.status);
-export const policy = Object.freeze({ sandbox: 'read-only', approvalPolicy: 'on-request', approvalsReviewer: 'user' });
-export const turnPolicy = Object.freeze({ approvalPolicy: 'on-request', approvalsReviewer: 'user', sandboxPolicy: { type: 'readOnly', networkAccess: false } });
+export const policy = Object.freeze({ sandbox: 'workspace-write', approvalPolicy: 'on-request', approvalsReviewer: 'auto_review' });
+export const turnPolicy = Object.freeze({ approvalPolicy: 'on-request', approvalsReviewer: 'auto_review' });
 
 // Adapted from Anezium/Rokid-Nexus agentd/src/codex/monitor.ts (Apache-2.0).
-// No session-wide approvals or permission expansion in this MVP.
+// No session-wide approvals. Validated human permission subsets are handled in approvals.mjs.
 export function approvalResponse(method, allow) {
   if (method === 'item/permissions/requestApproval') return { permissions: {}, scope: 'turn' };
   return { decision: allow ? 'accept' : 'decline' };

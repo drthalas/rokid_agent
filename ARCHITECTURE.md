@@ -1,6 +1,6 @@
 # Rokid Agent architecture
 
-Canonical technical architecture for the existing product. Product intent is in [project brief](docs/project-brief.md); evidence and deployment status are in [setup status](docs/setup-status.md). This document distinguishes implemented behavior from desired boundaries. The reconciliation changes documentation and development tooling only.
+Canonical technical architecture for the existing product. Product intent is in [project brief](docs/project-brief.md); evidence and deployment status are in [setup status](docs/setup-status.md). This document distinguishes implemented behavior from desired boundaries. Bootstrap history is recorded separately; current runtime changes follow the linked feature specifications.
 
 ## Current decision
 
@@ -71,8 +71,8 @@ The gateway initializes JSON-RPC, calls thread/start for a new session and turn/
 See [ADR-002](docs/adr/ADR-002-loopback-boundary.md) and [ADR-003](docs/adr/ADR-003-private-deployment.md).
 
 - Codex is hard-coded to IPv4 loopback; normal startup owns its child and refuses an occupied port. Device HTTPS and admin loopback HTTP have distinct random bearer tokens. Glasses have no approval route and never receive the admin credential or Codex account credentials.
-- Every new/resumed thread uses read-only sandbox, on-request approvals, human reviewer. Supported command/file and native MCP tool-confirmation requests wait for a specific expiring local decision (120 s default). Only the observed empty form with native mcp_tool_call marker is supported; auth/URL/free-text/device-proof forms and permission expansion are denied. Unknown requests fail closed. No auto-approve/session-wide grant. Explicit acceptance can authorize execution outside the sandbox; review exact command and paths locally.
-- Realpath allowlist constrains selected cwd, **not all readable files**. This is a single-owner MVP, not isolation for untrusted tenants. MCP/apps/plugins/skills and hook trust inherit effective Codex configuration. Gateway no longer disables capability classes. A per-thread overlay requires human review of writes, retains stricter prompt policies and clamps per-tool/per-account approval bypasses without changing enablement or credentials. Explicitly disabled servers are checked after load. Child environment remains allowlisted, not copied wholesale; environment-only credentials absent from that allowlist remain a surface limitation. Host MCP networking is distinct from shell networkAccess:false. Trusted MCP startup/hooks are not sandboxed by this tool-approval overlay; no hooks were discovered during ALE-453 inventory.
+- Every new/resumed thread selects native workspace-write/on-request/auto_review. Turns inherit native thread roots/network rather than forcing read-only. Eligible approvals are handled by Codex auto-review, not by gateway acceptance. Actual human command/file/native confirmation RPCs are exposed immediately and remain pending until resolution/cancel/disconnect; only an explicitly configured timeout expires them. Unsupported auth/input forms are never fabricated.
+- Realpath allowlist constrains selected cwd, **not all readable files**. This is a single-owner MVP. Native MCP/apps/plugins/skills/hook trust and app/MCP approval modes/reviewers are inherited unchanged; user-disabled capabilities stay disabled. No blanket MCP prompt or per-app reviewer override. The existing child environment allowlist remains; credentials are not copied. Host tool/browser networking is separate from the shell sandbox, whose observed native default is restricted. Trusted startup/hooks retain native trust semantics.
 - AIUI verifies public CA/hostname TLS. Android uses out-of-band leaf certificate pinning. The authorized smoke-only `--no-tls-verify` exception is restricted to cloudflared → HTTPS gateway on the same Mac; no client-side TLS bypass and no router port forwarding. Cloudflare terminates TLS and is a trusted transport processor able to observe requests; it is not end-to-end encryption directly to Mac.
 - Private `config.js`, configured AIX, cloud downloads, tokens, keys, logs and browser/Rokid sessions stay ignored. AIX JavaScript is readable: private cloud distribution is a credential-bearing trust boundary, not encrypted secret storage.
 - Gateway state contains mapping, fingerprints and bounded answers in a mode-0600 JSON file, replaced atomically. It is not fsync-backed transactional storage. Codex keeps full history; frontend retains pending text for retry. WAV/Whisper text exists temporarily and is removed in finally; abrupt termination may leave files requiring local cleanup. No audio archive. Legacy session history is projected from validated same-thread Codex user/final messages during recovery; incomplete delivery remains uncertain. See [ALE-452 brief](specs/002-ale-452-current-chat-history/brief.md).
@@ -82,7 +82,7 @@ See [ADR-002](docs/adr/ADR-002-loopback-boundary.md) and [ADR-003](docs/adr/ADR-
 
 Client retries retain UUID/session, refresh snapshots and never silently create a replacement thread. Endpoint changes alter AIUI storage namespace; use an explicit existing gateway session to preserve continuity. STT validation/busy/no-speech/timeout yields bounded errors, never a speculative turn. TTS failure falls back to HUD.
 
-RPC disconnect rejects outstanding calls, clears local approval handles, marks active work uncertain, then attempts resume/read recovery. Only matching known turn history resolves uncertainty; otherwise local review/reconcile is required. Approval expiry declines. Corrupt state fails startup; **missing state currently initializes an empty store**, so deleting it loses gateway mappings/dedupe records and is not a recovery procedure. Sessions without any turn may lack a resumable Codex rollout. Capacity errors preserve dedupe records rather than silently evicting them (normal creation: 100 sessions; mutations: 10,000 UUIDs; import does not apply the session cap).
+RPC disconnect rejects outstanding calls, clears local approval handles, marks active work uncertain, then attempts resume/read recovery. Only matching known turn history resolves uncertainty; otherwise local review/reconcile is required. Explicitly configured approval expiry declines; there is no gateway default human timeout. Corrupt state fails startup; **missing state currently initializes an empty store**, so deleting it loses gateway mappings/dedupe records and is not a recovery procedure. Sessions without any turn may lack a resumable Codex rollout. Capacity errors preserve dedupe records rather than silently evicting them (normal creation: 100 sessions; mutations: 10,000 UUIDs; import does not apply the session cap).
 
 ## Bounded latency diagnosis
 
@@ -181,11 +181,11 @@ Native capability inventory and diagnostic tool-call RPCs are local tooling only
 no arguments/results/auth metadata) to prove production tool calls. It is memory-only and resets on restart.
 Existing `/v1` snapshots/history and Jarvis UI are unchanged; device sees pendingApproval only.
 
-Native config overrides use nested JSON objects. Policy-only overlays intentionally avoid copying full
-MCP definitions or credentials. CLI-only whole-server definitions are not a supported production config
-source; inherited user/project files are. New project-scoped plugin servers not covered by the pre-load
-policy fail closed with capability_policy_changed. Do not substitute raw tool/call RPC for approval-aware
-model turns. Hook process startup and model-selected skill execution retain their native trust boundaries.
 
-
-ALE-453 safety refinement: ordinary and plugin-bundled MCP tools always use `prompt`, including per-tool overrides. Native `node_repl.js` advertises readOnlyHint despite accepting general code, so annotation-based `writes` is insufficient for opaque MCP runners. Connected apps retain at least `writes` with human reviewer (stricter inherited prompt preserved). This is intentionally stricter than normal read policy for MCP; separate local approval is required even for a harmless MCP read. Tool availability and user-disabled settings are unchanged.
+Native permission parity supersedes the earlier Jarvis policy overlay. The normal Desktop session uses
+a managed filesystem profile with per-chat auxiliary roots; standalone app-server returns workspaceWrite
+with implicit project/temp roots and no Desktop write root. Safe outside-root actions request native
+elevation. Browser/Computer are separate host capabilities: Chrome and Calculator were invoked through
+cua_repl; Calculator required a separate owner app grant. Their availability is not inferred from sandbox.
+Local `/admin/runtime` exposes sanitized profile/review metadata; it never exposes raw reviewer rationale,
+commands, tool parameters or auth data to glasses. Review notifications are never treated as accepts.

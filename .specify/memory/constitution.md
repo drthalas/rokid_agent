@@ -13,7 +13,7 @@ starts a different conversation/project. Uncertain delivery MUST NOT silently cr
 Codex app-server and admin API MUST remain loopback-only. Device access MUST authenticate through
 the gateway; clients cannot grant execution approvals. Dangerous actions require an explicit local
 human decision. Project routing MUST use the allowlist; no documentation may claim it provides
-complete filesystem or tenant isolation.
+complete filesystem or tenant isolation. The selected native profile is workspace-write/on-request/auto_review: eligible safe escalations are reviewed by Codex, while gateway must never manufacture an approval or treat voice text as a human decision.
 
 ### III. Keep private data outside published source
 
@@ -61,4 +61,4 @@ scope and risk justification, not silent weakening. User and environment instruc
 Preserve adoption/amendment dates on unchanged reruns. Do not regenerate templates or product specs
 merely to update this document.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-01 | **Last Amended**: 2026-10-01
+**Version**: 1.1.0 | **Ratified**: 2026-10-01 | **Last Amended**: 2026-10-02

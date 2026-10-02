@@ -3,6 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Codex } from '../src/codex.mjs';
 import { Engine } from '../src/engine.mjs';
+import { policy } from '../src/protocol.mjs';
 import { serve } from '../src/server.mjs';
 import { fixture, request, delay } from '../test/helpers.mjs';
 const f = fixture();
@@ -45,7 +46,7 @@ try {
     }
   }
   if (!responses[0].includes(marker) || !responses[1].includes(marker) || !/microphone|микрофон/i.test(responses[1])) throw new Error('semantic_continuity_failed');
-  await codex.request('thread/resume', { threadId, cwd: f.config.projects.demo, sandbox: 'read-only', approvalPolicy: 'on-request', approvalsReviewer: 'user', config: await codex.approvalOverrides(f.config.projects.demo) });
+  await codex.request('thread/resume', { threadId, cwd: f.config.projects.demo, ...policy });
   const read = await codex.request('thread/read', { threadId, includeTurns: true });
   console.log(JSON.stringify({ pass: true, threadId, turns: read.thread.turns.length, responses }, null, 2));
 } finally { engine.close(); await servers?.close(); await codex.close(); f.cleanup(); }

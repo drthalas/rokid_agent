@@ -131,3 +131,9 @@ for(const fault of ['missing-intervals','pulse-construction','status-render']) {
   }finally{globalThis.setInterval=interval;globalThis.clearInterval=clear;h?.page.cleanup();}
  });
 }
+
+test('existing HUD shows genuine pending approval immediately while keeping WORKING controls',async()=>{
+ const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');h.page.renderState({state:'WORKING',pendingApproval:true});
+ assert.equal(h.page.data.phase,'WORKING');assert.equal(h.page.data.hint,'Ожидает подтверждения на Mac');
+ }finally{h.page.cleanup()}
+});

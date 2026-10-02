@@ -1,19 +1,16 @@
-# Validation guide
+# Native permission validation
 
-Baseline: accepted Jarvis 1.0.19 / 5e38d93. Keep frontend/cloud/tunnel/config and state intact.
+Accepted frontend remains Jarvis1.0.19. Do not repackage for backend-only policy changes.
 
-1. Run `npm test` and `npm --prefix aiui-agent test`; integration fixtures need loopback bind permission.
-2. Run the inventory/smoke scripts described in tasks after implementation; store sanitized evidence only.
-   Native discovery is separate from successful invocation; isolated proof is separate from production.
-3. Record running gateway PID/revision and state metadata before the authorized deployment. Ensure no
-   turn or pending approval is active. Restart only gateway/owned app-server; never restart cloudflared.
-4. Confirm health/auth/loopback bindings, same sessions/threads and unchanged private AIX configuration.
-5. Through Jarvis, test recent Gmail read, a safe owner-selected Drive document and repository/issue read.
-   Correlate actual tool events to the same session/thread. Also prove one existing MCP and discovered skill.
-6. Request a Gmail draft to self with subject “Jarvis Tool Parity Test”. Inspect pending approval locally;
-   do not accept until the owner explicitly approves this action separately. Never send the email.
-7. Verify disable/re-enable across isolated restarts without editing normal user configuration.
-8. Report each gate as PASS / FAIL / NOT RUN / BLOCKED; do not turn unavailable infrastructure into a fabricated result.
-
-Rollback: restore previous gateway code/process after checking active turn state; preserve state file and
-thread IDs. New tool approvals are not durable; disconnect invalidates them. No voice approval shortcut.
+1. Read normal config and Desktop turn permission evidence in permission-inventory.json; do not infer policy from the mode label.
+2. Run `npm test`, `npm --prefix aiui-agent test`, `npm --prefix aiui-agent run check`, `npm run smoke`.
+3. `node scripts/tool-parity-smoke.mjs` proves native auto-review on a harmless in-memory MCP write, no gateway accept.
+   `node scripts/tool-parity-dynamic-smoke.mjs` validates native enable/disable/policy inheritance across isolated restarts.
+   `node scripts/permission-parity-smoke.mjs /absolute/new/test-file` explicitly opts into a safe outside-workspace Hello World test; never overwrite an existing file.
+4. Deploy only idle gateway/owned app-server after source/secret checks. Preserve state IDs, protected configs and tunnel.
+5. Inspect `npm run ctl -- runtime` for actual profiles/review metadata and `tool-events` for real calls. These routes are local admin-only.
+6. Test production Gmail/Drive/Calendar/GitHub/Linear/MCP/skill and workspace/Desktop writes in the same Jarvis thread.
+7. Create one Gmail draft-to-self, subject “Jarvis Test”, body “Hello from Jarvis”; never send. Let native policy auto-review or request a human; do not invent an extra gateway confirmation.
+8. Test Chrome/public page and Calculator controls through app-server integration. Computer Use app grants require owner permission; unsupported built-in IAB is a surface limitation, not a reason for Full Access.
+9. Real human RPCs remain pending, without a default120s timeout. Inspect locally, then decide one request. Voice is not approval. Unsafe probes must have no destructive execution path.
+10. Record physical HUD/TTS/pending acceptance separately; keep Linear Needs Test until accepted.

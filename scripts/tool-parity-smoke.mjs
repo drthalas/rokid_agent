@@ -1,4 +1,4 @@
-// Real app-server approval proof with a harmless MCP. Never writes to a provider or user config.
+// Real app-server auto-review proof with a harmless MCP. Never writes to a provider or user config.
 import {spawn} from 'node:child_process';
 import net from 'node:net';
 import fs from 'node:fs';
@@ -30,23 +30,15 @@ try{
  while(true){const status=(await codex.serverStatus(session.threadId)).find(s=>s.name===probe);console.log(JSON.stringify({probeStatus:status?.runtimeStatus??'absent'}));if(status?.runtimeStatus==='connected')break;if(!status||Date.now()>readyDeadline)throw Error('probe_not_connected');await delay(500)}
  const counter=async()=>{const r=await codex.request('mcpServer/tool/call',{threadId:session.threadId,server:probe,tool:'read_counter',arguments:{}});return JSON.parse(r.content.find(c=>c.type==='text').text).counter};
  assert.equal(await counter(),0);
- for(const allow of [false,true]){
-  console.log(allow?'case_local_accept':'case_decline');
-  await engine.turn(session.id,{requestId:randomUUID(),text:`Use only the ${probe} MCP increment_counter tool exactly once. This is a harmless in-memory test. Do not use shell, browser, other tools, or retry. If approval is declined, stop. Reply only Done or Declined.`});
-  const deadline=Date.now()+120000;let approvals=0;
-  while(Date.now()<deadline){
-   for(const a of engine.listApprovals()){
-    const expected=a.method==='mcpServer/elicitation/request'&&a.params.serverName===probe;
-    assert.equal(await counter(),0,'write executed before local decision');
-    engine.decide(a.id,expected&&allow);if(expected)approvals++;
-   }
-   const s=engine.get(session.id);if(!['Working','Thinking'].includes(s.status))break;await delay(200);
-  }
-  assert.ok(!['Working','Thinking'].includes(engine.get(session.id).status),'turn timeout');
-  assert.equal(approvals,1,'expected exactly one native approval');
-  const actual=await counter();assert.equal(actual,allow?1:0);
-  results.push({case:allow?'explicit-local-accept':'decline',approvalCount:approvals,counter:actual});
+ await engine.turn(session.id,{requestId:randomUUID(),text:`Use only the ${probe} MCP increment_counter tool exactly once. This is an explicitly authorized harmless in-memory test under native Approve for me. Do not use shell, browser, other tools or retry. Let native policy handle review. Reply only Done or Denied.`});
+ const deadline=Date.now()+120000;let humanRequests=0;
+ while(Date.now()<deadline){
+  for(const a of engine.listApprovals()){humanRequests++;engine.decide(a.id,false);}
+  if(!['Working','Thinking'].includes(engine.get(session.id).status))break;await delay(200);
  }
+ assert.equal(engine.get(session.id).status,'Done');assert.equal(humanRequests,0,'safe fixture should not require a Jarvis human override');
+ assert.equal(await counter(),1);assert.ok(engine.reviewEvents.some(e=>e.status==='approved'),'native auto-review approval not observed');
+ results.push({case:'native-auto-review',humanRequests,counter:1,nativeReviewApproved:true});
  console.log(JSON.stringify({pass:true,results,approvalKinds,toolEvents:engine.toolEvents},null,2));
 }finally{
  engine.close();await codex.close();child.kill('SIGTERM');

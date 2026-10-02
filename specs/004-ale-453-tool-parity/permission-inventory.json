@@ -1,0 +1,141 @@
+{
+  "observedOn": "2026-10-02",
+  "cliVersion": "0.157.1",
+  "normalNativeConfig": {
+    "at": "2026-10-02T20:38:33.511Z",
+    "overrides": [],
+    "config": {
+      "sandbox_mode": "workspace-write",
+      "approval_policy": "on-request",
+      "approvals_reviewer": "auto_review",
+      "sandbox_workspace_write": null,
+      "apps": null,
+      "mcp": {
+        "computer-use": {
+          "enabled": false
+        },
+        "vercel": {
+          "enabled": true
+        },
+        "node_repl": {
+          "enabled": true,
+          "startup_timeout_sec": 120
+        }
+      },
+      "plugins": {
+        "github@openai-curated": {
+          "enabled": true
+        },
+        "documents@openai-primary-runtime": {
+          "enabled": true
+        },
+        "figma@openai-curated": {
+          "enabled": true
+        },
+        "gmail@openai-curated": {
+          "enabled": true
+        },
+        "template-creator@openai-primary-runtime": {
+          "enabled": true
+        },
+        "visualize@openai-bundled": {
+          "enabled": true
+        },
+        "codex-app-tools@openai-bundled": {
+          "enabled": true
+        },
+        "slack@openai-curated": {
+          "enabled": true
+        },
+        "spreadsheets@openai-primary-runtime": {
+          "enabled": true
+        },
+        "unified-computer-use@openai-bundled": {
+          "enabled": true
+        },
+        "linear@openai-curated": {
+          "enabled": true
+        },
+        "presentations@openai-primary-runtime": {
+          "enabled": true
+        },
+        "code-review@openai-bundled": {
+          "enabled": true
+        },
+        "computer-use@openai-bundled": {
+          "enabled": true
+        },
+        "chrome@openai-bundled": {
+          "enabled": true
+        },
+        "pdf@openai-primary-runtime": {
+          "enabled": true
+        },
+        "browser@openai-bundled": {
+          "enabled": true
+        }
+      },
+      "browser_use": null,
+      "computer_use": null,
+      "features": {
+        "js_repl": false,
+        "api_key_model_discovery": false,
+        "auth_elicitation": true,
+        "background_paginated_rollout_migration": false,
+        "codex_apps_mcp_2026_07_28": false,
+        "mcp_2026_07_28": false,
+        "memories": false,
+        "mentions_v2": true,
+        "remote_control": false,
+        "remote_plugin": true,
+        "tool_suggest": true,
+        "windows_sandbox_service": false
+      },
+      "layers": [
+        "user",
+        "system"
+      ]
+    },
+    "managedRequirements": false,
+    "nativeThread": {
+      "approvalPolicy": "on-request",
+      "approvalsReviewer": "auto_review",
+      "sandbox": {
+        "type": "workspaceWrite",
+        "writableRoots": [],
+        "networkAccess": false,
+        "excludeTmpdirEnvVar": false,
+        "excludeSlashTmp": false
+      }
+    }
+  },
+  "desktopSession": {
+    "approvalPolicy": "on-request",
+    "approvalsReviewer": "auto_review",
+    "sandboxType": "managed",
+    "network": "restricted",
+    "writableRootKinds": [
+      "current project",
+      "current task visualization directory",
+      "slash_tmp",
+      "tmpdir"
+    ],
+    "desktopIsWritableRoot": false,
+    "protectedSubpaths": [
+      ".git",
+      ".agents",
+      ".codex",
+      ".aws"
+    ]
+  },
+  "normalDesktopWrite": {
+    "workspace": "PASS",
+    "outsideWorkspace": "PASS via requested safe elevation; exclusive new file"
+  },
+  "nativeSurfaceProbes": {
+    "chrome": "PASS via cua_repl; Example Domain title observed",
+    "computer": "PASS after explicit owner Calculator grant; controls only",
+    "builtInBrowser": "UNAVAILABLE: native cua_repl returned Browser is not available: iab"
+  },
+  "productionChanged": false
+}

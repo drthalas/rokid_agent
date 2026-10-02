@@ -152,7 +152,7 @@ UX:
 
 ## 6. Approvals и безопасность
 
-Daemon использует read-only sandbox, `approvalPolicy: on-request`, `approvalsReviewer: user`. Никогда не возвращает accept автоматически. Permissions expansion и неизвестные server requests отклоняются. Команды/изменения ждут до 120 секунд:
+Daemon выбирает native `workspace-write`, `approvalPolicy: on-request`, `approvalsReviewer: auto_review`. Допустимые операции и escalation рассматривает Codex; gateway не отвечает accept самостоятельно. Настоящие human requests сразу видны как pending и ждут решения/native resolution/cancel/disconnect. Автоматического 120-секундного отказа нет; явно заданный approvalTimeoutMs остаётся опциональным:
 
 ```sh
 npm run ctl -- approvals
@@ -161,9 +161,9 @@ npm run ctl -- decline APPROVAL_UUID
 npm run ctl -- accept APPROVAL_UUID
 ```
 
-Прочитайте точную команду и пути, а не только reason от модели. Accept разрешает **одно** действие, которое может выйти из sandbox; это не обещание защиты за пределами approved action. Для опасного действия отдельное решение необходимо. Device API не содержит маршрута approval; даже device token не работает на admin API. Не запускайте gateway с auto-review или danger-full-access.
+Прочитайте точную команду и пути, а не только reason от модели. Accept разрешает **одно** действие, которое может выйти из sandbox; это не обещание защиты за пределами approved action. Для опасного действия отдельное решение необходимо. Device API не содержит маршрута approval; даже device token не работает на admin API. Не подменяйте выбранный Approve for me режимом danger-full-access или approval_policy=never.
 
-Allowlist ограничивает выбор рабочего проекта, но read-only Codex может читать и другие доступные локальные файлы. Этот MVP предназначен одному владельцу, не для недоверенных пользователей и не для multi-tenant isolation. MCP/apps/plugins/skills наследуются из effective Codex config; user-disabled capabilities остаются выключенными. Native hook trust сохраняется, но side effects доверенных startup/hooks не ограничиваются tool approvals. Gateway задаёт human reviewer: MCP требуют prompt для каждого вызова, connected apps — как минимум writes с сохранением более строгого prompt; shell network остаётся запрещён. Credentials не копируются; child environment сохраняет прежний allowlist (env-only credentials вне него недоступны).
+Allowlist ограничивает выбор рабочего проекта, но Codex может читать и другие доступные локальные файлы. Этот MVP предназначен одному владельцу, не для недоверенных пользователей и не для multi-tenant isolation. MCP/apps/plugins/skills наследуются из effective Codex config; user-disabled capabilities остаются выключенными. Native hook trust сохраняется, но side effects доверенных startup/hooks не ограничиваются tool approvals. App/MCP/plugin approval modes и reviewers наследуются без clamps; native default shell network остаётся ограниченным, host/browser/tool network рассматривается отдельно. Credentials не копируются; child environment сохраняет прежний allowlist (env-only credentials вне него недоступны).
 
 Gateway не пишет prompts/ответы в stdout, но последние ограниченные ответы и request fingerprints сохраняются в приватном state.json, а история сохраняется самим Codex. Android сохраняет pending prompt в приватных preferences до подтверждения доставки, чтобы не повторить turn. Аудио не сохраняется как архив.
 
@@ -220,9 +220,7 @@ node scripts/tool-parity-smoke.mjs
 node scripts/tool-parity-dynamic-smoke.mjs
 ```
 
-Первый script выводит только санитизированные capability metadata. Второй проверяет реальный native
-approval flow на MCP со счётчиком в памяти: decline не меняет счётчик, отдельное локальное test-решение
-accept меняет его один раз; не создаёт provider drafts/письма. Третий отключает/включает существующий
+Первый script выводит только санитизированные capability metadata. Второй проверяет native auto-review на MCP со счётчиком в памяти: разрешённая reviewer операция меняет его один раз без gateway-generated accept; provider drafts/письма не создаются. Третий отключает/включает существующий
 node_repl MCP только в временном project config с новым процессом на каждом шаге, не редактируя user config.
 Scripts запускают локальные порты и используют текущий Codex account для model smoke; это не offline unit tests.
 
@@ -230,6 +228,7 @@ Production evidence (локально на Mac):
 
 ```sh
 npm run ctl -- tool-events
+npm run ctl -- runtime
 npm run ctl -- approvals
 npm run ctl -- accept APPROVAL_ID
 npm run ctl -- decline APPROVAL_ID
@@ -247,4 +246,4 @@ Endpoint/token/private AIX менять не требуется. Проверя�
 а не только текст ответа модели. Не все Desktop host callbacks доступны standalone app-server; точные
 ограничения и результаты — [validation](specs/004-ale-453-tool-parity/validation.md).
 
-Для обычных/plugin MCP локальное подтверждение требуется даже для read: универсальный node_repl.js помечен readOnlyHint, поэтому одной метки недостаточно для защиты от side effects произвольного кода. Это сознательно более строгая политика; enable/disable пользователя не меняется.
+Для MCP применяется normal native policy, без Jarvis blanket prompt. Существующие Computer Use app-level grants могут требовать человека даже при auto_review. Не выдавайте новые app permissions или auth proofs автоматически. Смотрите фактические review events и surface evidence.

@@ -35,7 +35,8 @@ export async function serve(config, engine) {
       const url = new URL(req.url, 'https://gateway.invalid'); requireValue(!url.search, 'query_not_supported');
       const p = url.pathname; let result;
       if (admin) {
-        if (req.method === 'GET' && p === '/admin/tool-events') result = {events:engine.toolEvents};
+        if (req.method === 'GET' && p === '/admin/runtime') result = {profiles:[...(engine.codex.permissionProfiles?.values()??[])],reviews:engine.reviewEvents};
+        else if (req.method === 'GET' && p === '/admin/tool-events') result = {events:engine.toolEvents};
         else if (req.method === 'GET' && p === '/admin/diagnostics') result = { samples: diagnostics.samples };
         else if (req.method === 'GET' && p === '/admin/approvals') result = engine.listApprovals();
         else if (req.method === 'GET' && p === '/admin/sessions') result = Object.values(engine.data.sessions).map(s => engine.snapshot(s));

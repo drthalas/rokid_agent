@@ -1,65 +1,45 @@
-# Implementation Plan: ALE-453 Codex Tool Parity
+# Implementation Plan: ALE-453 native permission parity revision
 
-**Branch**: `main` | **Date**: 2026-10-02 | **Spec**: [spec.md](spec.md)
-**Feature directory**: `specs/004-ale-453-tool-parity` (Spec Kit feature identity, not an actual Git branch).
+Branch `main`; feature directory unchanged. Date2026-10-02. [Spec](spec.md).
 
 ## Summary
+Remove the earlier Jarvis-created policy layer. Run the selected native workspace-write/on-request/
+auto_review profile; inherit app/MCP/plugin policy and thread network/filesystem configuration. Keep
+human RPC handling and add bounded auto-review/pending evidence, without changing the accepted frontend.
 
-Inherit native enabled capabilities while replacing blanket MCP/apps/plugins/hooks isolation with a
-scoped approval-policy overlay. Extend the existing local approval state machine for proven native
-MCP confirmation forms. Preserve public snapshots and Jarvis sources. Gate production restart on
-regression tests plus isolated real-app-server proof of safe reads and denied/approved write controls.
+## Technical context
+Node22 ESM/ws, Codex0.157.1 installed schemas, same macOS gateway/state and RV101 AIX1.0.19. No new
+provider SDK/dependency/OAuth client. Production baseline08ab1a4; Git4e8d784. Native normal config
+was read with zero overrides; current Desktop turn_context was inspected only for permission fields.
 
-## Technical Context
+## Constitution check
+Updated requirement explicitly selects native auto-review instead of the previous human-only overlay.
+Loopback/auth/ownership/privacy/idempotency remain binding. Reviewer decisions are never manufactured
+by gateway. Broad permission grants and voice approvals remain forbidden. Full Access is rejected.
+Documentation must distinguish native auto-review denial from actual human RPCs and surface limitations.
 
-- Language/version: Node.js 22 ESM, Codex CLI 0.157.1 JSON-RPC over loopback WebSocket.
-- Dependencies: existing ws only; no provider SDK or credential library.
-- Storage: existing gateway state/history unchanged; approvals and bounded tool evidence in memory.
-- Testing: node:test unit/integration, real isolated app-server proof, then production and physical tests.
-- Platform: macOS Mac mini; existing AIUI Jarvis on RV101 via private HTTPS.
-- Performance: no extra inference per user turn; capability policy resolves at thread create/resume.
-- Constraints: no user config writes, provider credentials/logs, UX/history changes or shell network expansion.
-- Scope: single owner, current allowlisted projects; native capability surface only.
+## Design
+- `src/codex.mjs`: spawn selected native profile; remove tool policy tables and no longer force per-app
+  reviewer; inventory/disabled-state checks remain read-only. No credentials serialized in overrides.
+- `src/protocol.mjs`: workspace-write/on-request/auto_review thread policy; turns inherit resolved thread
+  sandbox rather than overriding with readOnly/network false. The normal native default network is false.
+- `src/engine.mjs`: normal create/resume/turn ownership intact; distinguish review notifications from
+  human requests. Human pending is immediate and stays pending by default; optional explicit timeout
+  remains for deployments/tests that intentionally configured one. Cancel/disconnect/resolution clear handles.
+- `src/tool-evidence.mjs`, `src/server.mjs`, `scripts/ctl.mjs`: local-only bounded review metadata and
+  pending timing; no rationale/commands/tool arguments/auth data in evidence.
+- `src/approvals.mjs`: retain fail-closed unsupported auth/input handling and per-request native responses.
+- Tests: native config inheritance, actual workspace/outside-root writes, auto-review events, no app/MCP
+  clamps, remaining human pending/decline, disabled state/dynamic restart, existing frontend pending hint.
+- Reuse existing Spec Kit artifacts and scripts; replace their superseded human-only assumptions explicitly.
 
-## Constitution Check
+## Verification and delivery
+1. Normal Desktop/config/native thread evidence before changes (completed inventory).
+2. Isolated normal Browser/Computer and auto-review probes; no real destructive test path.
+3. Tests first, minimal code change, regressions and native smoke before production restart.
+4. Idle production restart with existing state/thread/tunnel/private config hashes and rollback source.
+5. Actual A–K operations through that production instance; native risky/human behavior accurately labelled.
+6. Commit/push with secret scan; Needs Test until wearer acceptance. Unsupported APIs/permissions remain
+   documented limitations, never “fixed” by Full Access or synthetic approval.
 
-Pre-research and post-design: PASS. Persistent identities/idempotency preserved; readonly/shell-network
-policy and loopback boundaries retained; approvals remain local/explicit; no secrets in snapshots;
-visibility/invocation/physical evidence separated. Full Spec Kit used for the security-sensitive change.
-Installed/trusted host hooks/MCP startup are not claimed sandboxed by tool approvals. No new dependencies.
-
-## Project Structure
-
-- `src/tool-policy.mjs`: pure credential-free approval override construction from effective config/native server metadata.
-- `src/codex.mjs`: inherited spawn config, runtime inventory/policy instead of disable-all verification.
-- `src/approvals.mjs`: narrow native confirmation validation/response; unsupported shapes deny.
-- `src/engine.mjs`: scoped approval lifecycle and content-free tool completion evidence.
-- `src/server.mjs`: local-only evidence inspection if needed; device routes unchanged.
-- `test/tool-policy.test.mjs`, `test/approvals.test.mjs`, existing integration/protocol/helpers: policy and lifecycle coverage.
-- `scripts/tool-parity-inventory.mjs`, `scripts/tool-parity-smoke.mjs`: sanitized native visibility and acceptance evidence.
-- `ARCHITECTURE.md`, `RUNBOOK.md`, `docs/setup-status.md`: resulting boundaries/operations/evidence.
-- `aiui-agent/`, private config, cloud AIX, tunnel: unchanged unless an independently proven blocking issue requires scoped action.
-
-## Implementation phases
-
-1. Complete inventory and record surface limits (done before runtime changes).
-2. Test pure policy overlays: enabled inheritance, preserved disables, nested overrides, no credentials, safe key handling.
-3. Test native elicitation support and expiry/stale/foreign/unknown denial before routing it.
-4. Replace force-disable configuration with inherited capability policy; instrument only bounded metadata events on Mac.
-5. Run mock regressions and real isolated model-turn proof. Readonly annotations/policies must be verified;
-   do not promote a policy merely because config/read accepts it. Direct tool-call RPC is diagnostic only.
-6. Restart existing production gateway with recorded rollback and preserved state/IDs; run read-only production
-   acceptance, then physical wearer tests. Draft action stays pending until explicit local owner approval.
-7. Document exact evidence/limitations and Linear Needs Test; Done only after physical acceptance.
-
-No assumption that general MCP form input, URL OAuth or device-auth challenges can be answered by a
-boolean approval. Current bounded implementation declines those shapes. A future expansion needs its
-own schema-safe local input flow.
-
-## Complexity Tracking
-
-No constitution exceptions. Two small policy/approval modules isolate security decisions for testability;
-no integration framework or service adapters. Research agent was used for read-only schema/policy analysis.
-
-
-ALE-453 safety refinement: ordinary and plugin-bundled MCP tools always use `prompt`, including per-tool overrides. Native `node_repl.js` advertises readOnlyHint despite accepting general code, so annotation-based `writes` is insufficient for opaque MCP runners. Connected apps retain at least `writes` with human reviewer (stricter inherited prompt preserved). This is intentionally stricter than normal read policy for MCP; separate local approval is required even for a harmless MCP read. Tool availability and user-disabled settings are unchanged.
+Potential parallel work: read-only schema/auto-review research; root owns code, state and deployment.
