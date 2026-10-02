@@ -36,7 +36,7 @@ test('status pulse is bounded, reused across active phases and stops on static/h
  for(const phase of ['READY','DONE','ERROR'])pulse.setActive(ACTIVE_STATES.includes(phase));assert.equal(scheduled,0);
  for(const phase of ['LISTENING','TRANSCRIBING','THINKING','WORKING'])pulse.setActive(ACTIVE_STATES.includes(phase));assert.equal(scheduled,1);
  tick();tick();assert.deepEqual(values,[0.4,1,0.4]);pulse.stop();assert.equal(values.at(-1),1);assert.equal(cleared,1);
- tick();assert.equal(values.length,4);pulse.setActive(true);assert.equal(scheduled,2);pulse.stop();assert.equal(cleared,2);
+ tick();assert.equal(values.length,4);pulse.setActive(true);assert.equal(scheduled,4);pulse.stop();assert.equal(cleared,2);
 });
 test('brief answer is bounded, plain and extractive; full response is not modified',()=>{
  const short='Я работаю через ваш Mac.';assert.equal(briefAnswer(short),short);
@@ -45,4 +45,19 @@ test('brief answer is bounded, plain and extractive; full response is not modifi
  assert.ok(briefAnswer('слово '.repeat(300)).length<=300);
  assert.equal(briefAnswer('```js\nconst x = 1;\n```'),'Ответ содержит код. Полный текст ниже.');
  assert.equal(errorView('codex_unavailable').title,'Codex недоступен на Mac');
+});
+
+test('pulse timer/render failures fall back safely and stale ticks cannot restart after reopen',()=>{
+ for(const failure of ['schedule','render','async-render','cancel']){
+  const queued=[];let updates=0;
+  const pulse=new StatusPulse(()=>{updates++;if(failure==='render'||(failure==='async-render'&&updates===2))throw Error('native view unavailable')},{
+   schedule:f=>{if(failure==='schedule')throw Error('native timer unavailable');queued.push(f);return queued.length},
+   unschedule:()=>{if(failure==='cancel')throw Error('cancel unavailable')}
+  });
+  assert.doesNotThrow(()=>pulse.setActive(true));
+  if(failure==='async-render')assert.doesNotThrow(()=>queued[0]());
+  assert.doesNotThrow(()=>pulse.stop());assert.equal(pulse.timer,null);assert.equal(pulse.active,false);
+  const stale=queued[0];pulse.setActive(true);const count=updates;
+  stale?.();assert.equal(updates,count);pulse.stop();
+ }
 });

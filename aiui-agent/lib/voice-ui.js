@@ -31,18 +31,31 @@ export function errorView(reason) {
 }
 export const ACTIVE_STATES = ['LISTENING', ...BUSY_STATES];
 export class StatusPulse {
-  constructor(update, {schedule=setInterval, unschedule=clearInterval}={}) {
-    Object.assign(this,{update,schedule,unschedule}); this.timer=null;this.active=false;this.bright=false;
+  constructor(update, {schedule=setTimeout, unschedule=clearTimeout}={}) {
+    Object.assign(this,{update,schedule,unschedule}); this.timer=null;this.active=false;this.bright=false;this.epoch=0;
   }
   setActive(active) {
     if(this.active===active)return;
-    this.active=active;
-    if(this.timer!==null){this.unschedule(this.timer);this.timer=null;}
-    if(!active){this.update(1);return;}
-    this.bright=false;this.update(0.4);
-    this.timer=this.schedule(()=>{if(!this.active)return;this.bright=!this.bright;this.update(this.bright?1:0.4)},600);
+    if(!active){this.stop();return;}
+    this.active=true;this.bright=false;
+    const epoch=++this.epoch;
+    const tick=()=>{
+      if(!this.active || this.epoch!==epoch)return;
+      this.timer=null;
+      try {
+        this.bright=!this.bright;this.update(this.bright?1:0.4);
+        this.timer=this.schedule(tick,600);
+      } catch (_) { this.stop(); }
+    };
+    try { this.update(0.4);this.timer=this.schedule(tick,600); }
+    catch (_) { this.stop(); }
   }
-  stop(){this.setActive(false);}
+  stop(){
+    this.active=false;this.epoch++;
+    const timer=this.timer;this.timer=null;
+    if(timer!==null){try{this.unschedule(timer)}catch(_){}}
+    try{this.update(1)}catch(_){} // Static marker fallback; never propagate native UI errors.
+  }
 }
 export class TempleControls {
   constructor({tap,exit,scroll,trace=()=>{}}) {

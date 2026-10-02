@@ -11,7 +11,7 @@ source=source.replace(/from '(\.\.\/\.\.\/lib\/[^']+)'/g,(_,s)=>'from '+JSON.str
 const spec=(await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'))).default;
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 async function waitFor(check){for(let n=0;n<150;n++){if(check())return;await pause(10);}throw Error('page timeout')}
-function harness(){
+function harness({beforeLoad=()=>{},beforeShow=()=>{},rejectStatus=false}={}){
  const db=new Map(),calls=[],states=[],callbacks={},spoken=[],order=[];let time=1000,reads=0;const exchanges=[];
  let session={id:randomUUID(),threadId:randomUUID(),turnId:'old-turn',status:'Done',text:'Old setup advice from an earlier conversation'};
  const wx={getStorageSync:k=>db.get(k),setStorageSync:(k,v)=>db.set(k,structuredClone(v)),
@@ -33,8 +33,8 @@ function harness(){
  globalThis.SpeechSynthesisUtterance=class{constructor(text){this.text=text}};
  globalThis.speechSynthesis={async synthesize(utterance){spoken.push(utterance.text);return{finished:Promise.resolve(),abort(){order.push('abortTts')}}}};
  globalThis.SpeechAudioPlayer=class{play(){order.push('speak')}destroy(){order.push('stopTts')}};
- const page={...spec,data:{...spec.data},setData(value,done){Object.assign(this.data,value);if(value.phase)states.push(value.phase);done?.()}};
- page.onLoad({prompt:'Open the app'});page.onShow();page.controls.now=()=>time;
+ const page={...spec,data:{...spec.data},setData(value,done){if(rejectStatus && ('statusActive' in value || 'statusOpacity' in value))throw Error('status bridge unavailable');Object.assign(this.data,value);if(value.phase)states.push(value.phase);done?.()}};
+ beforeLoad(page);page.onLoad({prompt:'Open the app'});beforeShow(page);page.onShow();page.controls.now=()=>time;
  page.client.schedule=f=>setTimeout(f,0);
  const event=code=>({code,preventDefault(){}});
  function tap(){time+=1000;page.onKeyDown(event('GlobalHook'));page.onKeyUp(event('GlobalHook'));page.onKeyUp(event('Enter'));}
@@ -108,3 +108,26 @@ test('Jarvis hierarchy uses one message block and supported lightweight transiti
  assert.ok(page.includes('border-top:1px solid'));assert.ok(page.includes('transition-property:opacity'));
  assert.ok(!/@keyframes|animation:|spinner/.test(page));
 });
+
+for(const fault of ['missing-intervals','pulse-construction','status-render']) {
+ test('startup reaches health/READY and preserves voice/cleanup despite '+fault,async()=>{
+  const interval=globalThis.setInterval,clear=globalThis.clearInterval;
+  let h;
+  try {
+   if(fault==='missing-intervals'){delete globalThis.setInterval;delete globalThis.clearInterval;}
+   h=harness({rejectStatus:fault==='status-render',beforeShow:page=>{
+    if(fault==='pulse-construction')Object.defineProperty(page,'pulse',{configurable:true,get(){return null},set(){throw Error('optional initialization failed')}});
+   }});
+   await waitFor(()=>h.page.data.phase==='READY');
+   assert.equal(h.calls.filter(c=>c.url.endsWith('/v1/health')).length,1);
+   h.tap();assert.equal(h.page.data.phase,'LISTENING');h.voice();h.tap();
+   await waitFor(()=>h.page.data.phase==='DONE');await pause(0);
+   assert.equal(h.page.data.history.length,1);assert.equal(h.spoken.length,1);
+   const session=h.page.client.saved.sessionId,thread=h.page.client.saved.threadId;
+   h.back();assert.equal(h.page.client.active,false);h.page.onShow();
+   await waitFor(()=>h.page.data.phase==='READY'&&!h.page.client.operation);
+   assert.equal(h.page.client.saved.sessionId,session);assert.equal(h.page.client.saved.threadId,thread);
+   assert.equal(h.page.data.history.length,1);assert.equal(h.spoken.length,1);
+  }finally{globalThis.setInterval=interval;globalThis.clearInterval=clear;h?.page.cleanup();}
+ });
+}

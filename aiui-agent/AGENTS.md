@@ -1,5 +1,5 @@
 # Agent: Jarvis
-- **Version**: 0.4.0
+- **Version**: 0.4.1
 - **Description**: Open a voice terminal for the user's existing Codex agent on their Mac. Continue the same local project conversation and show task status and answers on the glasses.
 
 ## System Prompts

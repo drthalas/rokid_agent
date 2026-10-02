@@ -16,7 +16,6 @@ import { TempleControls, StatusPulse, ACTIVE_STATES, LABELS, BUSY_STATES, briefA
 export default {
   data: { phase: 'THINKING', label: 'Подключаюсь', statusActive: false, statusOpacity: 1, history: [], errorText: '', hint: '', scroll: 0, scrollTarget: '' },
   onLoad() {
-    this.pulse = new StatusPulse(opacity => this.setData({statusOpacity:opacity}));
     this.pageEpoch = 0; this.visible = false; this.spokenTurn = null; this.awaitingStop = false; this.trace = [];
     this.audio = new OneShotAudioSession({
       limits: { sampleRate: 16000, channels: 1, bytesPerSample: 2, maxDurationMs: 30000, maxBytes: 960000 },
@@ -32,7 +31,7 @@ export default {
     } catch (_) { this.showError('connection_not_configured'); }
   },
   onShow() {
-    this.visible = true; this.setPhaseData({phase:this.data.phase});
+    this.visible = true;
     this.controls = new TempleControls({ tap: () => this.tap(), exit: () => this.cleanup(),
       scroll: direction => { if (this.data.history.length) this.setData({ scrollTarget: '', scroll: Math.max(0, (this.scrollPosition || 0) + direction * 110) }); },
       trace: entry => {
@@ -44,9 +43,19 @@ export default {
     if (this.client) this.client.open();
   },
   setPhaseData(value, done) {
-    const active=this.visible && ACTIVE_STATES.includes(value.phase);
-    this.setData({...value,label:LABELS[value.phase] || LABELS.ERROR,statusActive:active},done);
-    this.pulse?.setActive(active);
+    // Keep essential state/history separate from optional native motion updates.
+    const update={...value,label:LABELS[value.phase] || LABELS.ERROR};
+    if (typeof done === 'function') this.setData(update,done);
+    else this.setData(update);
+    try {
+      if (!this.pulse) this.pulse=new StatusPulse(opacity => this.setData({statusOpacity:opacity}));
+      const active=this.visible && ACTIVE_STATES.includes(value.phase);
+      this.setData({statusActive:active});
+      this.pulse.setActive(active);
+    } catch (_) {
+      // A presentation failure must never interrupt client.open, recording or TTS.
+      this.pulse?.stop();
+    }
   },
   renderState(value) {
     if (!this.visible) return;
@@ -151,9 +160,11 @@ export default {
   onKeyDown(event) { this.controls?.handle('down', event); },
   onKeyUp(event) { this.controls?.handle('up', event); },
   cleanup() {
-    this.visible = false; this.controls?.dispose(); this.pulse?.stop(); this.setData({statusActive:false});
+    this.visible = false; this.controls?.dispose();
     if (this.sendTimer) clearTimeout(this.sendTimer); this.sendTimer = null;
     this.audio?.cancel('hidden'); this.stopSpeech(); this.client?.close();
+    this.pulse?.stop();
+    try { this.setData({statusActive:false}); } catch (_) {}
   },
   onHide() { this.cleanup(); },
   onUnload() { this.cleanup(); }

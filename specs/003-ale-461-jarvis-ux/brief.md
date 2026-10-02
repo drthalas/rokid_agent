@@ -54,3 +54,26 @@ which explicitly marks animation-* unsupported and confirms opacity/transition. 
 safe subset, with a lightweight timer stopped on READY/DONE/ERROR/hide/unload; do not ship CSS animation.
 
 Validation evidence is recorded in Linear with commit and cloud readback; physical final UX remains Needs Test.
+
+
+## Startup regression — 2026-10-02
+
+Physical 1.0.17 / 691bd5c opens Jarvis but stays at «Подключаюсь» (FAIL). Before modifying code:
+local health and public authenticated health passed; unauthenticated/wrong-token requests returned 401.
+Live cloud metadata/checksum matched the retained active 1.0.17 artifact; endpoint/token matched physical
+1.0.13 and local configuration in memory. Backend source/process and tunnel were unchanged.
+After the wearer confirmed reopening, tunnel total requests remained 334 → 334, errors 0. No request
+reached this tunnel during that window; this is not a native exception trace or proof that the device
+never attempted DNS/TLS. Gateway has no per-path access log.
+
+Fault injection reproduces a new pre-request failure: 1.0.17 constructs StatusPulse outside the onLoad
+try block and starts it in onShow before client.open. Missing interval globals or failing timer/render
+callbacks can abort startup; 1.0.13 opens under the same timer faults. Exact native cause remains unproven.
+
+Bounded repair 0.4.1: restore onShow's direct connection path, initialize motion lazily after essential
+state rendering, isolate all optional status updates, and use the existing setTimeout/clearTimeout
+capability instead of a new interval dependency. A failed pulse falls back to a static marker; teardown
+cannot prevent recorder/TTS/client cleanup. No transport, gateway, thread or gesture changes.
+Regression tests cover missing interval globals, failed pulse initialization/status bridge, timer and
+async render failures, stale callbacks, health → READY, a voice turn/TTS and same-identity/history reopen.
+Physical READY and the full Jarvis UX acceptance remain separate from tests/package/readback.
