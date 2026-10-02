@@ -1,4 +1,4 @@
-# Mac Codex — AIUI frontend
+# Jarvis — AIUI frontend
 
 Import this folder (or the generated AIX) into Rokid Craft / AIUI Studio. This is an **AIUI project**, not an Android APK; deployment uses the Rokid account and Hi Rokid resource update workflow, without ADB.
 
@@ -14,7 +14,7 @@ npm run check
 
 `../dist/mac-codex-aiui.aix` is deliberately **unconfigured and secret-free**. It shows a setup error until connected. For a working personal package, first prepare a trusted HTTPS origin for the existing Mac gateway, then follow the explicit private configuration steps in the setup guide. `config.js` is ignored and private; never force-add it to Git.
 
-Reuse: the MIT `OneShotAudioSession` / PCM VAD module from ksuzukigh/rokid-personal-ai is retained, with its full license. Ink page and gesture conventions follow that reference and official Rokid AIUI documentation. `lib/gateway.js` maps to the existing gateway protocol without changing Mac source code. Audio is capped at 30 seconds and wrapped into WAV. Invocation opens READY without forwarding a launch prompt. Enter/GlobalHook drive capture; Backspace preserves native close.
+Reuse: the MIT `OneShotAudioSession` / PCM VAD module from ksuzukigh/rokid-personal-ai is retained, with its full license. Ink page and gesture conventions follow that reference and official Rokid AIUI documentation. `lib/gateway.js` maps to the existing gateway protocol without changing Mac source code. Audio is capped at 30 seconds and wrapped into WAV. Invocation opens READY without forwarding a launch prompt. Only Enter key-up drives capture; GlobalHook is observation-only, arrows scroll; Backspace preserves native close.
 
 Local storage retains the gateway session and pending mutation UUID. The same session resumes after hide/reopen; a retry never mints a new UUID for an uncertain request. A configured sessionId can attach an existing gateway session. Stop is explicit. Back/hide stops capture, TTS and polling but preserves the server task/thread.
 
@@ -28,4 +28,6 @@ TTS uses native `speechSynthesis.synthesize` / `SpeechAudioPlayer` automatically
 
 Do not confuse successful packaging or browser preview with installation into a Rokid account or proof of physical RV101 voice behavior.
 
-Frontend 0.3.1 removes the four-button menu. Tap while ready/done records, tap while listening sends, tap while working cancels. The gateway persists six bounded same-session exchanges and supplies authoritative history snapshots across recording/reopen, including a fresh device cache. Ink list/conditional rendering uses `ink:for`/`ink:if`, not WeChat `wx:` directives. Each assistant answer appears once; a short extractive version is used only for TTS. The newest exchange receives focus; temple swipe scrolls history. The wearer confirmed tap recording/send and states on the earlier build; history rendering and automatic TTS remain a separate acceptance step for this build. Timing telemetry contains only bounded UUIDs/numbers/safe codes; see the task spec and AIUI setup.
+Frontend 0.4.0 removes the four-button menu. Tap while ready/done records, tap while listening sends, tap while working cancels. The gateway persists six bounded same-session exchanges and supplies authoritative history snapshots across recording/reopen, including a fresh device cache. Ink list/conditional rendering uses `ink:for`/`ink:if`, not WeChat `wx:` directives. Each assistant answer appears once; a short extractive version is used only for TTS. The newest exchange receives focus; temple swipe scrolls history. The wearer confirmed tap recording/send and states on the earlier build; history rendering and automatic TTS remain a separate acceptance step for this build. Timing telemetry contains only bounded UUIDs/numbers/safe codes; see the task spec and AIUI setup.
+
+Jarvis uses ВЫ / JARVIS speaker labels and a small active-state opacity pulse. Two-finger gestures are not core controls. Optional input-probe tools are not a release gate or part of the default package.

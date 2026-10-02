@@ -1,5 +1,7 @@
 # Rokid Agent
 
+The product-facing RV101 agent is **Jarvis**, invoked with “Hi Rokid, Jarvis”.
+
 A personal voice terminal: **Rokid RV101 → AIUI → authenticated HTTPS → Mac gateway → loopback Codex app-server**. Follow-up commands retain the selected project's Codex thread; results return to HUD and optional native TTS. AIUI is primary; direct Android APK and Nexus are optional fallbacks.
 
 [GitHub main](https://github.com/drthalas/rokid_agent/tree/main) is the source of truth. The backend chain has user-reported physical success; the new temple UX still requires physical acceptance. See [current setup, tests and limitations](docs/setup-status.md).

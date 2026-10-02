@@ -1,23 +1,42 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {TempleControls,briefAnswer,errorView} from '../lib/voice-ui.js';
+import {TempleControls,StatusPulse,ACTIVE_STATES,briefAnswer,errorView} from '../lib/voice-ui.js';
 
-test('GlobalHook down/up + Enter is one tap; Backspace preserves native close',()=>{
- let time=0,taps=0,exits=0,prevented=0;const trace=[];
- const controls=new TempleControls({tap:()=>taps++,exit:()=>exits++,scroll:()=>{},trace:e=>trace.push(e),now:()=>time});
- const e=code=>({code,preventDefault:()=>prevented++});
- controls.handle('down',e('GlobalHook'));time=30;controls.handle('up',e('GlobalHook'));time=40;controls.handle('up',e('Enter'));
- assert.equal(taps,1);
- time=500;controls.handle('down',e('GlobalHook'));controls.handle('down',e('Backspace'));controls.handle('up',e('Backspace'));
- assert.equal(taps,1);assert.equal(exits,1);assert.equal(prevented,2);assert.deepEqual(Object.keys(trace[0]),['edge','code']);
+function controls(){
+ const actions=[],trace=[],prevented=[];
+ const c=new TempleControls({tap:()=>actions.push('tap'),exit:()=>actions.push('exit'),scroll:d=>actions.push(d),trace:e=>trace.push(e)});
+ const send=(edge,code,repeat=false)=>c.handle(edge,{code,repeat,preventDefault:()=>prevented.push(code)});
+ return{c,actions,trace,prevented,send};
+}
+test('GlobalHook contact before a swipe never triggers a voice action',()=>{
+ const h=controls();
+ for(const code of ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight']){
+  h.send('down','GlobalHook');assert.ok(!h.actions.includes('tap'));
+  h.send('down',code);h.send('up',code);h.send('up','GlobalHook');
+ }
+ assert.deepEqual(h.actions,[-1,1,-1,1]);assert.ok(!h.prevented.includes('GlobalHook'));
 });
-test('Enter only, GlobalHook up-only, long held down/up, repeats and swipe',()=>{
- let time=1000,taps=0,scrolls=[];const c=new TempleControls({tap:()=>taps++,exit:()=>{},scroll:d=>scrolls.push(d),now:()=>time});
- c.handle('down',{code:'Enter'});c.handle('up',{code:'Enter'});assert.equal(taps,1);
- time=2000;c.handle('up',{code:'GlobalHook'});assert.equal(taps,2);
- time=3000;c.handle('down',{code:'GlobalHook'});time=4500;c.handle('up',{code:'GlobalHook'});c.handle('up',{code:'Enter'});assert.equal(taps,3);
- time=5500;c.handle('down',{code:'GlobalHook',repeat:true});assert.equal(taps,3);
- c.handle('up',{code:'ArrowDown'});c.handle('up',{code:'ArrowUp'});assert.deepEqual(scrolls,[1,-1]);
+test('only classified Enter key-up taps, with no added classification timer',()=>{
+ const h=controls();h.send('down','GlobalHook');h.send('up','GlobalHook');h.send('down','Enter');
+ assert.deepEqual(h.actions,[]);h.send('up','Enter');assert.deepEqual(h.actions,['tap']);
+ h.send('up','Enter',true);assert.deepEqual(h.actions,['tap']);
+ h.send('up','Enter');assert.deepEqual(h.actions,['tap','tap']); // independent rapid confirmed tap
+});
+test('Backspace exits once and leaves the native back action intact',()=>{
+ const h=controls();h.send('down','GlobalHook');h.send('down','Backspace');h.send('up','Backspace');h.send('up','Enter');
+ assert.deepEqual(h.actions,['exit']);assert.deepEqual(h.prevented,[]);
+});
+test('two-finger/unknown events and disposed controls never invoke voice',()=>{
+ const h=controls();for(const code of ['TwoFingerTap','TwoFingerDoubleTap','Settings','F13','Unknown'])h.send('up',code);
+ assert.deepEqual(h.actions,[]);h.c.dispose();h.send('up','Enter');h.send('up','ArrowDown');assert.deepEqual(h.actions,[]);
+});
+test('status pulse is bounded, reused across active phases and stops on static/hide',()=>{
+ let tick,scheduled=0,cleared=0;const values=[];
+ const pulse=new StatusPulse(v=>values.push(v),{schedule:(f,ms)=>{assert.equal(ms,600);tick=f;scheduled++;return 7},unschedule:id=>{assert.equal(id,7);cleared++}});
+ for(const phase of ['READY','DONE','ERROR'])pulse.setActive(ACTIVE_STATES.includes(phase));assert.equal(scheduled,0);
+ for(const phase of ['LISTENING','TRANSCRIBING','THINKING','WORKING'])pulse.setActive(ACTIVE_STATES.includes(phase));assert.equal(scheduled,1);
+ tick();tick();assert.deepEqual(values,[0.4,1,0.4]);pulse.stop();assert.equal(values.at(-1),1);assert.equal(cleared,1);
+ tick();assert.equal(values.length,4);pulse.setActive(true);assert.equal(scheduled,2);pulse.stop();assert.equal(cleared,2);
 });
 test('brief answer is bounded, plain and extractive; full response is not modified',()=>{
  const short='Я работаю через ваш Mac.';assert.equal(briefAnswer(short),short);

@@ -1,4 +1,4 @@
-# Mac Codex на RV101 через AIUI Studio / Craft — без ADB
+# Jarvis на RV101 через AIUI Studio / Craft — без ADB
 
 Руководство опирается на документацию и cloud-проверку 1 октября 2026 года. Актуальный зафиксированный статус версий/проверок — [setup status](docs/setup-status.md); архитектура — [ARCHITECTURE.md](ARCHITECTURE.md). В ходе architecture bootstrap облако и очки повторно не проверялись.
 
@@ -13,7 +13,7 @@
 Существующие `src/` gateway/Codex, конфигурация gateway, Android APK и протокол не изменены этой задачей.
 
 ```text
-«Hi Rokid, Mac Codex»
+«Hi Rokid, Jarvis»
     → зарегистрированный AIUI Agent → Ink Page на RV101
     → короткая PCM запись → WAV → HTTPS /v1/stt на Mac → transcript
     → /v1/sessions/:id/turns → существующий gateway → тот же Codex thread
@@ -177,12 +177,12 @@ npm run pack -- --private-package
 ## 5. Создать Agent в AIUI Studio
 
 1. На Mac откройте Studio Global и войдите в тот же Rokid account, что в Hi Rokid.
-2. Если интерфейс показывает **Application Management → Create Application**, выберите тип **AIUI Agent**. Имя: **Mac Codex**. Если вместо этого текущая Studio предлагает **Local import / Create with Coding / Import from GitHub**, выберите **Local import** и нужную папку проекта. Выбирайте один путь, не создавайте дубликаты.
+2. Если интерфейс показывает **Application Management → Create Application**, выберите тип **AIUI Agent**. Имя: **Jarvis**. Если вместо этого текущая Studio предлагает **Local import / Create with Coding / Import from GitHub**, выберите **Local import** и нужную папку проекта. Выбирайте один путь, не создавайте дубликаты.
 3. Описание: «Голосовой терминал для моего Codex на Mac. Продолжает диалог в локальном проекте и показывает результат на очках».
 Если форма требует категорию или иконку, заполните их перед сохранением; для публичного review стандартную иконку нужно заменить своей.
 
 4. Сохраните созданный Agent ID. Если свежий агент пока не имеет файлов и показывает load failure, перейдите к привязке проекта, а не создавайте ещё одного.
-5. Семантическое назначение открытия READY без task prompt задано в AGENTS.md и schema страницы. Оставьте узнаваемое имя **Mac Codex**, чтобы его можно было вызвать голосом.
+5. Семантическое назначение открытия READY без task prompt задано в AGENTS.md и schema страницы. Оставьте узнаваемое имя **Jarvis**, чтобы его можно было вызвать голосом.
 
 Новая Studio также позволяет сразу импортировать локальный проект и работать без отдельного Craft. Это официальный альтернативный UI того же процесса. Точные подписи и доступность могут зависеть от версии и региона — [официальный обзор Rokid](https://global.rokid.com/es/blogs/academy-glasses/glasses-3-6-aiui).
 
@@ -191,7 +191,7 @@ npm run pack -- --private-package
 1. Откройте Craft Global, войдите тем же account.
 2. Импортируйте **только** `aiui-agent/` для шаблона или `.local/aiui-private/` для рабочего личного проекта. Можно импортировать соответствующий `.aix`. Не импортируйте корень Rikid-agent: в нём есть Mac tools и `.local` с приватными данными.
 3. Убедитесь, что в корне дерева видны AGENTS.md, app.json, app.js, config.js и pages/index/index.ink.
-4. Откройте **Settings → Local Management** и привяжите этот проект к **Mac Codex**, созданному в Studio. Сверьте Agent ID из Studio. `develop.rokid.agent.…`, который показывает локальный `aix show`, — локальная производная от VERSION, а не подтверждение привязки к облачному аккаунту.
+4. Откройте **Settings → Local Management** и привяжите этот проект к **Jarvis**, созданному в Studio. Сверьте Agent ID из Studio. `develop.rokid.agent.…`, который показывает локальный `aix show`, — локальная производная от VERSION, а не подтверждение привязки к облачному аккаунту.
 5. **Run Agent / Interactive Inview** позволяет проверить экран и состояния. При импорте ненастроенного шаблона ожидается сообщение о ненастроенном соединении. Микрофон и native network в браузере не равнозначны RV101.
 
 Этот порядок привязки описан в [официальной документации AIUI Editor, раздел VII](https://github.com/yodaos-project/AIUI/blob/b1e9ff620b41b306bd50ef87d401f32d6c57edb5/documentation/7-tools/editor.en-US.md).
@@ -199,7 +199,7 @@ npm run pack -- --private-package
 ## 7. Pack и Upload
 
 1. В Craft используйте **Pack** для текущей привязанной папки. Если Pack объединён с deployment, следуйте следующему Upload-экрану. Для текущего smoke импортируйте **dist/mac-codex-aiui-private.aix** (не безопасный шаблон) и выберите Upload.
-2. Проверьте назначение — ваш **Mac Codex / Agent ID**, правильный account/region.
+2. Проверьте назначение — ваш **Jarvis / Agent ID**, правильный account/region.
 3. На Upload-экране сохраните согласованные permissions **Network, Camera, Microphone, Speaker**. Camera оставлена по решению владельца; текущий voice runtime её не вызывает. Agent-local storage используется для session/pending state. Location не требуется. В техническом `app.json.permissions` объявлен только поддерживаемый sensitive permission **RECORD_AUDIO**; не добавляйте несуществующие permission-строки NETWORK/TTS/STORAGE.
 4. Сохраните описание и данные версии, дождитесь **Upload successful**.
 5. В новом интерфейсе AIUI Studio эквивалент — **Build & Review → Package AIX / AIX Packaging**, затем **Save** информации агента. Пакет синхронизируется в cloud, версия увеличивается сервером. Локальный package.json version не заменяет облачную version.
@@ -220,15 +220,15 @@ npm run pack -- --private-package
 
 ## 9. Новый temple-driven UX (frontend 0.2.0, cloud 1.0.8)
 
-1. Произнесите **“Hi Rokid, Mac Codex”**. Invocation только открывает READY, не отправляется в Codex как prompt.
-2. На HUD: **Mac Codex / ● Готов / Нажмите на дужку и говорите**. Сохранённый старый ответ при открытии не показывается.
+1. Произнесите **“Hi Rokid, Jarvis”**. Invocation только открывает READY, не отправляется в Codex как prompt.
+2. На HUD: **Jarvis / ● Готов / Нажмите на дужку и говорите**. История той же gateway session восстанавливается без повторной озвучки старых ответов.
 3. Один тап → LISTENING. Говорите; следующий тап завершает запись. Автоотправка по паузе выключена, верхний лимит — 30 секунд.
 4. TRANSCRIBING → THINKING → WORKING → DONE. На экране только текущее состояние; меню кнопок отсутствует.
 5. Ответ появляется на HUD и автоматически озвучивается один раз за turn. На HUD ответ выводится один раз полностью; сокращение используется только для TTS. Последние шесть exchanges сохраняются gateway для той же session и приходят в snapshot, доступны прокруткой и не исчезают при новой записи. Это extractive preview, а не дополнительная задача Codex.
 6. Тап после DONE останавливает озвучку и начинает следующую запись в том же gateway session/thread.
-7. Тап во время выполнения отменяет текущий запрос/turn. Этот жест использует документированный Enter/GlobalHook; недокументированный long press не назначен.
+7. Тап во время выполнения отменяет текущий запрос/turn. Этот жест использует Enter onKeyUp; недокументированный long press не назначен.
 8. Двойной тап, который host выдаёт как Backspace, закрывает агент штатным действием host. Запись и отложенная отправка отменяются; сохранённый Codex thread не удаляется. Закрытие экрана само по себе не гарантирует отмену уже выполняемого turn: для этого предусмотрен тап во время выполнения.
-9. Свайп используется для прокрутки ответа. GlobalHook down/up и сопутствующий Enter дедуплицируются; отправка записанного звука отложена на 650 ms, чтобы Backspace успел отменить её при двойном тапе.
+9. Свайп используется для прокрутки ответа. GlobalHook только наблюдается и никогда не запускает запись/отмену; Enter onKeyUp управляет голосом, ArrowUp/Down и Left/Right — только прокруткой; отправка записанного звука отложена на 650 ms, чтобы Backspace успел отменить её при двойном тапе.
 
 Ожидаемые реальные коды: Enter, GlobalHook, Backspace, ArrowUp/ArrowDown. В agent-local storage `mac-codex-temple-trace` сохраняются только последние 32 кода/направления события и состояния, без речи/ответов/секретов. Документация и тесты подтверждают обработку этих последовательностей; конкретное поведение firmware RV101 проверяется физическим acceptance test после resource update.
 
@@ -319,3 +319,16 @@ thread, печатает только IDs/времена/PASS. `node scripts/stt
 «Обновите gateway на Mac». Проверка: три вопроса/ответа реально видны, reopen сохраняет их,
 scroll/tap/TTS работают, session/thread неизменны. До этого issue остаётся Needs Test.
 Изолированная проверка backend: `node scripts/history-smoke.mjs` (real Codex, без вывода текстов).
+
+### ALE-461: Jarvis UX (0.4.0)
+
+Вызов: **Hi Rokid, Jarvis**. Название cloud agent/HUD/AIUI definition меняется; Agent ID,
+backend identifiers, storage keys, session/thread и private config остаются прежними.
+GlobalHook — generic touch, не voice command. Enter на отпускании запускает запись в READY/DONE,
+останавливает/отправляет в LISTENING; стрелки прокручивают историю; Backspace — штатный выход.
+Двухпальцевые жесты не используются core controls. Probe в tools остаётся optional, не release gate.
+
+Labels **ВЫ / JARVIS**: 23px/700, полная яркость, отдельная строка; текст 19px/400,
+между exchanges зелёный разделитель. Статус — label + маленькая точка. LISTENING/TRANSCRIBING/
+THINKING/WORKING пульсируют через opacity/transition с одним таймером 600 ms; static/hide/unload
+останавливают таймер. CSS animation/keyframes и большой spinner не используются.

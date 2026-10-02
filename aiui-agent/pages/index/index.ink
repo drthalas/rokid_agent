@@ -1,7 +1,7 @@
 <script def>
 {
-  "navigationBarTitleText": "Mac Codex",
-  "description": "Open the Mac Codex voice terminal in READY state. The user taps the temple to dictate a task. Opening the agent is not a task.",
+  "navigationBarTitleText": "Jarvis",
+  "description": "Open the Jarvis voice terminal in READY state. The user taps the temple to dictate a task. Opening the agent is not a task.",
   "schema": {"data": {"type": "object", "properties": {}}}
 }
 </script>
@@ -11,11 +11,12 @@ import { Latency } from '../../lib/latency.js';
 import { OneShotAudioSession, PcmVoiceActivityDetector, VOICE_ACTIVITY_LIMITS } from '../../lib/one-shot-audio.js';
 import { pcmToWav } from '../../lib/wav.js';
 import { Conversation, createTransport } from '../../lib/gateway.js';
-import { TempleControls, LABELS, BUSY_STATES, briefAnswer, errorView } from '../../lib/voice-ui.js';
+import { TempleControls, StatusPulse, ACTIVE_STATES, LABELS, BUSY_STATES, briefAnswer, errorView } from '../../lib/voice-ui.js';
 
 export default {
-  data: { phase: 'THINKING', label: '● Подключаюсь', history: [], errorText: '', hint: '', scroll: 0, scrollTarget: '' },
+  data: { phase: 'THINKING', label: 'Подключаюсь', statusActive: false, statusOpacity: 1, history: [], errorText: '', hint: '', scroll: 0, scrollTarget: '' },
   onLoad() {
+    this.pulse = new StatusPulse(opacity => this.setData({statusOpacity:opacity}));
     this.pageEpoch = 0; this.visible = false; this.spokenTurn = null; this.awaitingStop = false; this.trace = [];
     this.audio = new OneShotAudioSession({
       limits: { sampleRate: 16000, channels: 1, bytesPerSample: 2, maxDurationMs: 30000, maxBytes: 960000 },
@@ -31,7 +32,7 @@ export default {
     } catch (_) { this.showError('connection_not_configured'); }
   },
   onShow() {
-    this.visible = true;
+    this.visible = true; this.setPhaseData({phase:this.data.phase});
     this.controls = new TempleControls({ tap: () => this.tap(), exit: () => this.cleanup(),
       scroll: direction => { if (this.data.history.length) this.setData({ scrollTarget: '', scroll: Math.max(0, (this.scrollPosition || 0) + direction * 110) }); },
       trace: entry => {
@@ -41,6 +42,11 @@ export default {
         try { wx.setStorageSync('mac-codex-temple-trace', this.trace); } catch (_) {}
       } });
     if (this.client) this.client.open();
+  },
+  setPhaseData(value, done) {
+    const active=this.visible && ACTIVE_STATES.includes(value.phase);
+    this.setData({...value,label:LABELS[value.phase] || LABELS.ERROR,statusActive:active},done);
+    this.pulse?.setActive(active);
   },
   renderState(value) {
     if (!this.visible) return;
@@ -52,7 +58,7 @@ export default {
     const update = { history, ...(changed && latest ? { scrollTarget: 'exchange-' + latest.requestId } : {}) };
     if (value.state === 'ERROR') { this.setData(update); this.showError(value.detail); return; }
     const phase = value.state;
-    this.setData({ ...update, phase, label: LABELS[phase] || LABELS.ERROR, errorText: '',
+    this.setPhaseData({ ...update, phase, label: LABELS[phase] || LABELS.ERROR, errorText: '',
       hint: phase === 'READY' ? 'Нажмите на дужку и говорите' :
         phase === 'DONE' ? 'Нажмите для следующей реплики' :
         value.pendingApproval ? 'Ожидает подтверждения на Mac' :
@@ -73,7 +79,7 @@ export default {
     const error = errorView(reason);
     this.safeError = error.code; this.latency?.finish(error.code);
     try { wx.setStorageSync('mac-codex-last-error', {code:error.code,at:Date.now()}); } catch (_) {}
-    this.setData({ phase: 'ERROR', label: LABELS.ERROR, errorText: error.title,
+    this.setPhaseData({ phase: 'ERROR', label: LABELS.ERROR, errorText: error.title,
       hint: 'Нажмите, чтобы подключиться' });
   },
   bindRecorder() {
@@ -117,10 +123,10 @@ export default {
     if (!this.recorder) { this.showError('microphone_unavailable'); return; }
     this.stopSpeech(); this.latency.sample = null; this.audio.reset(); this.awaitingStop = true;
     this.audio.begin({ requestId: crypto.randomUUID(), stopRecorder: () => {
-      if (this.visible) this.setData({ phase: 'TRANSCRIBING', label: LABELS.TRANSCRIBING, errorText: '', hint: 'Нажатие — отмена' });
+      if (this.visible) this.setPhaseData({ phase: 'TRANSCRIBING', label: LABELS.TRANSCRIBING, errorText: '', hint: 'Нажатие — отмена' });
       this.recorder.stop().catch(() => { this.awaitingStop = false; this.recordingError('recording_failed'); });
     }});
-    this.setData({ phase: 'LISTENING', label: LABELS.LISTENING, errorText: '', hint: 'Нажмите, чтобы отправить' });
+    this.setPhaseData({ phase: 'LISTENING', label: LABELS.LISTENING, errorText: '', hint: 'Нажмите, чтобы отправить' });
     // Invocation only opens READY. Microphone acquisition stays inside this physical input event.
     this.recorder.start({ sampleRate: 16000, numberOfChannels: 1, format: 'pcm' }).catch(() => { this.awaitingStop = false; this.recordingError('microphone_unavailable'); });
   },
@@ -145,7 +151,7 @@ export default {
   onKeyDown(event) { this.controls?.handle('down', event); },
   onKeyUp(event) { this.controls?.handle('up', event); },
   cleanup() {
-    this.visible = false;
+    this.visible = false; this.controls?.dispose(); this.pulse?.stop(); this.setData({statusActive:false});
     if (this.sendTimer) clearTimeout(this.sendTimer); this.sendTimer = null;
     this.audio?.cancel('hidden'); this.stopSpeech(); this.client?.close();
   },
@@ -155,15 +161,18 @@ export default {
 </script>
 <page>
   <view class="screen">
-    <text class="brand">Mac Codex</text>
-    <text class="state">{{label}}</text>
+    <text class="brand">Jarvis</text>
+    <view class="status-line">
+      <view class="status-point {{statusActive ? 'status-moving' : ''}}" style="opacity:{{statusOpacity}}"></view>
+      <text class="state">{{label}}</text>
+    </view>
     <text ink:if="{{errorText}}" class="error">{{errorText}}</text>
     <scroll-view class="answer" scroll-y="true" scroll-top="{{scroll}}" scroll-into-view="{{scrollTarget}}" bindscroll="handleScroll">
       <view class="content">
         <view ink:for="{{history}}" ink:key="requestId" id="exchange-{{item.requestId}}" class="exchange">
-          <text class="caption">Ты:</text>
+          <text class="speaker">ВЫ</text>
           <text class="body">{{item.user}}</text>
-          <text ink:if="{{item.completed}}" class="caption">Codex:</text>
+          <text ink:if="{{item.completed}}" class="speaker">JARVIS</text>
           <text ink:if="{{item.completed}}" class="body">{{item.assistant}}</text>
         </view>
       </view>
@@ -172,13 +181,18 @@ export default {
   </view>
 </page>
 <style>
-.screen { display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; padding: 16px; gap: 10px; background-color: #000000; color: #40ff5e; }
+.screen { display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; padding: 16px; gap: 10px; --primary:#40ff5e; --secondary:rgba(64,255,94,0.6); --divider:rgba(64,255,94,0.4); background-color: #000000; color:var(--primary); }
 .brand { font-size: 16px; }
-.state { font-size: 22px; font-weight: 600; }
+.status-line { display:flex; flex-direction:row; align-items:center; gap:8px; }
+.status-point { width:8px; height:8px; border-radius:9999px; background-color:var(--primary); }
+.status-moving { transition-property:opacity; transition-duration:450ms; transition-timing-function:ease-in-out; }
+.state { font-size:20px; font-weight:700; }
 .answer { width: 100%; flex-grow: 1; flex-shrink: 1; flex-basis: 0px; }
-.content, .exchange { display: flex; flex-direction: column; width: 100%; gap: 12px; }
-.exchange { margin-bottom: 20px; }
-.error, .body { width: 100%; font-size: 19px; line-height: 1.35; }
-.caption { font-size: 13px; color: rgba(64,255,94,0.72); }
-.hint { font-size: 16px; color: rgba(64,255,94,0.72); }
+.content, .exchange { display:flex; flex-direction:column; width:100%; }
+.content { gap:12px; }
+.exchange { gap:4px; padding-top:8px; margin-bottom:8px; border-top:1px solid var(--divider); }
+.error, .body { width:100%; font-size:19px; font-weight:400; line-height:1.35; }
+.body { margin-bottom:8px; }
+.speaker { font-family:monospace; font-size:23px; font-weight:700; line-height:1.1; color:var(--primary); }
+.hint { font-size: 16px; color: var(--secondary); }
 </style>

@@ -1,9 +1,9 @@
-# Agent: Mac Codex
-- **Version**: 0.3.1
+# Agent: Jarvis
+- **Version**: 0.4.0
 - **Description**: Open a voice terminal for the user's existing Codex agent on their Mac. Continue the same local project conversation and show task status and answers on the glasses.
 
 ## System Prompts
-When the user says “Hi Rokid, Mac Codex”, “Mac Codex”, or «Мак Кодекс», open pages/index/index with no task parameter. Invocation only opens the READY screen; it is never forwarded as a task. The wearer taps the temple to dictate the actual request. The Mac gateway owns backend availability and task execution. Do not substitute setup advice or an answer from another model for the terminal page.
+When the user says “Hi Rokid, Jarvis”, “Jarvis”, or «Джарвис», open pages/index/index with no task parameter. Invocation only opens the READY screen; it is never forwarded as a task. The wearer taps the temple to dictate the actual request. The Mac gateway owns backend availability and task execution. Do not substitute setup advice or an answer from another model for the terminal page.
 
 ## Capabilities
 - Microphone: short, explicit voice command capture, maximum 30 seconds. No background or meeting recording.
@@ -18,3 +18,6 @@ When the user says “Hi Rokid, Mac Codex”, “Mac Codex”, or «Мак Ко�
 
 ## Dependencies
 Existing Mac gateway `/v1/health`, `/v1/sessions`, `/v1/sessions/:id/turns`, `/v1/sessions/:id/stop`, `/v1/stt`. The gateway owns project allowlist, Codex threads, sandbox and local approval decisions. No AIUI LLM session or third-party cloud relay is required by this code.
+
+## Temple controls
+GlobalHook is observation only and never starts/stops voice. Enter onKeyUp controls voice; arrows scroll history; Backspace keeps native back/exit. No two-finger core mapping.

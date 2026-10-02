@@ -107,7 +107,7 @@ async function main(){
   const tools=pages.map(p=>({type:'function',target:'_current',layout:{width:480,height:168},function:{name:p.path,description:p.def.description,parameters:p.def.schema.data}}));
   const cdn=new URL(sts.cdnUrl);check(cdn.protocol==='https:'&&cdn.hostname==='arapp.rokidcdn.com','unexpected_cdn');
   const filePath=cdn.origin+'/'+aixKey;
-  const payload={...before,agentName:'Mac Codex',prologue:'Нажмите на дужку и говорите.',filePath,fileMd5:hash(aixBytes,'md5'),codeFilePath:sourceKey,codeFileMd5:hash(sourceBytes,'md5'),jsuiTitle:'Mac Codex',jsuiVersion:built.version,jsuiPages:JSON.stringify(pages.map(({path,title})=>({path,title}))),jsuiTools:JSON.stringify(tools),cutParamStr:JSON.stringify(tools)};
+  const payload={...before,agentName:app.name,prologue:'Нажмите на дужку и говорите.',filePath,fileMd5:hash(aixBytes,'md5'),codeFilePath:sourceKey,codeFileMd5:hash(sourceBytes,'md5'),jsuiTitle:app.name,jsuiVersion:built.version,jsuiPages:JSON.stringify(pages.map(({path,title})=>({path,title}))),jsuiTools:JSON.stringify(tools),cutParamStr:JSON.stringify(tools)};
   console.log('SAVE_PRIVATE_VERSION');
   // Do not retry mutations: after an ambiguous response, reconcile with read-only polling.
   let saveUncertain=false;try{await api(accessToken,'/agent/updateThirdAgent',payload)}catch{saveUncertain=true}

@@ -86,3 +86,25 @@ test('HUD renders each assistant once, retains full long answer and scroll posit
  assert.ok(!h.page.data.errorText.includes('4060'));assert.equal(h.page.data.history.length,1);
  }finally{h.page.cleanup()}
 });
+
+test('temple touch and every arrow cannot start or stop recording; Enter release controls voice',async()=>{
+ const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');
+ const send=(edge,code)=>h.page[edge==='down'?'onKeyDown':'onKeyUp']({code,preventDefault(){}});
+ for(const code of ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight']){send('down','GlobalHook');send('down',code);send('up',code);send('up','GlobalHook');}
+ assert.equal(h.order.filter(x=>x==='record').length,0);assert.equal(h.page.data.phase,'READY');
+ send('down','Enter');assert.equal(h.page.data.phase,'READY');send('up','Enter');assert.equal(h.page.data.phase,'LISTENING');
+ assert.equal(h.page.data.statusActive,true);h.voice();send('down','GlobalHook');send('up','ArrowDown');send('up','GlobalHook');
+ assert.equal(h.page.data.phase,'LISTENING');assert.equal(h.calls.filter(c=>c.url.endsWith('/stt')).length,0);
+ send('up','Enter');await waitFor(()=>h.page.data.phase==='DONE');assert.equal(h.page.data.statusActive,false);
+ assert.equal(h.page.pulse.timer,null);assert.equal(h.page.data.statusOpacity,1);
+ h.tap();assert.equal(h.page.data.statusActive,true);h.back();assert.equal(h.page.pulse.timer,null);assert.equal(h.page.data.statusActive,false);
+ }finally{h.page.cleanup()}
+});
+test('Jarvis hierarchy uses one message block and supported lightweight transition motion',()=>{
+ const page=fs.readFileSync(path.join(root,'pages/index/index.ink'),'utf8');
+ assert.ok(page.includes('<text class="brand">Jarvis</text>'));
+ assert.ok(page.includes('class="speaker">ВЫ</text>'));assert.ok(page.includes('class="speaker">JARVIS</text>'));
+ assert.ok(page.includes('font-size:23px; font-weight:700'));assert.ok(page.includes('font-size:19px; font-weight:400'));
+ assert.ok(page.includes('border-top:1px solid'));assert.ok(page.includes('transition-property:opacity'));
+ assert.ok(!/@keyframes|animation:|spinner/.test(page));
+});

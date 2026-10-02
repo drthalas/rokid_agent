@@ -6,7 +6,7 @@ The owner wears Rokid RV101 and wants short voice interactions with a personal C
 
 ## First useful scenario
 
-Open “Hi Rokid, Mac Codex”, tap and ask to describe the selected project's README. Read/hear the response; tap and ask for the main TODOs. Both prompts must use the same Codex thread. The selected project is an allowlisted alias; hazardous actions require a separate local Mac decision.
+Open “Hi Rokid, Jarvis”, tap and ask to describe the selected project's README. Read/hear the response; tap and ask for the main TODOs. Both prompts must use the same Codex thread. The selected project is an allowlisted alias; hazardous actions require a separate local Mac decision.
 
 ## Current scope and success criteria
 

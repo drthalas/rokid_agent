@@ -1,6 +1,6 @@
 // Frontend-only presentation and RV101 key normalization. No transport credentials here.
 export const BUSY_STATES = ['TRANSCRIBING', 'THINKING', 'WORKING'];
-export const LABELS = { READY: '● Готов', LISTENING: '● Слушаю', TRANSCRIBING: '● Распознаю', THINKING: '● Думаю', WORKING: '● Выполняю', DONE: '● Готово', ERROR: '● Ошибка' };
+export const LABELS = { READY: 'Готов', LISTENING: 'Слушаю', TRANSCRIBING: 'Распознаю', THINKING: 'Думаю', WORKING: 'Выполняю', DONE: 'Готово', ERROR: 'Ошибка' };
 export function briefAnswer(text, limit = 300) {
   const plain = String(text || '').replace(/```[\s\S]*?```/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[#*_`>]/g, '').replace(/\s+/g, ' ').trim();
   if (!plain) return text ? 'Ответ содержит код. Полный текст ниже.' : '';
@@ -29,32 +29,40 @@ export function errorView(reason) {
   const code = Object.hasOwn(ERROR_MESSAGES, reason) ? reason : 'client_error';
   return { title: ERROR_MESSAGES[code], reason: '', code };
 }
+export const ACTIVE_STATES = ['LISTENING', ...BUSY_STATES];
+export class StatusPulse {
+  constructor(update, {schedule=setInterval, unschedule=clearInterval}={}) {
+    Object.assign(this,{update,schedule,unschedule}); this.timer=null;this.active=false;this.bright=false;
+  }
+  setActive(active) {
+    if(this.active===active)return;
+    this.active=active;
+    if(this.timer!==null){this.unschedule(this.timer);this.timer=null;}
+    if(!active){this.update(1);return;}
+    this.bright=false;this.update(0.4);
+    this.timer=this.schedule(()=>{if(!this.active)return;this.bright=!this.bright;this.update(this.bright?1:0.4)},600);
+  }
+  stop(){this.setActive(false);}
+}
 export class TempleControls {
-  constructor({ tap, exit, scroll, trace = () => {}, now = Date.now }) {
-    Object.assign(this, { tap, exit, scroll, trace, now }); this.lastTap = -Infinity; this.closed = false; this.globalDownSeen = false;
+  constructor({tap,exit,scroll,trace=()=>{}}) {
+    Object.assign(this,{tap,exit,scroll,trace});this.closed=false;
   }
-  handle(edge, event) {
-    const code = event.code;
-    if (!['GlobalHook', 'Enter', 'Backspace', 'ArrowUp', 'ArrowDown'].includes(code)) return;
-    this.trace({ edge, code });
-    if (code === 'Backspace') {
-      // Keep the official host Back action. It closes the root page/agent.
-      if (!this.closed) { this.closed = true; this.exit(); }
-      return;
+  handle(edge,event) {
+    const code=event.code;
+    if(!['down','up'].includes(edge)||!['GlobalHook','Enter','Backspace','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(code))return;
+    this.trace({edge,code});
+    if(this.closed)return;
+    if(code==='Backspace') {
+      // Clean up once; never prevent the host's native key-up back/exit action.
+      this.closed=true;this.exit();return;
     }
-    if (this.closed) return;
-    if (code === 'ArrowUp' || code === 'ArrowDown') {
-      if (edge === 'up') { event.preventDefault?.(); this.scroll(code === 'ArrowDown' ? 1 : -1); }
-      return;
-    }
-    if (edge === 'up') event.preventDefault?.();
-    if (code === 'GlobalHook' && edge === 'up' && this.globalDownSeen) { this.globalDownSeen = false; this.lastTap = this.now(); return; }
-    if (code === 'GlobalHook' && edge === 'down') this.globalDownSeen = true;
-    if (event.repeat || (code === 'Enter' && edge !== 'up')) return;
-    // GlobalHook can be down-only, up-only, or accompany Enter on RV101.
-    // Start microphone synchronously in the user event; never defer start into a timer.
-    const time = this.now();
-    if (time - this.lastTap < 650) return;
-    this.lastTap = time; this.tap();
+    // Generic temple contact precedes swipes: it is NEVER a voice/cancel action.
+    if(code==='GlobalHook'||edge!=='up'||event.repeat)return;
+    event.preventDefault?.();
+    if(code==='Enter'){this.tap();return;}
+    // Horizontal codes, when supplied by a host, are harmless navigation aliases.
+    this.scroll(code==='ArrowUp'||code==='ArrowLeft'?-1:1);
   }
+  dispose(){this.closed=true;}
 }
