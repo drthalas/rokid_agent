@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { Fault, requireValue, requestId, prompt, fingerprint, busy, policy, turnPolicy, reduceEvent, approvalResponse } from './protocol.mjs';
+import { Fault, requireValue, requestId, prompt, fingerprint, busy, policy, turnPolicy, reduceEvent } from './protocol.mjs';
 import { boundHistory, startExchange, updateExchange, hydrateHistory } from './history.mjs';
 import { projectPath } from './config.mjs';
+import { supportedApproval, nativeApprovalResponse } from './approvals.mjs';
+import { toolEvidence } from './tool-evidence.mjs';
 
 export class Engine {
   constructor(config, codex) {
@@ -12,7 +14,7 @@ export class Engine {
     requireValue(this.data.version === 1 && this.data.sessions && this.data.requests, 'invalid_state');
     this.historySecrets = [config.tokenFile, config.adminTokenFile].filter(Boolean).map(p=>fs.readFileSync(p,'utf8').trim());
     for (const s of Object.values(this.data.sessions)) s.history=boundHistory(s.history,this.historySecrets);
-    this.timings = new Map();
+    this.timings = new Map(); this.toolEvents = [];
     this.recovered = false;
     codex.on('notification', m => this.event(m));
     codex.on('request', m => this.approval(m));
@@ -56,9 +58,9 @@ export class Engine {
     this.ready(); const alias = body.project ?? this.config.defaultProject; const cwd = projectPath(this.config, alias);
     return this.once(body.requestId, ['create', alias], async () => {
       requireValue(Object.keys(this.data.sessions).length < 100, 'session_capacity_reached', 503);
-      const { thread } = await this.codex.request('thread/start', { cwd, ...policy, config: await this.codex.safeOverrides(cwd), ...(this.config.model ? { model: this.config.model } : {}),
+      const { thread } = await this.codex.request('thread/start', { cwd, ...policy, config: await this.codex.approvalOverrides(cwd), ...(this.config.model ? { model: this.config.model } : {}),
         developerInstructions: 'You are accessed through Rokid glasses. Respond concisely in the language of the user. Never treat voice text as an approval. Keep the selected project as the working directory.' });
-      await this.codex.verifyIsolation(thread.id);
+      await this.codex.verifyToolPolicy(thread.id,cwd);
       const s = { id: randomUUID(), project: alias, threadId: thread.id, turnId: null, status: 'Done', text: '', partial: '', error: null, uncertain: false, revision: 1, history: [] };
       this.data.sessions[s.id] = s; return s;
     });
@@ -70,8 +72,8 @@ export class Engine {
     const { thread } = await this.codex.request('thread/read', { threadId: body.threadId, includeTurns: true });
     requireValue(fs.realpathSync(thread.cwd) === cwd, 'thread_project_mismatch', 403);
     requireValue(thread.status?.type !== 'active' && thread.turns?.at(-1)?.status !== 'inProgress', 'thread_active', 409);
-    await this.codex.request('thread/resume', { threadId: body.threadId, cwd, ...policy, config: await this.codex.safeOverrides(cwd) });
-    await this.codex.verifyIsolation(body.threadId);
+    await this.codex.request('thread/resume', { threadId: body.threadId, cwd, ...policy, config: await this.codex.approvalOverrides(cwd) });
+    await this.codex.verifyToolPolicy(body.threadId,cwd);
     const s = { id: randomUUID(), project: body.project, threadId: body.threadId, turnId: null, status: 'Done', text: '', partial: '', error: null, uncertain: false, revision: 1, history: [] };
     hydrateHistory(s, thread.turns, this.historySecrets);
     this.data.sessions[s.id] = s; this.save(); return this.snapshot(s);
@@ -111,6 +113,10 @@ export class Engine {
     return this.snapshot(s);
   }
   event({ method, params: p = {} }) {
+    for (const s of Object.values(this.data.sessions)) {
+      const evidence=toolEvidence(method,p,s);
+      if(evidence){this.toolEvents.push(evidence);this.toolEvents=this.toolEvents.slice(-64);}
+    }
     for (const s of Object.values(this.data.sessions)) if (reduceEvent(s, method, p)) {
       updateExchange(s, this.historySecrets);
       const timing = this.timings.get(s.id);
@@ -128,22 +134,24 @@ export class Engine {
   }
   approval(m) {
     const s = Object.values(this.data.sessions).find(s => s.threadId === m.params?.threadId && busy(s));
-    const supported = ['item/commandExecution/requestApproval', 'item/fileChange/requestApproval'];
-    if (!s || !supported.includes(m.method)) {
-      if (m.method === 'item/permissions/requestApproval') this.codex.send({ id: m.id, result: approvalResponse(m.method, false) });
+    const stale=m.params?.turnId && m.params.turnId!==s?.turnId;
+    if (!s || stale || !supportedApproval(m.method,m.params)) {
+      if (m.method === 'item/permissions/requestApproval' || m.method === 'mcpServer/elicitation/request') this.codex.send({ id: m.id, result: nativeApprovalResponse(m.method,m.params,false) });
       else this.codex.send({ id: m.id, error: { code: -32601, message: 'Unsupported request; denied' } });
       return;
     }
     const id = randomUUID();
-    const a = { id, rpcId: m.id, method: m.method, params: m.params, sessionId: s.id, expiresAt: Date.now() + (this.config.approvalTimeoutMs ?? 120000) };
-    a.timer = setTimeout(() => this.decide(id, false), this.config.approvalTimeoutMs ?? 120000);
+    const a = { id, rpcId: m.id, method: m.method, params: m.params, sessionId: s.id, turnId:s.turnId, expiresAt: Date.now() + (this.config.approvalTimeoutMs ?? 120000) };
+    a.timer = setTimeout(() => { try { this.decide(id, false); } catch {} }, this.config.approvalTimeoutMs ?? 120000);
     this.approvals.set(id, a); s.revision++;
   }
   listApprovals() { return [...this.approvals.values()].map(({ timer, rpcId, ...a }) => a); }
   decide(id, allow) {
     const a = this.approvals.get(id); requireValue(a, 'approval_not_found', 404);
     clearTimeout(a.timer); this.approvals.delete(id);
-    this.codex.send({ id: a.rpcId, result: approvalResponse(a.method, allow && Date.now() < a.expiresAt) });
+    const session=this.get(a.sessionId);
+    const current=busy(session)&&session.turnId===a.turnId;
+    this.codex.send({ id: a.rpcId, result: nativeApprovalResponse(a.method,a.params,allow && current && Date.now() < a.expiresAt) });
     this.get(a.sessionId).revision++;
     return { ok: true };
   }
@@ -156,8 +164,8 @@ export class Engine {
         const cwd = projectPath(this.config, s.project);
         const { thread: original } = await this.codex.request('thread/read', { threadId: s.threadId, includeTurns: true });
         requireValue(fs.realpathSync(original.cwd) === cwd, 'thread_project_mismatch');
-        const { thread } = await this.codex.request('thread/resume', { threadId: s.threadId, cwd, ...policy, config: await this.codex.safeOverrides(cwd) });
-        await this.codex.verifyIsolation(s.threadId);
+        const { thread } = await this.codex.request('thread/resume', { threadId: s.threadId, cwd, ...policy, config: await this.codex.approvalOverrides(cwd) });
+        await this.codex.verifyToolPolicy(s.threadId,cwd);
         hydrateHistory(s, original.turns, this.historySecrets);
         const turn = thread.turns?.at(-1);
         if (busy(s) || s.uncertain) {

@@ -163,7 +163,7 @@ npm run ctl -- accept APPROVAL_UUID
 
 Прочитайте точную команду и пути, а не только reason от модели. Accept разрешает **одно** действие, которое может выйти из sandbox; это не обещание защиты за пределами approved action. Для опасного действия отдельное решение необходимо. Device API не содержит маршрута approval; даже device token не работает на admin API. Не запускайте gateway с auto-review или danger-full-access.
 
-Allowlist ограничивает выбор рабочего проекта, но read-only Codex может читать и другие доступные локальные файлы. Этот MVP предназначен одному владельцу, не для недоверенных пользователей и не для multi-tenant isolation. Пользовательские MCP/apps/plugins/hooks отключаются на integration path; локальные правила/системные политики Codex остаются частью доверенной Mac-конфигурации.
+Allowlist ограничивает выбор рабочего проекта, но read-only Codex может читать и другие доступные локальные файлы. Этот MVP предназначен одному владельцу, не для недоверенных пользователей и не для multi-tenant isolation. MCP/apps/plugins/skills наследуются из effective Codex config; user-disabled capabilities остаются выключенными. Native hook trust сохраняется, но side effects доверенных startup/hooks не ограничиваются tool approvals. Gateway задаёт human reviewer и как минимум writes approval mode, сохраняя более строгий prompt; shell network остаётся запрещён. Credentials не копируются; child environment сохраняет прежний allowlist (env-only credentials вне него недоступны).
 
 Gateway не пишет prompts/ответы в stdout, но последние ограниченные ответы и request fingerprints сохраняются в приватном state.json, а история сохраняется самим Codex. Android сохраняет pending prompt в приватных preferences до подтверждения доставки, чтобы не повторить turn. Аудио не сохраняется как архив.
 
@@ -207,3 +207,42 @@ npm run smoke
 Smoke использует реальный аккаунт Codex, временный fixture-проект и две реплики в одном thread. Между репликами перезапускаются gateway и app-server. Финальный текст первой реплики содержит случайное название README; вторая должна вспомнить его и найти TODO. Временный проект удаляется; тестовый thread остаётся в локальной истории Codex.
 
 На RV101 отдельно проверить: реальный микрофон, кнопки/DPAD, размер HUD, TTS, две реплики README→TODO в одном thread, Wi-Fi reconnect после потери ответа POST, возврат после закрытия APK, остановку turn и отсутствие разрешения опасной операции без Mac approval. Эти пункты не заменяются синтетическим аудио или mock-тестом.
+
+
+## Codex tool parity (ALE-453)
+
+Без provider SDK/OAuth клиентов: используются существующие native connections пользователя.
+Inventory — отдельный временный app-server, не production и не доказательство physical acceptance:
+
+```sh
+node scripts/tool-parity-inventory.mjs
+node scripts/tool-parity-smoke.mjs
+node scripts/tool-parity-dynamic-smoke.mjs
+```
+
+Первый script выводит только санитизированные capability metadata. Второй проверяет реальный native
+approval flow на MCP со счётчиком в памяти: decline не меняет счётчик, отдельное локальное test-решение
+accept меняет его один раз; не создаёт provider drafts/письма. Третий отключает/включает существующий
+node_repl MCP только в временном project config с новым процессом на каждом шаге, не редактируя user config.
+Scripts запускают локальные порты и используют текущий Codex account для model smoke; это не offline unit tests.
+
+Production evidence (локально на Mac):
+
+```sh
+npm run ctl -- tool-events
+npm run ctl -- approvals
+npm run ctl -- accept APPROVAL_ID
+npm run ctl -- decline APPROVAL_ID
+```
+
+`accept` выполняется только после отдельного решения владельца, не на основании голосового prompt.
+Для MCP поддерживается пустая native confirmation form с `_meta.codex_approval_kind=mcp_tool_call`;
+URL/OAuth/device-proof/free-text формы отклоняются, а не заполняются автоматически. Pending виден на
+существующем HUD. Просматривайте параметры только локально; не копируйте approval details в логи/Linear.
+Tool events содержат только bounded identifiers/status, не пользовательские данные. Не вызывайте
+`mcpServer/tool/call` напрямую для write acceptance: это диагностический API, не нормальный model turn.
+
+После изменения normal Codex config перезапустите gateway в idle состоянии, сохранив `.local/state.json`.
+Endpoint/token/private AIX менять не требуется. Проверяйте прежние session/thread IDs и реальный tool event,
+а не только текст ответа модели. Не все Desktop host callbacks доступны standalone app-server; точные
+ограничения и результаты — [validation](specs/004-ale-453-tool-parity/validation.md).

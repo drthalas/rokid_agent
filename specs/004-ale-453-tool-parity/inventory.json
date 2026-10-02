@@ -1,0 +1,977 @@
+{
+  "observedOn": "2026-10-02",
+  "cliVersion": "0.157.1",
+  "launch": "temporary stdio, production allowlisted environment, ephemeral thread, no production restart",
+  "managedRequirementsPresent": false,
+  "projectConfigPresent": false,
+  "configuredMcp": [
+    {
+      "name": "node_repl",
+      "enabled": true
+    },
+    {
+      "name": "vercel",
+      "enabled": true
+    },
+    {
+      "name": "computer-use",
+      "enabled": false
+    }
+  ],
+  "apps": [
+    {
+      "name": "Zoom",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "Skyscanner",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "Linear",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "Sites",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "Gmail",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "Google Drive",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "Figma",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "Vercel",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "Adobe",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "GitHub",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "Google Calendar",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "Google Contacts",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "Pets",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "Codex Document Control",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "Hotline",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "ChatGPT Space",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "Plugin Management",
+      "enabled": true,
+      "callable": true
+    },
+    {
+      "name": "Safety Settings",
+      "enabled": true,
+      "callable": true
+    }
+  ],
+  "mcp": [
+    {
+      "name": "code-review",
+      "pluginId": "code-review@openai-bundled",
+      "runtimeStatusAtFirstPoll": "disabled",
+      "toolCount": 0,
+      "authStatus": "unsupported"
+    },
+    {
+      "name": "codex_app",
+      "pluginId": "codex-app-tools@openai-bundled",
+      "runtimeStatusAtFirstPoll": "disabled",
+      "toolCount": 0,
+      "authStatus": "unsupported"
+    },
+    {
+      "name": "codex_apps",
+      "pluginId": null,
+      "runtimeStatusAtFirstPoll": "starting",
+      "toolCount": 552,
+      "authStatus": "bearerToken"
+    },
+    {
+      "name": "computer-use",
+      "pluginId": null,
+      "runtimeStatusAtFirstPoll": "disabled",
+      "toolCount": 0,
+      "authStatus": "unsupported"
+    },
+    {
+      "name": "cua_repl",
+      "pluginId": "unified-computer-use@openai-bundled",
+      "runtimeStatusAtFirstPoll": "connected",
+      "toolCount": 3,
+      "authStatus": "unsupported"
+    },
+    {
+      "name": "node_repl",
+      "pluginId": null,
+      "runtimeStatusAtFirstPoll": "connected",
+      "toolCount": 4,
+      "authStatus": "unsupported"
+    },
+    {
+      "name": "vercel",
+      "pluginId": null,
+      "runtimeStatusAtFirstPoll": "starting",
+      "toolCount": 0,
+      "authStatus": "notLoggedIn"
+    }
+  ],
+  "skills": [
+    {
+      "name": "speckit-analyze",
+      "scope": "repo",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "speckit-checklist",
+      "scope": "repo",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "speckit-clarify",
+      "scope": "repo",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "speckit-constitution",
+      "scope": "repo",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "speckit-converge",
+      "scope": "repo",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "speckit-implement",
+      "scope": "repo",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "speckit-plan",
+      "scope": "repo",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "speckit-specify",
+      "scope": "repo",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "speckit-tasks",
+      "scope": "repo",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "speckit-taskstoissues",
+      "scope": "repo",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "app-69312da8e4dc81919370cb86fd172b6c:adobe-batch-edit-photos",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "app-69312da8e4dc81919370cb86fd172b6c@openai-curated-remote"
+    },
+    {
+      "name": "app-69312da8e4dc81919370cb86fd172b6c:adobe-create-mockups",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "app-69312da8e4dc81919370cb86fd172b6c@openai-curated-remote"
+    },
+    {
+      "name": "app-69312da8e4dc81919370cb86fd172b6c:adobe-create-social-variations",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "app-69312da8e4dc81919370cb86fd172b6c@openai-curated-remote"
+    },
+    {
+      "name": "app-69312da8e4dc81919370cb86fd172b6c:adobe-design-from-template",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "app-69312da8e4dc81919370cb86fd172b6c@openai-curated-remote"
+    },
+    {
+      "name": "app-69312da8e4dc81919370cb86fd172b6c:adobe-edit-quick-cut",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "app-69312da8e4dc81919370cb86fd172b6c@openai-curated-remote"
+    },
+    {
+      "name": "app-69312da8e4dc81919370cb86fd172b6c:adobe-fonts",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "app-69312da8e4dc81919370cb86fd172b6c@openai-curated-remote"
+    },
+    {
+      "name": "app-69312da8e4dc81919370cb86fd172b6c:adobe-retouch-portraits",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "app-69312da8e4dc81919370cb86fd172b6c@openai-curated-remote"
+    },
+    {
+      "name": "documents:documents",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "documents@openai-primary-runtime"
+    },
+    {
+      "name": "figma:figma-code-connect",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "figma@openai-curated-remote"
+    },
+    {
+      "name": "figma:figma-create-new-file",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "figma@openai-curated-remote"
+    },
+    {
+      "name": "figma:figma-design-to-code",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "figma@openai-curated-remote"
+    },
+    {
+      "name": "figma:figma-generate-design",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "figma@openai-curated-remote"
+    },
+    {
+      "name": "figma:figma-generate-diagram",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "figma@openai-curated-remote"
+    },
+    {
+      "name": "figma:figma-generate-library",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "figma@openai-curated-remote"
+    },
+    {
+      "name": "figma:figma-generative-plugins",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "figma@openai-curated-remote"
+    },
+    {
+      "name": "figma:figma-implement-motion",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "figma@openai-curated-remote"
+    },
+    {
+      "name": "figma:figma-shaders",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "figma@openai-curated-remote"
+    },
+    {
+      "name": "figma:figma-swiftui",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "figma@openai-curated-remote"
+    },
+    {
+      "name": "figma:figma-use",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "figma@openai-curated-remote"
+    },
+    {
+      "name": "figma:figma-use-figjam",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "figma@openai-curated-remote"
+    },
+    {
+      "name": "figma:figma-use-motion",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "figma@openai-curated-remote"
+    },
+    {
+      "name": "figma:figma-use-slides",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "figma@openai-curated-remote"
+    },
+    {
+      "name": "google-drive:google-docs",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "google-drive@openai-curated-remote"
+    },
+    {
+      "name": "google-drive:google-drive",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "google-drive@openai-curated-remote"
+    },
+    {
+      "name": "google-drive:google-drive-comments",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "google-drive@openai-curated-remote"
+    },
+    {
+      "name": "google-drive:google-sheets",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "google-drive@openai-curated-remote"
+    },
+    {
+      "name": "google-drive:google-slides",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "google-drive@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-analytics-dashboard",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-business-review",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-design-report",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-experiment-analysis",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-financial-budget",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-investment-committee-memo",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-legal-memorandum",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-market-trends-report",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-minimal-letterhead",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-operating-calendar",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-operating-review",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-project-kickoff",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-project-tracker",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-sales-pipeline",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-simple-dark-mode",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-simple-light-mode",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-strategy-memorandum",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-system-design",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-team-alignment",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "openai-templates:artifact-template-three-statement-forecast",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "openai-templates@openai-curated-remote"
+    },
+    {
+      "name": "pages:maintain-space",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "pages@openai-curated-remote"
+    },
+    {
+      "name": "pages:manage-schedules",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "pages@openai-curated-remote"
+    },
+    {
+      "name": "pages:organize-space",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "pages@openai-curated-remote"
+    },
+    {
+      "name": "pages:write-page",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "pages@openai-curated-remote"
+    },
+    {
+      "name": "pdf",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "pdf:pdf",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "pdf@openai-primary-runtime"
+    },
+    {
+      "name": "playwright",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "plugin-management:plugin-management",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "plugin-management@openai-curated-remote"
+    },
+    {
+      "name": "presentations:Presentations",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "presentations@openai-primary-runtime"
+    },
+    {
+      "name": "spreadsheets:Spreadsheets",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "spreadsheets@openai-primary-runtime"
+    },
+    {
+      "name": "spreadsheets:excel-live-control",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "spreadsheets@openai-primary-runtime"
+    },
+    {
+      "name": "template-creator:template-creator",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "template-creator@openai-primary-runtime"
+    },
+    {
+      "name": "vercel:agent-browser",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:agent-browser-verify",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:ai-elements",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:ai-gateway",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:ai-generation-persistence",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:ai-sdk",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:auth",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:bootstrap",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:cdn-caching",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:chat-sdk",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:cms",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:cron-jobs",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:deployments-cicd",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:email",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:env-vars",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:eve",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:geist",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:geistdocs",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:investigation-mode",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:json-render",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:knowledge-update",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:marketplace",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:micro",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:microfrontends",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:ncc",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:next-cache-components",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:next-forge",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:next-upgrade",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:nextjs",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:observability",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:payments",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:react-best-practices",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:routing-middleware",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:runtime-cache",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:satori",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:shadcn",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:sign-in-with-vercel",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:swr",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:turbopack",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:turborepo",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:v0-dev",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:vercel-agent",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:vercel-api",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:vercel-cli",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:vercel-connect",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:vercel-firewall",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:vercel-flags",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:vercel-functions",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:vercel-queues",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:vercel-sandbox",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:vercel-services",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:vercel-storage",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:verification",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "vercel:workflow",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "vercel@openai-curated-remote"
+    },
+    {
+      "name": "visualize:visualize",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "visualize@openai-bundled"
+    },
+    {
+      "name": "work-pets:create-pet",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "work-pets@openai-curated-remote"
+    },
+    {
+      "name": "work-pets:pets",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "work-pets@openai-curated-remote"
+    },
+    {
+      "name": "work-pets:update-pet",
+      "scope": "user",
+      "enabled": true,
+      "pluginId": "work-pets@openai-curated-remote"
+    },
+    {
+      "name": "imagegen",
+      "scope": "system",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "openai-docs",
+      "scope": "system",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "plugin-creator",
+      "scope": "system",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "review-agent",
+      "scope": "system",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "skill-creator",
+      "scope": "system",
+      "enabled": true,
+      "pluginId": null
+    },
+    {
+      "name": "skill-installer",
+      "scope": "system",
+      "enabled": true,
+      "pluginId": null
+    }
+  ],
+  "hooks": {
+    "count": 0,
+    "warnings": 0,
+    "errors": 0,
+    "legacyNotifyConfigured": true,
+    "legacyNotifyExecution": "not evaluated; native user configuration preserved"
+  },
+  "limitations": [
+    "App list metadata call timed out in the second diagnostic; installed/runtime APIs succeeded.",
+    "First thread status poll included starting entries; follow-up probe confirmed codex_apps connected and vercel authenticationRequired.",
+    "Direct mcpServer/tool/call read success is not proof of turn approval semantics.",
+    "Physical and production capability invocation tests not yet run."
+  ]
+}

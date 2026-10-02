@@ -4,21 +4,23 @@ import { EventEmitter } from 'node:events';
 import { spawn } from 'node:child_process';
 import WebSocket from 'ws';
 import { Fault } from './protocol.mjs';
+import { toolPolicyOverrides } from './tool-policy.mjs';
+import { isDeepStrictEqual } from 'node:util';
 
 export function spawnSpec(binary, port) {
   return { command: binary, args: ['app-server', '--listen', `ws://127.0.0.1:${port}`,
     '-c', 'sandbox_mode="read-only"', '-c', 'approval_policy="on-request"',
-    '-c', 'approvals_reviewer="user"', '-c', 'mcp_servers={}',
-    '-c', 'features.apps=false', '-c', 'features.plugins=false', '-c', 'features.hooks=false'],
+    '-c', 'approvals_reviewer="user"',
+    '-c', 'apps._default.approvals_reviewer="user"'],
   options: { shell: false, stdio: 'ignore' } };
 }
-function childEnv() {
+export function childEnv() {
   return Object.fromEntries(['HOME', 'CODEX_HOME', 'PATH', 'TMPDIR', 'LANG', 'LC_ALL', 'SHELL', 'USER', 'LOGNAME',
     'SSL_CERT_FILE', 'SSL_CERT_DIR'].filter(k => process.env[k]).map(k => [k, process.env[k]]));
 }
 export class Codex extends EventEmitter {
-  constructor({ binary = 'codex', port = 8390, attach = false, timeout = 30000 }) {
-    super(); Object.assign(this, { binary, port, attach, timeout });
+  constructor({ binary = 'codex', port = 8390, attach = false, timeout = 30000, experimentalApi = false }) {
+    super(); Object.assign(this, { binary, port, attach, timeout, experimentalApi });
     this.pending = new Map(); this.seq = 0; this.ready = false; this.stopped = false;
   }
   async start() {
@@ -73,12 +75,8 @@ export class Codex extends EventEmitter {
       this.scheduleReconnect();
     });
     try {
-      await this.request('initialize', { clientInfo: { name: 'rokid_mac_gateway', title: 'Rokid Mac Gateway', version: '0.1.0' }, capabilities: { experimentalApi: false } });
+      await this.request('initialize', { clientInfo: { name: 'rokid_mac_gateway', title: 'Rokid Mac Gateway', version: '0.1.0' }, capabilities: { experimentalApi: this.experimentalApi } });
       this.send({ method: 'initialized' });
-      // Empty TOML tables merge with local settings rather than deleting them.
-      // Disable each configured MCP server explicitly before any thread is loaded.
-      const effective = await this.request('config/read', { includeLayers: false });
-      this.safeConfig = Object.fromEntries(Object.keys(effective.config?.mcp_servers ?? {}).map(name => [`mcp_servers.${name}.enabled`, false]));
       this.ready = true;
     } catch (error) { ws.terminate(); throw error; }
   }
@@ -94,19 +92,32 @@ export class Codex extends EventEmitter {
       try { this.send({ id, method, params }); } catch (e) { clearTimeout(timer); this.pending.delete(id); reject(e); }
     });
   }
-  async safeOverrides(cwd) {
-    const effective = await this.request('config/read', { includeLayers: false, cwd });
-    return Object.fromEntries(Object.keys(effective.config?.mcp_servers ?? {}).map(name => [`mcp_servers.${name}.enabled`, false]));
-  }
-  async verifyIsolation(threadId) {
-    let cursor = null;
+  async serverStatus(threadId) {
+    const servers=[];let cursor=null;
     do {
-      const result = await this.request('mcpServerStatus/list', { threadId, limit: 100, cursor });
-      if (!Array.isArray(result.data) || result.data.some(s => s.runtimeStatus !== 'disabled' || Object.keys(s.tools ?? {}).length)) {
-        throw new Fault('mcp_isolation_failed', 503);
-      }
-      cursor = result.nextCursor;
-    } while (cursor);
+      const result=await this.request('mcpServerStatus/list',{...(threadId?{threadId}:{}),limit:100,cursor});
+      if(!Array.isArray(result.data))throw new Fault('capability_inventory_failed',503);
+      servers.push(...result.data);cursor=result.nextCursor;
+    } while(cursor);
+    return servers;
+  }
+  async approvalOverrides(cwd) {
+    const effective=await this.request('config/read',{includeLayers:false,cwd});
+    const overrides=toolPolicyOverrides(effective.config,await this.serverStatus());
+    this.policiesByCwd ??= new Map();this.policiesByCwd.set(cwd,overrides);
+    return overrides;
+  }
+  async verifyToolPolicy(threadId,cwd) {
+    const {config={}}=await this.request('config/read',{includeLayers:false,cwd});
+    const servers=await this.serverStatus(threadId);
+    const expected=toolPolicyOverrides(config,servers),applied=this.policiesByCwd?.get(cwd);
+    // A newly discovered project/plugin server must not execute under an unreviewed default.
+    if(!applied||!isDeepStrictEqual(expected,applied))throw new Fault('capability_policy_changed',503);
+    for(const server of servers) {
+      const plugin=server.pluginId&&config.plugins?.[server.pluginId];
+      const disabled=config.mcp_servers?.[server.name]?.enabled===false || plugin?.enabled===false || plugin?.mcp_servers?.[server.name]?.enabled===false;
+      if(disabled && (server.runtimeStatus!=='disabled'||Object.keys(server.tools??{}).length))throw new Fault('disabled_capability_active',503);
+    }
   }
   message(data) {
     let m; try { m = JSON.parse(data.toString()); } catch { return; }

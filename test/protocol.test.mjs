@@ -23,6 +23,9 @@ test('failed and interrupted are errors; commentary is not final', () => {
 test('loopback is fixed and approval never grants broad permissions', () => {
   const spec = spawnSpec('/opt/homebrew/bin/codex', 8390);
   assert.ok(spec.args.includes('ws://127.0.0.1:8390')); assert.equal(spec.options.shell, false);
+  assert.ok(!spec.args.some(a=>/mcp_servers=|features\.(apps|plugins|hooks)=false/.test(a)));
+  assert.ok(spec.args.includes('approvals_reviewer="user"'));
+  assert.ok(!spec.args.some(a=>a.startsWith('apps._default.default_tools_approval_mode=')), 'do not mask a stricter inherited prompt policy');
   assert.deepEqual(approvalResponse('item/permissions/requestApproval', true), { permissions: {}, scope: 'turn' });
   assert.deepEqual(approvalResponse('item/fileChange/requestApproval', false), { decision: 'decline' });
 });

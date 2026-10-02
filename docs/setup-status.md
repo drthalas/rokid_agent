@@ -66,3 +66,11 @@ Overall bootstrap status: **COMPLETE** for architecture reconciliation and Spec 
 Known runtime gaps and follow-up acceptance live in [architecture](../ARCHITECTURE.md#migration--architecture-gaps). Major limits: single owner/shared token, allowlist is routing not read isolation, uncertain send recovery requires local review, missing-state recovery policy is incomplete, response/capture bounded, no meeting/camera/notification implementation. Firmware/TTS and future privacy/retention policies remain TBD with conditions in [project brief](project-brief.md).
 
 Bootstrap-era recommendation (current priorities are set in Linear): **unexpected gateway-state loss and uncertain-turn recovery**. Define first-run vs lost/corrupt state, preserved thread ownership, restart/ACK crash cases and no-duplicate acceptance before implementation. No feature spec has been started here.
+
+## ALE-453 checkpoint — 2026-10-02
+
+Native tool-parity implementation/evidence is tracked by [ALE-453](https://linear.app/drthalas/issue/ALE-453)
+and [Spec Kit validation](../specs/004-ale-453-tool-parity/validation.md). Inventory found existing native
+apps/MCP/plugin skills; real isolated approvals/continuity/dynamic-config checks passed. This checkpoint
+is not production or physical acceptance. Accepted Jarvis UX remains cloud 1.0.19 / frontend baseline
+5e38d93; no frontend or private cloud/config change is required by tool parity.

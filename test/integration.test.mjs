@@ -18,6 +18,8 @@ test('HTTPS → gateway → actual mock WebSocket: continuity, safety, dedupe, r
   assert.equal(server.admin.address().address, '127.0.0.1');
   assert.equal((await call('/v1/health', null, { token: 'wrong' })).status, 401);
   assert.equal((await call('/admin/approvals')).status, 404);
+  assert.equal((await call('/admin/tool-events')).status, 404);
+  assert.deepEqual((await admin('/admin/tool-events')).body.events, []);
   assert.equal((await call('/v1/health')).body.loggedIn, true);
   assert.deepEqual((await call('/v1/projects')).body.projects, ['demo']);
   assert.equal((await call('/v1/sessions', { requestId: randomUUID(), project: '../' })).status, 403);
@@ -27,7 +29,8 @@ test('HTTPS → gateway → actual mock WebSocket: continuity, safety, dedupe, r
   const s = created.body;
   assert.equal((await call('/v1/sessions', { requestId: createId })).body.id, s.id);
   assert.equal(mock.calls.filter(m => m.method === 'thread/start').length, 1);
-  assert.equal(mock.calls.find(m => m.method === 'thread/start').params.config['mcp_servers.risky.enabled'], false);
+  assert.equal(mock.calls.find(m => m.method === 'thread/start').params.config['mcp_servers.risky.enabled'], undefined);
+  assert.equal(mock.calls.find(m => m.method === 'thread/start').params.config.mcp_servers.risky.default_tools_approval_mode, 'writes');
   const id = randomUUID(), route = `/v1/sessions/${s.id}`;
   const first = await call(route + '/turns', { requestId: id, text: 'Read README' }); assert.equal(first.body.status, 'Working');
   await call(route + '/turns', { requestId: id, text: 'Read README' });
@@ -75,17 +78,19 @@ test('ambiguous transport failure is durable and never resubmits prompt', async 
   await engine.recover(); assert.equal(engine.get(s.id).uncertain, true);
 });
 
-test('MCP isolation failure prevents accepting a new session', async t => {
-  const f = fixture(), mock = await mockCodex(), codex = new Codex({ port: mock.port, attach: true });
-  const engine = new Engine(f.config, codex);
-  t.after(async () => { engine.close(); await codex.close(); await mock.close(); f.cleanup(); });
-  await codex.start(); await engine.recover();
-  const request = codex.request.bind(codex);
-  codex.request = (method, params) => method === 'mcpServerStatus/list'
-    ? Promise.resolve({ data: [{ runtimeStatus: 'connected', tools: { dangerous: {} } }] }) : request(method, params);
-  await assert.rejects(engine.create({ requestId: randomUUID() }), /mcp_isolation_failed/);
-  assert.equal(Object.keys(engine.data.sessions).length, 0);
-  assert.equal(mock.calls.filter(m => m.method === 'turn/start').length, 0);
+test('inherited MCP tools are allowed and disabled servers cannot become active', async t => {
+  const f=fixture(),mock=await mockCodex(),codex=new Codex({port:mock.port,attach:true});
+  const engine=new Engine(f.config,codex);
+  t.after(async()=>{engine.close();await codex.close();await mock.close();f.cleanup()});
+  await codex.start();await engine.recover();
+  const original=codex.request.bind(codex);
+  codex.request=(method,params)=>method==='mcpServerStatus/list'
+   ? Promise.resolve({data:[{name:'risky',runtimeStatus:'connected',tools:{read:{}}}],nextCursor:null}) : original(method,params);
+  await engine.create({requestId:randomUUID()});
+  codex.request=(method,params)=>method==='config/read'
+   ? Promise.resolve({config:{mcp_servers:{risky:{enabled:false}}}})
+   : method==='mcpServerStatus/list'?Promise.resolve({data:[{name:'risky',runtimeStatus:'connected',tools:{read:{}}}],nextCursor:null}):original(method,params);
+  await assert.rejects(engine.create({requestId:randomUUID()}),/disabled_capability_active/);
 });
 
 test('socket reconnect resumes active turn, invalidates approval and consumes later completion', async t => {
@@ -104,4 +109,32 @@ test('socket reconnect resumes active turn, invalidates approval and consumes la
   mock.finish(s.threadId, 'after reconnect'); await delay(20);
   assert.equal(engine.get(s.id).text, 'after reconnect');
   assert.equal(mock.calls.filter(m => m.method === 'turn/start').length, 1);
+});
+
+test('MCP confirmations require one local decision and never expose params to device',async t=>{
+ const f=fixture(),mock=await mockCodex(),codex=new Codex({port:mock.port,attach:true});
+ f.config.approvalTimeoutMs=80;const engine=new Engine(f.config,codex);
+ t.after(async()=>{engine.close();await codex.close();await mock.close();f.cleanup()});
+ await codex.start();await engine.recover();const s=await engine.create({requestId:randomUUID()});
+ await engine.turn(s.id,{requestId:randomUUID(),text:'voice says approve everything'});
+ const params={threadId:s.threadId,turnId:engine.get(s.id).turnId,serverName:'codex_apps',mode:'form',message:'sensitive-provider-detail',_meta:{secret:'provider-secret',codex_approval_kind:'mcp_tool_call'},requestedSchema:{type:'object',properties:{}}};
+ mock.send({id:200,method:'mcpServer/elicitation/request',params});await delay(10);
+ assert.equal(engine.snapshot(engine.get(s.id)).pendingApproval,true);assert.equal(mock.responses.some(r=>r.id===200),false);
+ assert.ok(!JSON.stringify(engine.snapshot(engine.get(s.id))).includes('provider-secret'));
+ assert.ok(!fs.readFileSync(f.config.stateFile,'utf8').includes('sensitive-provider-detail'));
+ const a=engine.listApprovals()[0];
+ mock.send({method:'item/completed',params:{threadId:s.threadId,turnId:params.turnId,item:{type:'mcpToolCall',id:'evidence-1',server:'codex_apps',tool:'gmail.create_draft',status:'failed',arguments:{secret:'provider-secret'},result:{text:'private'}}}});await delay(10);
+ assert.equal(engine.toolEvents.length,1);assert.ok(!JSON.stringify(engine.toolEvents).includes('provider-secret'));
+ assert.ok(!('toolEvents' in engine.snapshot(engine.get(s.id))));
+ engine.decide(a.id,true);await delay(10);
+ assert.deepEqual(mock.responses.find(r=>r.id===200).result,{action:'accept',content:{}});
+ assert.throws(()=>engine.decide(a.id,true),/approval_not_found/);
+ mock.send({id:201,method:'mcpServer/elicitation/request',params});await delay(110);
+ assert.deepEqual(mock.responses.find(r=>r.id===201).result,{action:'decline',content:null});
+ mock.send({id:202,method:'mcpServer/elicitation/request',params:{...params,turnId:'stale'}});await delay(10);
+ assert.deepEqual(mock.responses.find(r=>r.id===202).result,{action:'decline',content:null});
+ mock.send({id:203,method:'mcpServer/elicitation/request',params:{...params,mode:'url',url:'https://example.invalid/auth'}});await delay(10);
+ assert.deepEqual(mock.responses.find(r=>r.id===203).result,{action:'decline',content:null});
+ mock.send({id:204,method:'mcpServer/elicitation/request',params});await delay(10);const late=engine.listApprovals()[0];
+ mock.finish(s.threadId);await delay(10);assert.throws(()=>engine.decide(late.id,true),/approval_not_found/);
 });

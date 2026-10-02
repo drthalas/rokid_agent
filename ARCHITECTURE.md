@@ -28,7 +28,7 @@ Cloudflare is the current HTTPS transport implementation, not a domain dependenc
 | AIUI frontend | Recording, temple events, local pending request/session, polling, HUD, native TTS | [page](aiui-agent/pages/index/index.ink), [client](aiui-agent/lib/gateway.js), [controls](aiui-agent/lib/voice-ui.js) |
 | Device/admin transport | HTTPS device routes, bearer authentication, body/concurrency bounds; separate loopback admin HTTP | [server](src/server.mjs) |
 | Gateway core | Alias allowlist, session/thread mapping, request fingerprints, single active turn, bounded snapshots, reconciliation, approval capabilities | [config](src/config.mjs), [engine](src/engine.mjs), [protocol](src/protocol.mjs) |
-| Codex adapter | Owned subprocess, loopback WebSocket JSON-RPC, initialization, reconnect, configured MCP isolation checks | [codex](src/codex.mjs) |
+| Codex adapter | Owned subprocess, loopback WebSocket JSON-RPC, initialization, reconnect, inherited capability policy and disabled-state checks | [codex](src/codex.mjs) |
 | STT adapter | Strict short WAV validation, one local whisper-cli process at a time, temporary files and cleanup | [stt](src/stt.mjs) |
 | Direct APK / Nexus | Alternative device or Android-hub capture/render/TTS plus shared Android conversation and HTTPS client | [Android sources](android-plugin/app/src) |
 | Deployment tooling | Private config injection, AIX packaging, cloud metadata/upload/readback; outside request execution | [AIUI tools](aiui-agent/tools), [deployment script](scripts/rokid-deploy.mjs), [cloud fallback](scripts/rokid-cloud-repackage.mjs) |
@@ -64,15 +64,15 @@ Creation and turn requests record their UUID/fingerprint before side effects. Sa
 
 Jarvis accepts only Enter key-up as a voice tap. GlobalHook is observation-only; ArrowUp/ArrowDown scroll and Left/Right are safe navigation aliases. A 650 ms send delay allows host Backspace classification. Physical double-tap→Backspace, microphone, HUD and automatic TTS remain acceptance gates for the new UX, not proven by mocked events. A local 32-entry event trace contains only key/edge/state/time.
 
-The gateway initializes JSON-RPC, calls thread/start for a new session and turn/start for each prompt. Reconnect/restart uses thread/read + thread/resume and reapplies allowlist/policy/isolation. It does not use independent `codex exec` per utterance and does not require opening the desktop app. Import of an existing idle thread is local admin-only and checks actual cwd. Concurrent desktop/gateway control of one thread is unsupported.
+The gateway initializes JSON-RPC, calls thread/start for a new session and turn/start for each prompt. Reconnect/restart uses thread/read + thread/resume and reapplies allowlist and scoped approval policy. It does not use independent `codex exec` per utterance and does not require opening the desktop app. Import of an existing idle thread is local admin-only and checks actual cwd. Concurrent desktop/gateway control of one thread is unsupported.
 
 ## Security and persistence
 
 See [ADR-002](docs/adr/ADR-002-loopback-boundary.md) and [ADR-003](docs/adr/ADR-003-private-deployment.md).
 
 - Codex is hard-coded to IPv4 loopback; normal startup owns its child and refuses an occupied port. Device HTTPS and admin loopback HTTP have distinct random bearer tokens. Glasses have no approval route and never receive the admin credential or Codex account credentials.
-- Every new/resumed thread uses read-only sandbox, on-request approvals, human reviewer. Supported command/file requests wait for a specific expiring local decision (120 s default). Permission expansion is denied; unknown requests fail closed. No auto-approve/session-wide grant. Explicit acceptance can authorize execution outside the sandbox; review exact command and paths locally.
-- Realpath allowlist constrains selected cwd, **not all readable files**. This is a single-owner MVP, not isolation for untrusted tenants. Effective MCP servers are disabled by name and verified disabled/zero tools; apps/plugins/hooks are disabled on this integration path. Child environment is allowlisted, not copied wholesale.
+- Every new/resumed thread uses read-only sandbox, on-request approvals, human reviewer. Supported command/file and native MCP tool-confirmation requests wait for a specific expiring local decision (120 s default). Only the observed empty form with native mcp_tool_call marker is supported; auth/URL/free-text/device-proof forms and permission expansion are denied. Unknown requests fail closed. No auto-approve/session-wide grant. Explicit acceptance can authorize execution outside the sandbox; review exact command and paths locally.
+- Realpath allowlist constrains selected cwd, **not all readable files**. This is a single-owner MVP, not isolation for untrusted tenants. MCP/apps/plugins/skills and hook trust inherit effective Codex configuration. Gateway no longer disables capability classes. A per-thread overlay requires human review of writes, retains stricter prompt policies and clamps per-tool/per-account approval bypasses without changing enablement or credentials. Explicitly disabled servers are checked after load. Child environment remains allowlisted, not copied wholesale; environment-only credentials absent from that allowlist remain a surface limitation. Host MCP networking is distinct from shell networkAccess:false. Trusted MCP startup/hooks are not sandboxed by this tool-approval overlay; no hooks were discovered during ALE-453 inventory.
 - AIUI verifies public CA/hostname TLS. Android uses out-of-band leaf certificate pinning. The authorized smoke-only `--no-tls-verify` exception is restricted to cloudflared → HTTPS gateway on the same Mac; no client-side TLS bypass and no router port forwarding. Cloudflare terminates TLS and is a trusted transport processor able to observe requests; it is not end-to-end encryption directly to Mac.
 - Private `config.js`, configured AIX, cloud downloads, tokens, keys, logs and browser/Rokid sessions stay ignored. AIX JavaScript is readable: private cloud distribution is a credential-bearing trust boundary, not encrypted secret storage.
 - Gateway state contains mapping, fingerprints and bounded answers in a mode-0600 JSON file, replaced atomically. It is not fsync-backed transactional storage. Codex keeps full history; frontend retains pending text for retry. WAV/Whisper text exists temporarily and is removed in finally; abrupt termination may leave files requiring local cleanup. No audio archive. Legacy session history is projected from validated same-thread Codex user/final messages during recovery; incomplete delivery remains uncertain. See [ALE-452 brief](specs/002-ale-452-current-chat-history/brief.md).
@@ -170,3 +170,19 @@ Nexus spawn/kill already supports macOS. Required work is product scope, not an 
 
 
 AIUI follow-up reused `voice-aix-source/lib/one-shot-audio.mjs` from the same personal-ai revision, preserving its MIT license in [AIUI licenses](aiui-agent/licenses/rokid-personal-ai-MIT.txt). Official AIUI authoring evidence and packaging details are in [AIUI setup](AIUI_SETUP.md). Codex protocol was tested against installed CLI 0.157.1: schema listed `untrusted` but runtime rejected it; `on-request` is the tested setting. An empty `mcp_servers={}` merged inherited settings, so per-server disabling and status verification were necessary. These observations must be rechecked when that dependency changes.
+
+
+## ALE-453 capability evidence and limits
+
+Versioned design/inventory: [tool parity](specs/004-ale-453-tool-parity/spec.md),
+[research](specs/004-ale-453-tool-parity/research.md), [validation](specs/004-ale-453-tool-parity/validation.md).
+Native capability inventory and diagnostic tool-call RPCs are local tooling only, never device APIs.
+`GET /admin/tool-events` adds a loopback-only bounded metadata view (64 records; identifiers/status,
+no arguments/results/auth metadata) to prove production tool calls. It is memory-only and resets on restart.
+Existing `/v1` snapshots/history and Jarvis UI are unchanged; device sees pendingApproval only.
+
+Native config overrides use nested JSON objects. Policy-only overlays intentionally avoid copying full
+MCP definitions or credentials. CLI-only whole-server definitions are not a supported production config
+source; inherited user/project files are. New project-scoped plugin servers not covered by the pre-load
+policy fail closed with capability_policy_changed. Do not substitute raw tool/call RPC for approval-aware
+model turns. Hook process startup and model-selected skill execution retain their native trust boundaries.
