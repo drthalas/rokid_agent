@@ -157,14 +157,14 @@ export default {
   <view class="screen">
     <text class="brand">Mac Codex</text>
     <text class="state">{{label}}</text>
-    <text wx:if="{{errorText}}" class="error">{{errorText}}</text>
+    <text ink:if="{{errorText}}" class="error">{{errorText}}</text>
     <scroll-view class="answer" scroll-y="true" scroll-top="{{scroll}}" scroll-into-view="{{scrollTarget}}" bindscroll="handleScroll">
       <view class="content">
-        <view wx:for="{{history}}" wx:key="requestId" id="exchange-{{item.requestId}}" class="exchange">
+        <view ink:for="{{history}}" ink:key="requestId" id="exchange-{{item.requestId}}" class="exchange">
           <text class="caption">Ты:</text>
           <text class="body">{{item.user}}</text>
-          <text wx:if="{{item.completed}}" class="caption">Codex:</text>
-          <text wx:if="{{item.completed}}" class="body">{{item.assistant}}</text>
+          <text ink:if="{{item.completed}}" class="caption">Codex:</text>
+          <text ink:if="{{item.completed}}" class="body">{{item.assistant}}</text>
         </view>
       </view>
     </scroll-view>

@@ -31,7 +31,7 @@ test('AIUI wx adapter → unchanged HTTPS gateway → mock app-server, three tur
   mock.finish(first,'README answer');await delay(10);await client.refresh();client.close();
   client=build();await client.open();await client.submit('Now find TODO');mock.finish(first,'TODO answer');await delay(10);await client.refresh();
   await client.submit('Third follow-up');mock.finish(first,'Third answer');await delay(10);await client.refresh();
-  assert.equal(client.saved.history.exchanges.length,3);assert.equal(new Set(client.saved.history.exchanges.map(e=>e.turnId)).size,3);
+  assert.equal(client.history.exchanges.length,3);assert.equal(new Set(client.history.exchanges.map(e=>e.turnId)).size,3);
   assert.ok(client.last.timing.T5);assert.ok(client.last.timing.T6);assert.ok(client.last.timing.T7);assert.ok(client.last.timing.T8);
   assert.equal(client.saved.sessionId,id);assert.equal(client.last.text,'Third answer');assert.equal(client.last.threadId,first);
   const starts=mock.calls.filter(x=>x.method==='turn/start');assert.equal(starts.length,3);assert.equal(starts[0].params.threadId,starts[1].params.threadId);

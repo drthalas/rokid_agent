@@ -22,6 +22,7 @@ const ERROR_MESSAGES = {
   session_mismatch: 'Диалог изменился. Проверьте Mac', thread_mismatch: 'Диалог изменился. Проверьте Mac',
   session_not_found: 'Диалог не найден на Mac', connection_not_configured: 'Подключение к Mac не настроено',
   invalid_response: 'Не удалось прочитать ответ Mac', invalid_snapshot: 'Не удалось прочитать ответ Mac',
+  gateway_history_unavailable: 'Обновите gateway на Mac',
   client_error: 'Не удалось выполнить запрос', gateway_error: 'Ошибка на Mac', turn_interrupted: 'Задача остановлена'
 };
 export function errorView(reason) {

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Fault, requireValue, requestId, prompt, fingerprint, busy, policy, turnPolicy, reduceEvent, approvalResponse } from './protocol.mjs';
+import { boundHistory, startExchange, updateExchange, hydrateHistory } from './history.mjs';
 import { projectPath } from './config.mjs';
 
 export class Engine {
@@ -9,6 +10,8 @@ export class Engine {
     this.config = config; this.codex = codex; this.approvals = new Map(); this.locks = new Set();
     this.data = fs.existsSync(config.stateFile) ? JSON.parse(fs.readFileSync(config.stateFile, 'utf8')) : { version: 1, sessions: {}, requests: {} };
     requireValue(this.data.version === 1 && this.data.sessions && this.data.requests, 'invalid_state');
+    this.historySecrets = [config.tokenFile, config.adminTokenFile].filter(Boolean).map(p=>fs.readFileSync(p,'utf8').trim());
+    for (const s of Object.values(this.data.sessions)) s.history=boundHistory(s.history,this.historySecrets);
     this.timings = new Map();
     this.recovered = false;
     codex.on('notification', m => this.event(m));
@@ -31,6 +34,7 @@ export class Engine {
   get(id) { requireValue(Object.hasOwn(this.data.sessions, id), 'session_not_found', 404); return this.data.sessions[id]; }
   snapshot(s) {
     return { id: s.id, project: s.project, threadId: s.threadId, turnId: s.turnId, status: s.status,
+      history: {sessionId:s.id,threadId:s.threadId,exchanges:boundHistory(s.history,this.historySecrets)},
       text: s.text, partial: s.partial, error: s.error, uncertain: s.uncertain, revision: s.revision,
       pendingApproval: [...this.approvals.values()].some(a => a.sessionId === s.id),
       ...(this.timings.has(s.id) ? {timing:{...this.timings.get(s.id)}} : {}) };
@@ -55,7 +59,7 @@ export class Engine {
       const { thread } = await this.codex.request('thread/start', { cwd, ...policy, config: await this.codex.safeOverrides(cwd), ...(this.config.model ? { model: this.config.model } : {}),
         developerInstructions: 'You are accessed through Rokid glasses. Respond concisely in the language of the user. Never treat voice text as an approval. Keep the selected project as the working directory.' });
       await this.codex.verifyIsolation(thread.id);
-      const s = { id: randomUUID(), project: alias, threadId: thread.id, turnId: null, status: 'Done', text: '', partial: '', error: null, uncertain: false, revision: 1 };
+      const s = { id: randomUUID(), project: alias, threadId: thread.id, turnId: null, status: 'Done', text: '', partial: '', error: null, uncertain: false, revision: 1, history: [] };
       this.data.sessions[s.id] = s; return s;
     });
   }
@@ -68,7 +72,8 @@ export class Engine {
     requireValue(thread.status?.type !== 'active' && thread.turns?.at(-1)?.status !== 'inProgress', 'thread_active', 409);
     await this.codex.request('thread/resume', { threadId: body.threadId, cwd, ...policy, config: await this.codex.safeOverrides(cwd) });
     await this.codex.verifyIsolation(body.threadId);
-    const s = { id: randomUUID(), project: body.project, threadId: body.threadId, turnId: null, status: 'Done', text: '', partial: '', error: null, uncertain: false, revision: 1 };
+    const s = { id: randomUUID(), project: body.project, threadId: body.threadId, turnId: null, status: 'Done', text: '', partial: '', error: null, uncertain: false, revision: 1, history: [] };
+    hydrateHistory(s, thread.turns, this.historySecrets);
     this.data.sessions[s.id] = s; this.save(); return this.snapshot(s);
   }
   async turn(id, body) {
@@ -81,6 +86,7 @@ export class Engine {
         // Persist BEFORE sending. Retrying the same request must never duplicate a turn.
         this.data.requests[body.requestId].sessionId = id;
         s.status = 'Thinking'; s.error = null; s.text = ''; s.partial = ''; s.turnId = null; s.revision++;
+        startExchange(s, body.requestId, text, this.historySecrets);
         this.save();
         try {
           const timing = { requestId: body.requestId, T5: Date.now() };
@@ -89,7 +95,7 @@ export class Engine {
           const r = await this.codex.request('turn/start', { threadId: s.threadId, cwd, ...turnPolicy,
             input: [{ type: 'text', text, text_elements: [] }] });
           timing.T6 = Date.now(); timing.turnId = r.turn.id;
-          s.turnId = r.turn.id;
+          s.turnId = r.turn.id; updateExchange(s, this.historySecrets);
           if (s.status === 'Thinking') s.status = 'Working';
         } catch {
           s.status = 'Error'; s.error = 'turn_delivery_uncertain'; s.uncertain = true;
@@ -106,6 +112,7 @@ export class Engine {
   }
   event({ method, params: p = {} }) {
     for (const s of Object.values(this.data.sessions)) if (reduceEvent(s, method, p)) {
+      updateExchange(s, this.historySecrets);
       const timing = this.timings.get(s.id);
       if (timing) {
         if (method === 'item/agentMessage/delta' && !timing.T7) timing.T7 = Date.now();
@@ -151,10 +158,12 @@ export class Engine {
         requireValue(fs.realpathSync(original.cwd) === cwd, 'thread_project_mismatch');
         const { thread } = await this.codex.request('thread/resume', { threadId: s.threadId, cwd, ...policy, config: await this.codex.safeOverrides(cwd) });
         await this.codex.verifyIsolation(s.threadId);
+        hydrateHistory(s, original.turns, this.historySecrets);
         const turn = thread.turns?.at(-1);
         if (busy(s) || s.uncertain) {
           if (turn && turn.id === s.turnId && turn.status !== 'inProgress') {
             s.status = 'Working'; reduceEvent(s, 'turn/completed', { threadId: s.threadId, turn });
+            updateExchange(s, this.historySecrets);
           } else if (turn && turn.id === s.turnId && turn.status === 'inProgress') {
             s.status = 'Working'; s.error = null; s.uncertain = false;
           } else { s.status = 'Error'; s.error = 'recovery_requires_local_review'; s.uncertain = true; }

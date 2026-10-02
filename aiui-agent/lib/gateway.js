@@ -1,4 +1,4 @@
-import { boundedHistory, addQuestion, applyAnswer } from './history.js';
+import { boundedHistory } from './history.js';
 export function validConfig(c) {
   if (!c || typeof c.origin !== 'string' || typeof c.token !== 'string') throw new Error('connection_not_configured');
   const u = new URL(c.origin);
@@ -47,10 +47,11 @@ export class Conversation {
       if (this.saved.pending) throw new Error('pending_request_needs_review');
       this.saved = { sessionId: this.config.sessionId, seed: this.config.sessionId, pending: null };
     }
-    this.saved.history = boundedHistory(this.saved.history, this.saved.sessionId, this.config.token);
+    // Local cached text from older builds is not authoritative and is never sent to the gateway.
+    delete this.saved.history; this.history = {sessionId:this.saved.sessionId,threadId:this.saved.threadId || '',exchanges:[]};
     this.active = false; this.generation = 0; this.poll = null; this.busy = false; this.retryMs = 1000; this.operation = false; this.phase = 'READY'; this.cancelRequested = false;
   }
-  emit(value) { this.phase = value.state; this.render({ ...value, sessionId: this.saved.sessionId, history: this.saved.history.exchanges.map(e => ({ ...e })) }); }
+  emit(value) { this.phase = value.state; this.render({ ...value, sessionId: this.saved.sessionId, history: this.history.exchanges.map(e => ({ ...e })) }); }
   persist() { this.storage.set(this.key, this.saved); }
   assertLive(g) { if (!this.active || g !== this.generation) throw new Error('page_closed'); }
   async open() {
@@ -70,7 +71,6 @@ export class Conversation {
     finally { if (g === this.generation) this.operation = false; }
   }
   async mutate(route, body, g) {
-    if (route.endsWith('/turns')) addQuestion(this.saved.history, body.requestId, body.text, this.config.token);
     this.saved.pending = { route, body }; this.persist(); // write before any network send
     if (route.endsWith('/turns')) this.emit({state:'THINKING', ready:false});
     return this.replay(g);
@@ -81,21 +81,25 @@ export class Conversation {
     // Persist ACK even if hidden; reopen must not replace a successfully created session.
     this.validateSnapshot(result);
     this.saved.sessionId = result.id;
-    this.saved.history = boundedHistory(this.saved.history, result.id, this.config.token);
-    applyAnswer(this.saved.history, result, this.config.token, p.route.endsWith('/turns') ? p.body.requestId : undefined);
+    this.acceptHistory(result);
     this.saved.pending = null; this.persist();
     if (p.route.endsWith('/turns')) { this.diagnostics?.correlate({sessionId:result.id,threadId:result.threadId,turnId:result.turnId,requestId:p.body.requestId}); this.diagnostics?.server(result); }
     this.assertLive(g); return result;
   }
   validateSnapshot(s) {
     if (!s || !/^[a-f0-9-]{36}$/.test(s.id) || typeof s.threadId !== 'string' || !['Thinking', 'Working', 'Done', 'Error'].includes(s.status)) throw new Error('invalid_snapshot');
-    if (this.saved.history.threadId && s.id === this.saved.history.sessionId && s.threadId !== this.saved.history.threadId) throw new Error('thread_mismatch');
+    if (this.history.threadId && s.id === this.history.sessionId && s.threadId !== this.history.threadId) throw new Error('thread_mismatch');
     if (this.saved.sessionId && s.id !== this.saved.sessionId && !this.saved.pending?.route?.endsWith('/sessions')) throw new Error('session_mismatch');
+  }
+  acceptHistory(s) {
+    if (!s.history || s.history.sessionId !== s.id || s.history.threadId !== s.threadId || !Array.isArray(s.history.exchanges)) throw new Error('gateway_history_unavailable');
+    this.history = boundedHistory(s.history, s.id, this.config.token);
+    this.saved.threadId = s.threadId;
   }
   async refresh(g = this.generation, restoring = false) {
     const s = await this.transport.request('GET', '/v1/sessions/' + this.saved.sessionId);
     this.assertLive(g); this.validateSnapshot(s); this.last = s;
-    if (applyAnswer(this.saved.history, s, this.config.token)) this.persist();
+    this.acceptHistory(s); this.persist();
     this.busy = s.status === 'Working' || s.status === 'Thinking' || s.uncertain === true;
     this.retryMs = 1000;
     const phase = s.status === 'Thinking' ? 'THINKING' : s.status === 'Working' ? 'WORKING' : s.status === 'Done' ? 'DONE' : 'ERROR';

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { Fault } from './protocol.mjs';
 const ids = new Set(['captureId', 'sessionId', 'threadId', 'turnId', 'requestId']);
 const numbers = new Set([...Array.from({length:12},(_,i)=>'T'+i), 'clockOffsetMs', 'clockUncertaintyMs', 'sttProcessMs', 'sttLoadMs', 'sttInternalMs', 'sttPrepareMs', 'sttReadMs']);
-const codes = new Set(['client_error','codex_not_ready','codex_unavailable','resume_failed','network_or_tls_error','unauthorized','stt_failed','stt_not_configured','stt_busy','no_speech','microphone_unavailable','recording_failed','invalid_audio_size','session_busy_or_uncertain','turn_delivery_uncertain','recovery_requires_local_review','pending_request_needs_review','session_mismatch','thread_mismatch','session_not_found','connection_not_configured','invalid_response','invalid_snapshot','gateway_error','turn_interrupted']);
+const codes = new Set(['client_error','gateway_history_unavailable','codex_not_ready','codex_unavailable','resume_failed','network_or_tls_error','unauthorized','stt_failed','stt_not_configured','stt_busy','no_speech','microphone_unavailable','recording_failed','invalid_audio_size','session_busy_or_uncertain','turn_delivery_uncertain','recovery_requires_local_review','pending_request_needs_review','session_mismatch','thread_mismatch','session_not_found','connection_not_configured','invalid_response','invalid_snapshot','gateway_error','turn_interrupted']);
 export function timingSample(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Fault('invalid_diagnostic');
   const out = {};

@@ -9,6 +9,7 @@ if (app.workers || !app.permissions.includes('RECORD_AUDIO')) throw new Error('i
 for (const p of app.pages) {
   const file = path.join(root, p + '.ink'), text = fs.readFileSync(file, 'utf8');
   for (const tag of ['script def', 'script setup', 'page', 'style']) if ((text.match(new RegExp('<' + tag + '>', 'g')) || []).length !== 1) throw new Error('invalid_block_' + tag);
+  if (/\bwx:(?:for|if|elif|else|key)/.test(text)) throw new Error('unsupported_wx_directive_use_ink');
   const def = JSON.parse(text.match(/<script def>([\s\S]*?)<\/script>/)[1]);
   if (!def.schema?.data) throw new Error('missing_page_schema');
   const script = text.match(/<script setup>([\s\S]*?)<\/script>/)[1];

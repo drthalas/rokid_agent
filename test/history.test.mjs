@@ -1,0 +1,47 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {randomUUID} from 'node:crypto';
+import {Codex} from '../src/codex.mjs';
+import {Engine} from '../src/engine.mjs';
+import {fixture,mockCodex,delay} from './helpers.mjs';
+import {hydrateHistory} from '../src/history.mjs';
+
+test('gateway owns six exchanges, dedupes requests, redacts tokens and restores after restart',async t=>{
+ const f=fixture(),mock=await mockCodex(),codex=new Codex({port:mock.port,attach:true});let engine=new Engine(f.config,codex);
+ t.after(async()=>{engine.close();await codex.close();await mock.close();f.cleanup()});
+ await codex.start();await engine.recover();const s=await engine.create({requestId:randomUUID()});
+ const ids=[];
+ for(let i=0;i<8;i++){
+  const requestId=randomUUID();await engine.turn(s.id,{requestId,text:'question '+i});
+  await engine.turn(s.id,{requestId,text:'question '+i});
+  mock.finish(s.threadId,'answer '+i);await delay(10);const snap=engine.snapshot(engine.get(s.id));ids.push(snap.turnId);
+  assert.equal(snap.history.threadId,s.threadId);assert.equal(snap.history.sessionId,s.id);
+ }
+ assert.equal(new Set(ids).size,8);assert.equal(mock.calls.filter(c=>c.method==='turn/start').length,8);
+ let h=engine.snapshot(engine.get(s.id)).history.exchanges;assert.equal(h.length,6);assert.equal(h[0].user,'question 2');assert.equal(h.at(-1).assistant,'answer 7');
+ const token=fs.readFileSync(f.config.adminTokenFile,'utf8').trim();await engine.turn(s.id,{requestId:randomUUID(),text:'value '+token});mock.finish(s.threadId,token);await delay(10);
+ assert.ok(!JSON.stringify(engine.get(s.id).history).includes(token));
+ engine.close();for(const event of ['notification','request','offline','reconnected'])codex.removeAllListeners(event);
+ engine=new Engine(f.config,codex);await engine.recover();h=engine.snapshot(engine.get(s.id)).history.exchanges;
+ assert.equal(h.length,6);assert.equal(h.at(-1).assistant,'[скрыто]');assert.equal(engine.get(s.id).threadId,s.threadId);
+ const other=await engine.create({requestId:randomUUID()});assert.deepEqual(other.history.exchanges,[]);
+ assert.equal(fs.statSync(f.config.stateFile).mode&0o077,0);
+});
+test('legacy same-thread history extracts text only and keeps uncertain pending request separate',()=>{
+ const s={history:[{requestId:'pending-1',turnId:'',user:'uncertain question',assistant:'',completed:false}]};
+ const turns=[{id:'turn-1',status:'completed',items:[{type:'userMessage',content:[{type:'text',text:'visible user'},{type:'image',url:'private-media'}]},{type:'agentMessage',phase:'commentary',text:'not final'},{type:'commandExecution',aggregatedOutput:'private tool output'},{type:'agentMessage',phase:'final_answer',text:'visible assistant'}]}];
+ hydrateHistory(s,turns,[]);assert.equal(s.history.length,2);assert.equal(s.history[0].user,'visible user');assert.equal(s.history[0].assistant,'visible assistant');
+ assert.equal(s.history[1].turnId,'');assert.ok(!JSON.stringify(s.history).includes('private'));
+ hydrateHistory(s,turns,[]);assert.equal(s.history.length,2);
+});
+test('legacy gateway state backfills three Codex turns without starting new ones',async t=>{
+ const f=fixture(),mock=await mockCodex(),codex=new Codex({port:mock.port,attach:true});let engine=new Engine(f.config,codex);
+ t.after(async()=>{engine.close();await codex.close();await mock.close();f.cleanup()});await codex.start();await engine.recover();
+ const s=await engine.create({requestId:randomUUID()});const thread=mock.threads.get(s.threadId);
+ thread.turns=[1,2,3].map(n=>({id:'old-turn-'+n,status:'completed',items:[{type:'userMessage',content:[{type:'text',text:'old question '+n}]},{type:'agentMessage',phase:'final_answer',text:'old answer '+n}]}));
+ delete engine.get(s.id).history;engine.save();engine.close();for(const event of ['notification','request','offline','reconnected'])codex.removeAllListeners(event);
+ engine=new Engine(f.config,codex);await engine.recover();const h=engine.snapshot(engine.get(s.id)).history;
+ assert.equal(h.exchanges.length,3);assert.equal(h.exchanges[2].user,'old question 3');assert.equal(h.exchanges[2].assistant,'old answer 3');assert.equal(h.threadId,s.threadId);
+ assert.equal(mock.calls.filter(c=>c.method==='turn/start').length,0);
+});

@@ -1,5 +1,5 @@
 # Agent: Mac Codex
-- **Version**: 0.3.0
+- **Version**: 0.3.1
 - **Description**: Open a voice terminal for the user's existing Codex agent on their Mac. Continue the same local project conversation and show task status and answers on the glasses.
 
 ## System Prompts
@@ -8,7 +8,7 @@ When the user says “Hi Rokid, Mac Codex”, “Mac Codex”, or «Мак Ко�
 ## Capabilities
 - Microphone: short, explicit voice command capture, maximum 30 seconds. No background or meeting recording.
 - Network: authenticated HTTPS to one configured Mac gateway; no connection to Codex app-server itself.
-- Storage: agent-local session id, pending request UUID/body and the last six bounded exchanges for the same session; restore history on reopen. No conversation content in logs.
+- Storage: agent-local session/thread identity and pending request UUID/body for retry. The Mac gateway owns the last six bounded exchanges and restores history on reopen; the frontend renders its snapshots. No conversation content in logs.
 - Diagnostics: bounded timestamps, UUIDs and safe error codes only; no speech/audio/text or credentials in diagnostic uploads.
 - Audio: optional native Rokid TTS for a short answer.
 - Preserve the already granted Camera permission; this voice interaction does not invoke the camera. No location, gallery, shell, local code execution, or remote approvals.

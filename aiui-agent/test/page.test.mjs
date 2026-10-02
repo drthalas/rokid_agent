@@ -12,7 +12,7 @@ const spec=(await import('data:text/javascript;base64,'+Buffer.from(source).toSt
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 async function waitFor(check){for(let n=0;n<150;n++){if(check())return;await pause(10);}throw Error('page timeout')}
 function harness(){
- const db=new Map(),calls=[],states=[],callbacks={},spoken=[],order=[];let time=1000,reads=0;
+ const db=new Map(),calls=[],states=[],callbacks={},spoken=[],order=[];let time=1000,reads=0;const exchanges=[];
  let session={id:randomUUID(),threadId:randomUUID(),turnId:'old-turn',status:'Done',text:'Old setup advice from an earlier conversation'};
  const wx={getStorageSync:k=>db.get(k),setStorageSync:(k,v)=>db.set(k,structuredClone(v)),
   request(o){calls.push({url:o.url,method:o.method,data:o.data});let aborted=false;queueMicrotask(()=>{
@@ -20,9 +20,10 @@ function harness(){
    if(route==='/v1/health')data={codex:true,loggedIn:true};
    else if(route==='/v1/diagnostics')data={ok:true};
    else if(route==='/v1/stt')data={text:'Скажи одним предложением, что ты работаешь через мой Mac',timing:{T2:Date.now(),T3:Date.now(),T4:Date.now()}};
-   else if(route.endsWith('/turns')){reads=0;session={...session,status:'Working',turnId:randomUUID(),text:'',timing:{requestId:o.data.requestId,T5:Date.now(),T6:Date.now(),T7:Date.now()}};data={...session};}
+   else if(route.endsWith('/turns')){reads=0;session={...session,status:'Working',turnId:randomUUID(),text:'',timing:{requestId:o.data.requestId,T5:Date.now(),T6:Date.now(),T7:Date.now()}};exchanges.push({requestId:o.data.requestId,turnId:session.turnId,user:o.data.text,assistant:'',completed:false});data={...session};}
    else if(route.endsWith('/stop')){session={...session,status:'Error',error:'turn_interrupted'};data={...session};}
    else{if(session.status==='Working'&&++reads>=2)session={...session,status:'Done',text:'Я работаю через ваш Mac.',timing:{...session.timing,T8:Date.now()}};data={...session};}
+   if(data?.id){if(data.status==='Done'&&exchanges.length){exchanges.at(-1).assistant=data.text;exchanges.at(-1).completed=true;}data.history={sessionId:data.id,threadId:data.threadId,exchanges:structuredClone(exchanges.slice(-6))};}
    o.success({statusCode:200,data});o.complete();});return{abort(){aborted=true}};
   },media:{getRecorderManager:()=>({
    start(){order.push('record');return Promise.resolve()},stop(){callbacks.stop();return Promise.resolve()},
@@ -71,6 +72,8 @@ test('HUD renders each assistant once, retains full long answer and scroll posit
  const markup=fs.readFileSync(path.join(root,'pages/index/index.ink'),'utf8').match(/<page>([\s\S]*?)<\/page>/)[1];
  assert.equal((markup.match(/{{item.assistant}}/g)||[]).length,1);
  assert.ok(!/summary|fullText|Полный ответ/.test(markup));
+ assert.ok(markup.includes('ink:for="{{history}}"'));assert.ok(markup.includes('ink:if="{{item.completed}}"'));assert.ok(!/wx:(for|if|key)/.test(markup));
+ assert.ok(markup.includes('{{item.user}}'));
  const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');
  const answer='Длинный ответ. '.repeat(100),requestId=randomUUID();
  const value={state:'DONE',turnId:'new-turn',history:[{requestId,turnId:'new-turn',user:'Вопрос',assistant:answer,completed:true}]};

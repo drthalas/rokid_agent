@@ -45,21 +45,21 @@ Every device route requires `Authorization: Bearer <device token>` over HTTPS, i
 | GET /v1/projects | Project aliases and default alias, no filesystem paths |
 | POST /v1/stt | Canonical PCM16 mono 16 kHz WAV, ≤30 s; returns `{text}`, never starts a Codex turn; used by AIUI and direct APK |
 | POST /v1/sessions | `{requestId, project?}` → new gateway session and Codex thread |
-| GET /v1/sessions/:id | Snapshot: id/project/threadId/turnId/status/text/partial/error/uncertain/revision/pendingApproval |
+| GET /v1/sessions/:id | Snapshot: id/project/threadId/turnId/status/text/partial/error/uncertain/revision/pendingApproval plus history `{sessionId, threadId, exchanges}` |
 | POST /v1/sessions/:id/turns | `{requestId, text}` → turn in that session's thread |
 | POST /v1/sessions/:id/stop | `{}` → interrupt known active turn; repeated stop is safe, unknown turn requires local reconciliation |
 
-The gateway owns project/session/thread mapping; Codex owns full thread history. AIUI stores a gateway session id and pending mutation body/UUID in agent storage keyed by origin. Configuration can select an existing gateway session; a raw Codex thread id is not interchangeable. Changing project creates a different session. Current AIUI selects project through private configuration, not a project-picker HUD; Android command planner has project selection.
+The gateway owns project/session/thread mapping; Codex owns full thread history. AIUI stores gateway session/thread identity and pending mutation body/UUID in agent storage keyed by origin. Canonical bounded history lives in the Mac state file and each session snapshot; frontend history is an in-memory projection, never an uploadable authority. Configuration can select an existing gateway session; a raw Codex thread id is not interchangeable. Changing project creates a different session. Current AIUI selects project through private configuration, not a project-picker HUD; Android command planner has project selection.
 
 Creation and turn requests record their UUID/fingerprint before side effects. Same UUID/body returns the known session snapshot; changed reuse is a conflict. Ambiguous delivery is never automatically resubmitted as a new turn. This prevents duplicate prompts but is not a transactional exactly-once guarantee across Codex and the state file.
 
 ## Session, voice and thread lifecycle
 
-1. Invocation opens the page without forwarding an invocation prompt. Health/session restoration may briefly show connecting; uncaptured backend-only historical answers are hidden, local same-session history is restored without TTS, and the page becomes READY.
+1. Invocation opens the page without forwarding an invocation prompt. Health/session restoration may briefly show connecting; uncaptured backend-only historical answers are hidden, gateway-owned same-session history is restored without TTS, and the page becomes READY.
 2. Tap in READY/DONE starts LISTENING and stops TTS first. Tap ends recording → TRANSCRIBING → THINKING → WORKING → DONE or ERROR. No separate menu buttons. Capture has a 30-second cap; VAD detects speech but silence auto-stop is disabled in this page.
 3. The recorder builds bounded WAV; Mac Whisper supplies transcript. Only final transcript is submitted. Nexus instead supplies final hub STT text.
 4. Codex notifications update live snapshots; clients poll with retry backoff. Only final non-commentary assistant messages become results. Failed/interrupted turns are not successful completions.
-5. HUD retains the last six locally captured exchanges for the same session, with user transcript (up to 8,000 characters) and one complete assistant final (up to 16,000 characters). History survives recording/reopen and is scrollable; new exchanges receive focus. A separate extractive preview (up to 300 characters) is automatically spoken once per new completed turn if native TTS is available; it is never a second HUD answer. This is not another summarization model call. Audio generation/service location is owned by Rokid, not guaranteed offline by this repository.
+5. HUD retains the last six gateway-persisted exchanges for the same session, with user transcript (up to 8,000 characters) and one complete assistant final (up to 16,000 characters). History survives recording/reopen and is scrollable; new exchanges receive focus. A separate extractive preview (up to 300 characters) is automatically spoken once per new completed turn if native TTS is available; it is never a second HUD answer. This is not another summarization model call. Audio generation/service location is owned by Rokid, not guaranteed offline by this repository.
 6. Next tap continues the same gateway session/thread. Tap while busy requests cancellation; long press is not assigned. Backspace preserves native host close, cleans up capture/TTS/polling, and cancels delayed unsent audio. Closing does not delete a thread or guarantee cancellation of a task already sent.
 
 Enter/GlobalHook are deduplicated; ArrowUp/ArrowDown scroll. A 650 ms send delay allows host Backspace classification. Physical double-tap→Backspace, microphone, HUD and automatic TTS remain acceptance gates for the new UX, not proven by mocked events. A local 32-entry event trace contains only key/edge/state/time.
@@ -75,7 +75,7 @@ See [ADR-002](docs/adr/ADR-002-loopback-boundary.md) and [ADR-003](docs/adr/ADR-
 - Realpath allowlist constrains selected cwd, **not all readable files**. This is a single-owner MVP, not isolation for untrusted tenants. Effective MCP servers are disabled by name and verified disabled/zero tools; apps/plugins/hooks are disabled on this integration path. Child environment is allowlisted, not copied wholesale.
 - AIUI verifies public CA/hostname TLS. Android uses out-of-band leaf certificate pinning. The authorized smoke-only `--no-tls-verify` exception is restricted to cloudflared → HTTPS gateway on the same Mac; no client-side TLS bypass and no router port forwarding. Cloudflare terminates TLS and is a trusted transport processor able to observe requests; it is not end-to-end encryption directly to Mac.
 - Private `config.js`, configured AIX, cloud downloads, tokens, keys, logs and browser/Rokid sessions stay ignored. AIX JavaScript is readable: private cloud distribution is a credential-bearing trust boundary, not encrypted secret storage.
-- Gateway state contains mapping, fingerprints and bounded answers in a mode-0600 JSON file, replaced atomically. It is not fsync-backed transactional storage. Codex keeps full history; frontend retains pending text for retry. WAV/Whisper text exists temporarily and is removed in finally; abrupt termination may leave files requiring local cleanup. No audio archive.
+- Gateway state contains mapping, fingerprints and bounded answers in a mode-0600 JSON file, replaced atomically. It is not fsync-backed transactional storage. Codex keeps full history; frontend retains pending text for retry. WAV/Whisper text exists temporarily and is removed in finally; abrupt termination may leave files requiring local cleanup. No audio archive. Legacy session history is projected from validated same-thread Codex user/final messages during recovery; incomplete delivery remains uncertain. See [ALE-452 brief](specs/002-ale-452-current-chat-history/brief.md).
 - Request/RPC bodies and child stderr are not logged. Local state/history and model responses may contain sensitive user content; no retention/deletion policy for future meeting media has been selected.
 
 ## Error and reconnect handling
@@ -92,7 +92,7 @@ allowlisted error codes; local admin `GET /admin/diagnostics` returns at most 32
 mode-0600 `stateFile + '.latency.json'` stores that bounded diagnostic set; it is not conversation
 state and is not loaded as thread history. Native agent storage keeps at most 12 samples and a safe
 last-error code. No prompts/transcripts/answers/audio/credentials enter diagnostic payloads.
-History content itself is private agent-local data; known configured tokens/common credential forms
+History content itself is private gateway session data; known configured tokens/common credential forms
 are redacted, which is not a general guarantee of detecting every secret in free-form conversation.
 Cross-clock upload/poll estimates carry RTT-derived uncertainty; T10 is the data-update callback and
 T11 is the TTS play request, not measured physical display/audio onset. See [bounded UX spec](specs/001-hud-history-latency/spec.md).

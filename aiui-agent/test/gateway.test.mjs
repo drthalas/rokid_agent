@@ -8,20 +8,21 @@ const config = { origin: 'https://codex.example.com', token: 'a'.repeat(43), pro
 function fixture() {
   const db = new Map(), calls = [], views = [];
   let current = null, lostAck = false;
-  const seen = new Set(); let turns = 0;
+  const seen = new Set(), exchanges=[]; let turns = 0;
+  const snapshot=()=>({...current,history:{sessionId:current.id,threadId:current.threadId,exchanges:structuredClone(exchanges.slice(-6))}});
   const transport = { close() {}, async request(method, route, data) {
     calls.push({method,route,data});
     if (route === '/v1/health') return {codex:true,loggedIn:true};
     if (method === 'POST' && route === '/v1/sessions') {
-      current ||= {id:randomUUID(), threadId:'thread-one',status:'Done',text:'',project:'demo'}; return {...current};
+      current ||= {id:randomUUID(), threadId:'thread-one',status:'Done',text:'',project:'demo'}; return snapshot();
     }
     if (route.endsWith('/turns')) {
-      if (!seen.has(data.requestId)) { turns++; seen.add(data.requestId); }
+      if (!seen.has(data.requestId)) { turns++; seen.add(data.requestId); exchanges.push({requestId:data.requestId,turnId:'turn-'+turns,user:data.text,assistant:'answer '+turns,completed:true}); }
       current.status = 'Done'; current.text = `answer ${turns}`; current.turnId = 'turn-'+turns;
       if (lostAck) { lostAck=false; throw new Error('network_or_tls_error'); }
     }
     if (route === '/v1/stt') { validateWav(Buffer.from(data)); return {text:'А теперь найди TODO'}; }
-    return {...current};
+    return snapshot();
   }};
   const storage = {get:k=>db.get(k),set:(k,v)=>db.set(k,structuredClone(v))};
   const make = () => new Conversation({ config, transport, storage, id:randomUUID, render:v=>views.push(v), schedule:()=>1, unschedule:()=>{} });
@@ -49,7 +50,7 @@ test('persist failure happens before sending prompt', async()=>{
 test('configured existing session is used without creating a thread', async()=>{
   const id=randomUUID(), calls=[];
   const c=new Conversation({config:{...config,sessionId:id},id:randomUUID,storage:{get:()=>null,set:()=>{}},render:()=>{},
-    transport:{close(){},async request(m,r){calls.push(r);return r==='/v1/health'?{codex:true,loggedIn:true}:{id,threadId:'existing',status:'Done'};}}});
+    transport:{close(){},async request(m,r){calls.push(r);return r==='/v1/health'?{codex:true,loggedIn:true}:{id,threadId:'existing',status:'Done',history:{sessionId:id,threadId:'existing',exchanges:[]}};}}});
   await c.open();assert.deepEqual(calls,['/v1/health','/v1/sessions/'+id]);
 });
 test('wx request selects parsed JSON explicitly and no token enters URL', async()=>{
@@ -92,16 +93,16 @@ test('cancel while turn start ACK is pending waits for ACK, then interrupts the 
 test('six exchanges survive reopen/listening; replay does not duplicate; session changes isolate history',async()=>{
  const f=fixture(),c=f.make();await c.open();
  for(let i=0;i<8;i++)await c.submit('question '+i);
- assert.equal(c.saved.history.exchanges.length,6);assert.equal(c.saved.history.exchanges[0].user,'question 2');
- assert.equal(c.saved.history.exchanges.at(-1).assistant,'answer 8');
- await c.refresh();assert.equal(c.saved.history.exchanges.length,6);c.close();
+ assert.equal(c.history.exchanges.length,6);assert.equal(c.history.exchanges[0].user,'question 2');
+ assert.equal(c.history.exchanges.at(-1).assistant,'answer 8');
+ await c.refresh();assert.equal(c.history.exchanges.length,6);c.close();
  const reopened=f.make();await reopened.open();assert.equal(f.views.at(-1).state,'READY');
  assert.equal(f.views.at(-1).history.length,6);
  f.lose();await reopened.submit('lost ack question');await reopened.open();
- assert.equal(reopened.saved.history.exchanges.filter(e=>e.user==='lost ack question').length,1);
- assert.equal(reopened.saved.history.exchanges.at(-1).assistant,'answer 9');
+ assert.equal(reopened.history.exchanges.filter(e=>e.user==='lost ack question').length,1);
+ assert.equal(reopened.history.exchanges.at(-1).assistant,'answer 9');
  const other=new Conversation({config:{...config,sessionId:randomUUID()},transport:f.transport,storage:f.storage,id:randomUUID,render:()=>{}});
- assert.deepEqual(other.saved.history.exchanges,[]);
+ assert.deepEqual(other.history.exchanges,[]);
 });
 test('history bounds/redaction and thread mismatch are enforced without creating a new session',async()=>{
  const {boundedHistory}=await import('../lib/history.js');const sid=randomUUID();
@@ -111,4 +112,17 @@ test('history bounds/redaction and thread mismatch are enforced without creating
  const f=fixture(),c=f.make();await c.open();
  assert.throws(()=>c.validateSnapshot({id:c.saved.sessionId,threadId:'different',status:'Done'}),/thread_mismatch/);
  assert.equal(f.calls.filter(x=>x.route==='/v1/sessions').length,1);
+});
+
+test('fresh device restores gateway history and never trusts stale local transcript cache',async()=>{
+ const f=fixture(),first=f.make();await first.open();await first.submit('canonical question');const sessionId=first.saved.sessionId;first.close();
+ f.db.clear();const restored=new Conversation({config:{...config,sessionId},transport:f.transport,storage:f.storage,id:randomUUID,render:v=>f.views.push(v),schedule:()=>1});
+ await restored.open();assert.equal(restored.history.exchanges[0].user,'canonical question');assert.equal(restored.history.exchanges[0].assistant,'answer 1');
+ assert.equal(restored.saved.history,undefined);
+ const stored=f.db.get(restored.key);stored.history={sessionId,threadId:'thread-one',exchanges:[{requestId:randomUUID(),user:'invented local text',assistant:'untrusted',completed:true}]};
+ restored.close();const again=f.make();await again.open();assert.equal(again.history.exchanges.length,1);assert.equal(again.history.exchanges[0].user,'canonical question');
+});
+test('old gateway without authoritative history fails visibly instead of silently using local history',async()=>{
+ const f=fixture(),c=f.make();const request=f.transport.request.bind(f.transport);f.transport.request=async(...a)=>{const v=await request(...a);delete v.history;return v};
+ await c.open();assert.equal(f.views.at(-1).detail,'gateway_history_unavailable');assert.deepEqual(c.history.exchanges,[]);
 });
