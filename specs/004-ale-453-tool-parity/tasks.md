@@ -24,11 +24,11 @@ historical evidence in validation.md; superseded policy is not current acceptanc
 ## Phase4 — Verification / delivery
 - [x] T035 Run root and AIUI regression checks, real native safe elevation and harmless human/denial probes; document evidence limits in validation.md.
 - [x] T036 Update architecture/runbook/workflow/constitution where prior human-only/read-only policy conflicts with the owner's explicit revision.
-- [ ] T037 Scan source/index/history, review diff, commit/push referencing ALE-453.
-- [ ] T038 Restart production only when idle, preserving protected files, session/thread and loopback; record runtime commit/health/rollback.
-- [ ] T039 [US1] Execute A–I through production gateway and update validation.md; no email send or real destructive action.
-- [ ] T040 [US4] Execute Browser/Computer safe reads or document exact app-server surface/permission limitation; do not substitute shell.
-- [ ] T041 [US3] Measure genuine pending visibility and prove no gateway-generated accept for unsafe/native-human requests; distinguish simulated/native evidence.
+- [x] T037 Scan source/index/history, review diff, commit/push referencing ALE-453.
+- [x] T038 Restart production only when idle, preserving protected files, session/thread and loopback; record runtime commit/health/rollback.
+- [x] T039 [US1] Execute A–I through production gateway and update validation.md; no email send or real destructive action.
+- [x] T040 [US4] Execute Browser/Computer safe reads or document exact app-server surface/permission limitation; do not substitute shell.
+- [x] T041 [US3] Measure genuine pending visibility and prove no gateway-generated accept for unsafe/native-human requests; distinguish simulated/native evidence.
 - [ ] T042 Physical Jarvis acceptance with owner; Linear Needs Test until passed.
 
 Dependencies: T023–T026 before runtime changes; T027–T030 before T031–T034; native/regression checks

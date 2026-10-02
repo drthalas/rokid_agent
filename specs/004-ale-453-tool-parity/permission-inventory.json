@@ -137,5 +137,27 @@
     "computer": "PASS after explicit owner Calculator grant; controls only",
     "builtInBrowser": "UNAVAILABLE: native cua_repl returned Browser is not available: iab"
   },
-  "productionChanged": false
+  "productionChanged": true,
+  "jarvisObservedProfile": {
+    "runtimeCommit": "d813d422f36e4bb6e468dee06d0cb0a7e895b668",
+    "sandbox_mode": "workspace-write",
+    "approval_policy": "on-request",
+    "approvals_reviewer": "auto_review",
+    "additionalWritableRoots": [],
+    "implicitWritableRoots": [
+      "selected project",
+      "slash_tmp",
+      "tmpdir"
+    ],
+    "network": "restricted",
+    "protectedSubpaths": [
+      ".git",
+      ".agents",
+      ".codex"
+    ]
+  },
+  "desktopSessionDifferences": [
+    "Desktop adds a per-chat visualization writable root.",
+    "Desktop current session additionally marks project .aws read-only; standalone workspace-write profile does not include that UI-injected entry. The project .aws directory is absent. No credential path was accessed or changed."
+  ]
 }

@@ -12,5 +12,5 @@ Accepted frontend remains Jarvis1.0.19. Do not repackage for backend-only policy
 6. Test production Gmail/Drive/Calendar/GitHub/Linear/MCP/skill and workspace/Desktop writes in the same Jarvis thread.
 7. Create one Gmail draft-to-self, subject “Jarvis Test”, body “Hello from Jarvis”; never send. Let native policy auto-review or request a human; do not invent an extra gateway confirmation.
 8. Test Chrome/public page and Calculator controls through app-server integration. Computer Use app grants require owner permission; unsupported built-in IAB is a surface limitation, not a reason for Full Access.
-9. Real human RPCs remain pending, without a default120s timeout. Inspect locally, then decide one request. Voice is not approval. Unsafe probes must have no destructive execution path.
+9. `node scripts/human-approval-smoke.mjs` proves real native elicitation/pending/decline using a non-executing risky-operation simulator; it has no destructive handler. Real human RPCs remain pending, without a default120s timeout. Inspect locally, then decide one request. Voice is not approval. Unsafe probes must have no destructive execution path.
 10. Record physical HUD/TTS/pending acceptance separately; keep Linear Needs Test until accepted.

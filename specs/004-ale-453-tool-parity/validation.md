@@ -1,7 +1,7 @@
 # ALE-453 validation — current native permission revision
 
 2026-10-02 owner revision supersedes prior read-only/user/blanket-prompt constraints.
-Production not yet updated at this checkpoint; prior runtime is08ab1a4 / Git4e8d784.
+Runtime updated to d813d42; prior evidence below identifies the older08ab1a4 iteration.
 
 | Gate before deployment | Result / evidence |
 |---|---|
@@ -24,6 +24,44 @@ Production not yet updated at this checkpoint; prior runtime is08ab1a4 / Git4e8d
 Current production matrix/physical acceptance will be appended after deployment. Native review denial
 need not generate a new human RPC; do not claim arbitrary unsafe-action classification from a harmless
 fixture. Unknown auth/input/special-root grant shapes remain unsupported and are never fabricated.
+
+## Production native permission result
+
+Runtime d813d42, gateway PID67133; same three sessions/thread IDs preserved, config/token/tunnel hashes
+unchanged, AIX1.0.19 unchanged. Actual resumed profiles and subsequent turn_context both confirm
+workspace-write/on-request/auto_review, shell network restricted, no Desktop writable root.
+
+| Production case | Evidence |
+|---|---|
+| Workspace file | PASS: .local/jarvis-workspace-permission-test.txt = Hello World; no human request |
+| Desktop file | PASS: ~/Desktop/jarvis-test.txt = Hello World; native command auto-review approved/low in3392ms |
+| Gmail draft | PASS: create_draft completed; recipient checked against get_profile, exact Jarvis Test / Hello from Jarvis; read_email readback confirms DRAFT; no send tools |
+| Gmail read | PASS: search_email_ids + batch_read_email completed |
+| Drive read | PASS: google_drive.search metadata read completed (not a document-write/body-read claim) |
+| Calendar read | PASS: google_calendar.list_calendars completed |
+| GitHub read | PASS: github.fetch_file completed |
+| Linear read | PASS: linear.get_issue completed |
+| MCP | PASS: existing node_repl.js completed with native auto-review approved/low; no forced local prompt |
+| Skill | PASS: speckit-analyze SKILL.md and prerequisites actually read/executed |
+| Chrome | PASS: production cua_repl returned Example Domain in actual tool result |
+| Computer | PASS: production Calculator control read; owner-authorized native app grant only, no input |
+| Human pending | PASS: real native Calculator request, no default expiry; state0ms / first snapshot poll983ms |
+| Risky confirmation | PASS native request/pending/decline path through a non-executing MCP simulator; no destructive handler or real deletion; not a universal risk-classification claim |
+
+Surface differences: built-in IAB unavailable (“Browser is not available: iab”); Desktop-only
+codex_app/code-review host services unavailable on standalone launch; standalone Vercel MCP needs
+its own existing native authentication. Chrome/Computer need the configured Desktop-backed bridge;
+Computer app grants can require a human independently of auto-review. Native TUI /approve retry for
+a denied action has no exposed equivalent in the inspected app-server request schema.
+
+Filesystem detail: Desktop session injects a visualization writable root and a project .aws read-only
+guard. Jarvis's native workspace-write profile lacks those UI-specific entries (project .aws is absent).
+No custom second permission profile or Desktop root workaround was added. This difference is disclosed;
+bit-for-bit Desktop filesystem policy equivalence is not claimed. Auth/loopback/secret filtering and
+all tested ownership/recovery boundaries remain intact.
+
+Physical write/permission acceptance is pending; baseline Jarvis UX/Gmail read was owner-accepted.
+Linear remains Needs Test, not Done.
 
 ## Historical capability iteration (superseded policy)
 

@@ -218,6 +218,7 @@ Inventory — отдельный временный app-server, не production 
 node scripts/tool-parity-inventory.mjs
 node scripts/tool-parity-smoke.mjs
 node scripts/tool-parity-dynamic-smoke.mjs
+node scripts/human-approval-smoke.mjs
 ```
 
 Первый script выводит только санитизированные capability metadata. Второй проверяет native auto-review на MCP со счётчиком в памяти: разрешённая reviewer операция меняет его один раз без gateway-generated accept; provider drafts/письма не создаются. Третий отключает/включает существующий
@@ -247,3 +248,5 @@ Endpoint/token/private AIX менять не требуется. Проверя�
 ограничения и результаты — [validation](specs/004-ale-453-tool-parity/validation.md).
 
 Для MCP применяется normal native policy, без Jarvis blanket prompt. Существующие Computer Use app-level grants могут требовать человека даже при auto_review. Не выдавайте новые app permissions или auth proofs автоматически. Смотрите фактические review events и surface evidence.
+
+`human-approval-smoke.mjs` использует non-executing MCP simulator: реальный app-server human request → pending → decline, без файлового/сетевого destructive handler. Это проверка flow, не обещание универсальной классификации риска native reviewer.

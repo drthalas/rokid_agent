@@ -73,3 +73,15 @@ Native tool-parity implementation/evidence is tracked by [ALE-453](https://linea
 and [Spec Kit validation](../specs/004-ale-453-tool-parity/validation.md). Inventory found existing native
 apps/MCP/plugin skills; real isolated approvals/continuity/dynamic-config checks passed. Production gateway now runs 08ab1a4 (implementation 10d0c6b plus stricter MCP approval policy); real Gmail/GitHub/MCP reads and skill workflow passed in the existing Jarvis thread. Drive, real approved draft and physical tool-parity acceptance remain pending. Accepted Jarvis UX remains cloud 1.0.19 / frontend baseline
 5e38d93; no frontend or private cloud/config change is required by tool parity.
+
+
+## ALE-453 native permission revision — 2026-10-02
+
+Owner revised the target to normal Approve for me. Runtime d813d42 removes Jarvis read-only/user/MCP
+prompt clamps, selects workspace-write/on-request/auto_review and inherits native integration policy.
+Production workspace/Desktop writes, draft-to-self with readback (never sent), Gmail/Drive/Calendar/
+GitHub/Linear/MCP/skill and Chrome/Calculator checks passed in the same Jarvis thread. Human pending
+was measured at0ms in gateway /983ms first poll; no default120s expiry remains. Built-in IAB and other
+surface differences, including Desktop UI filesystem guard differences, are explicit in
+[validation](../specs/004-ale-453-tool-parity/validation.md). AIX1.0.19 is unchanged. Physical permission
+acceptance remains separate; Linear is Needs Test.

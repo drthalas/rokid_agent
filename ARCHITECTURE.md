@@ -189,3 +189,5 @@ elevation. Browser/Computer are separate host capabilities: Chrome and Calculato
 cua_repl; Calculator required a separate owner app grant. Their availability is not inferred from sandbox.
 Local `/admin/runtime` exposes sanitized profile/review metadata; it never exposes raw reviewer rationale,
 commands, tool parameters or auth data to glasses. Review notifications are never treated as accepts.
+
+Resolved-profile comparison also found a Desktop UI-injected project `.aws` read-only entry absent from the standalone workspace-write profile. The directory is absent in this workspace. This is a disclosed session-layer difference, not a claim of identical Desktop protected-path compilation; no custom second profile was introduced.
