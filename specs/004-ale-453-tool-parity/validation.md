@@ -1,6 +1,6 @@
 # ALE-453 validation evidence
 
-Date: 2026-10-02. Implementation/runtime commit 10d0c6b; production gateway updated with accepted Jarvis AIX 1.0.19 unchanged.
+Date: 2026-10-02. Current runtime commit 08ab1a4 (initial implementation 10d0c6b); production gateway updated with accepted Jarvis AIX 1.0.19 unchanged.
 
 | Gate | Result | Evidence / limit |
 |---|---|---|
@@ -16,8 +16,8 @@ Date: 2026-10-02. Implementation/runtime commit 10d0c6b; production gateway upda
 | Production MCP | PASS on 10d0c6b; final prompt policy NEEDS TEST | existing node_repl.js arithmetic read completed; subsequent security refinement requires explicit local approval for every opaque MCP call |
 | Production skill | PASS (Mac-triggered) | speckit-analyze SKILL.md read, prerequisites executed, feature artifacts read; six command items, completed turn |
 | Production Drive READ | NOT RUN | Awaiting owner-selected safe document |
-| Production deployment | PASS | PID37467/owned Codex37468, 127.0.0.1:8390; health true; three existing sessions/thread/history counts retained; protected configuration hashes unchanged |
-| Real Gmail draft with owner approval | NOT RUN | No real draft/write executed by diagnostic tests |
+| Production deployment | PASS | initial PID37467, final gateway PID41540, 127.0.0.1:8390; health true; three existing sessions/thread/history counts retained; protected configuration hashes unchanged |
+| Real Gmail draft approval | DENIAL PASS; ACCEPT NOT RUN | Production get_profile completed; exact self-recipient/subject/body verified privately; create_draft waited on native approval and failed after owner confirmation timed out. No draft created or email sent |
 | Physical Jarvis tool parity | NOT RUN | Accepted UX baseline 1.0.19 preserved; this feature still needs wearer tests |
 
 Resolved diagnostic failures: quoted TOML segments in thread RPC keys caused invalid transport;
@@ -47,3 +47,5 @@ Physical reads and real draft acceptance remain NOT RUN; the Mac-triggered produ
 prove HUD/TTS for provider results. Full task remains Needs Test in Linear, not Done.
 
 Security review found native node_repl.js readOnlyHint=true despite arbitrary code capability. Ordinary/plugin MCP policy tightened to prompt for every call; connected apps retain writes/human. Final production MCP read therefore needs a separate owner decision after redeploy.
+
+Final pending draft request expired without owner approval; no approval handle remains. Re-run that test only with a fresh native request and an explicit local decision. Awaiting owner-selected safe Drive document and physical Jarvis acceptance.

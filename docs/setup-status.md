@@ -71,5 +71,5 @@ Bootstrap-era recommendation (current priorities are set in Linear): **unexpecte
 
 Native tool-parity implementation/evidence is tracked by [ALE-453](https://linear.app/drthalas/issue/ALE-453)
 and [Spec Kit validation](../specs/004-ale-453-tool-parity/validation.md). Inventory found existing native
-apps/MCP/plugin skills; real isolated approvals/continuity/dynamic-config checks passed. Production gateway now runs implementation 10d0c6b; real Gmail/GitHub/MCP reads and skill workflow passed in the existing Jarvis thread. Drive, real approved draft and physical tool-parity acceptance remain pending. Accepted Jarvis UX remains cloud 1.0.19 / frontend baseline
+apps/MCP/plugin skills; real isolated approvals/continuity/dynamic-config checks passed. Production gateway now runs 08ab1a4 (implementation 10d0c6b plus stricter MCP approval policy); real Gmail/GitHub/MCP reads and skill workflow passed in the existing Jarvis thread. Drive, real approved draft and physical tool-parity acceptance remain pending. Accepted Jarvis UX remains cloud 1.0.19 / frontend baseline
 5e38d93; no frontend or private cloud/config change is required by tool parity.
