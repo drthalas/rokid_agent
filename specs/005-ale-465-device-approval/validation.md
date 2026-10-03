@@ -132,3 +132,143 @@ test/history.test.mjs
 test/image-artifacts.test.mjs
 test/integration.test.mjs
 ```
+
+## Bounded release verification — 2026-10-03 (blocked)
+
+SESSION: NEW SESSION. MODEL: GPT-6.1 Sol (requested; runtime identity not exposed).
+EFFORT: Medium (requested; runtime setting not exposed). WHY: bounded STANDARD release verification.
+Candidate main d3ce24cfd28f09ae9a2dced4c611a2cb24453cec; runtime code checkpoint 7b8c182.
+Starting worktree/index clean. Reviewed ALE-465 runtime diff from deployed02feece;
+no renewed native research/probes. Linear resumed In Codex.
+
+- Root56/56 PASS; AIUI47/47 PASS; AIUI check PASS. First full runs were environment failures
+  (loopback listen EPERM): root39pass/17fail, AIUI46pass/1fail. Both rerun once with native
+  reviewer-approved loopback access; no source edits or test weakening.
+- Real `npm run smoke`: FAIL, first turn returned `turn_failed`; neither turn completed and
+  restart continuity was not reached. Failure classification beyond the observed native turn
+  outcome is UNAVAILABLE. No second smoke, forensic investigation or native probe initiated.
+- Index export and all reachable Git history scanned with gitleaks8.30.1, redacted reports.
+  Each reports only test/approval-router.test.mjs:55 curl-auth-user, manually verified synthetic
+  `user:pw` regression fixture. Scanner exits1; automated clean PASS is not claimed.
+- One isolated private local package validated: source0.6.0, AIX VERSION
+  e68b2f02-2dcf-41e8-8432-9ac06dc433c4, SHA256
+  7d2b8df66359fdb9cc307418f38ed9656037a0ac20c9b49380c34ff6a0dffbc6.
+  Required runtime files/dev-file exclusion PASS. Packed/staging/working config semantic equality,
+  current endpoint/device-token equality and admin-token exclusion PASS in memory; mode0600.
+  Working config was not overwritten. Private reports/artifacts remain ignored.
+
+STOP: release gate failed; no upload/deploy/active-cloud download, no production restart.
+Production remains prior gateway02feece/AIX1.1.3; source0.6.0 is locally packaged only.
+Physical RV101 acceptance NOT RUN; READY FOR PHYSICAL TEST is not established. Linear Needs Fix.
+Known separate Screenshot utility execution limitation remains unchanged.
+
+ALE-467 metrics: measured interval13:04:29–13:07:50 UTC,3m21s to package verification
+(excludes final record/report). Full root runs2; full AIUI runs2; targeted runs0; AIUI check1;
+real smoke1; local package1; deploy attempts0; active readback0. Exact input/cached/output/reasoning,
+responses/tool-call counters and context used/max/utilization UNAVAILABLE. Compactions0 observed.
+Validation/workflow ranges reread because initial batched output was truncated; exact repeated-read
+counter UNAVAILABLE. Recommend NEW SESSION for bounded smoke blocker triage, with no protocol replay.
+
+## First-turn smoke blocker diagnosis — 2026-10-03
+
+SESSION: NEW SESSION. MODEL: GPT-6.1 Sol requested; actual runtime identity UNAVAILABLE.
+EFFORT: Medium requested; actual runtime setting UNAVAILABLE. WHY: bounded STANDARD first-turn diagnosis.
+Candidate main d3ce24cfd28f09ae9a2dced4c611a2cb24453cec; existing release-verification
+append above preserved. No runtime/test/policy/private configuration changes.
+
+One focused reproduction used the unchanged `npm run smoke` with a temporary external observer
+wrapping Codex.message and Engine.approval/decide. Observer emitted only event classes, error,
+method/kind and decision counters; no commands, tool arguments/results, credentials or session IDs.
+Initial sandbox launch stopped before app-server startup with `codex_port_in_use` (underlying
+listen error is masked by Codex.start); authorized loopback escalation reached the real first turn.
+No confirming reproduction was needed because its native error was unambiguous.
+
+Sanitized actual event sequence:
+
+1. `turn/started`.
+2. `item/started` then `item/completed`, type `userMessage`.
+3. `error`, `willRetry:false`, `codexErrorInfo:"other"`, provider HTTP400 `invalid_request_error`:
+   `The 'gpt-6.1-sol' model is not supported when using Codex with a ChatGPT account.`
+4. `turn/completed`, status `failed`, same native error; gateway/harness `turn_failed`.
+
+At failure: server approval requests0; pendingApproval0; Engine.decide calls0;
+native autoApprovalReview events0; tool invocations0. No relevant approval method/kind exists.
+The harness did not decline anything; native reviewer neither approved nor denied anything.
+Last relevant app-server event: failed `turn/completed`. README execution never reached a tool.
+
+Conclusion C: demonstrated model/account environment failure, not an ALE-465 approval regression
+or a smoke approval-harness regression. Earlier release smoke recorded no detailed native trace;
+this reproduction explains the current identical first-turn failure, without claiming access to
+missing historical events. No code fix, auto-accept, model override or private configuration edit.
+Smoke reproduction FAIL (environment); post-fix confirmation NOT RUN because there is no fix.
+Targeted unit/integration checks NOT RUN (no code/test change). No full matrix/package/deploy,
+production restart, Screenshot investigation or broad probe. Git diff --check PASS.
+
+Remaining: explicitly select a model supported by the local app-server's account/environment,
+then re-run continuity/recovery smoke before release; private active-cloud and physical acceptance
+remain separate pending gates. Linear Needs Fix; no commit/push (documentation-only evidence).
+
+ALE-467 metrics: measured diagnostic interval13:27:43–13:29:22 UTC,1m39s (excludes final recording).
+Smoke invocations2: sandbox preflight failure1, real first-turn reproduction1; confirming runs0;
+post-fix smoke0; targeted tests0; full matrices0; package/deploy0. Compactions0 observed.
+Input/cached/output/reasoning, responses/tool-call counters, context used/max/utilization UNAVAILABLE.
+Recommend NEW SESSION: environmental cause established; model selection/release validation is a new phase.
+
+## ALE-465 model compatibility checkpoint — 2026-10-03
+
+SESSION: NEW SESSION. MODEL: GPT-6 Astra requested; actual agent model identity UNAVAILABLE.
+EFFORT: Medium requested; actual agent effort UNAVAILABLE. WHY: STANDARD bounded model/config plumbing;
+known provider incompatibility, no approval research. Base main d3ce24cfd28f09ae9a2dced4c611a2cb24453cec;
+ALE-465 product checkpoint 7b8c182. Existing unstaged validation evidence above preserved verbatim.
+
+Root cause: previous native HTTP400 rejected gpt-6.1-sol on this ChatGPT-account Codex surface;
+no approval/router regression was demonstrated. Installed PATH and configured production binary both
+report codex-cli0.157.1. A temporary standalone app-server config/read confirmed effective
+model gpt-6.1-sol for repository and smoke cwd, matching the global configured selection.
+First read-only stdio probe timed out20s under filesystem sandbox; one native reviewer-approved
+retry returned both values. No inference, native approval probe or authentication change in that check.
+
+Production model explicitly configured: NO before, YES after; effective configured runtime selection
+is gpt-6-astra. Only the model field changed in private gateway config; all other fields were compared
+in memory and permissions preserved. No private config contents/credentials are included here or in Git.
+Global/Desktop selection unchanged. Shared Codex defaults previously influenced unconfigured Jarvis;
+Desktop model selection cannot replace the explicit model after this checkpoint's runtime restart.
+Per-thread Desktop picker persistence itself was not separately probed. Production daemon has NOT
+been restarted: configured next runtime is Astra, live production process model is UNVERIFIED.
+
+Changes: preserve optional model inheritance for other gateway configs; reject malformed explicit
+model. Pass configured model at thread creation (existing), import, recovery and each turn. Smoke
+requires ROKID_SMOKE_MODEL or the explicit model from ROKID_SMOKE_CONFIG/default private gateway
+config; missing/empty model fails before startup. No hardcoded runtime default or provider-error fallback.
+Smoke logs safe model ID, preserves existing fixture/TLS/approval/semantic checks, and asserts the
+final resumed model matches the selected model. RUNBOOK documents this bounded policy.
+Configuration precedence reference: https://learn.chatgpt.com/docs/config-file/config-basic .
+Explicit thread/turn model contract: https://learn.chatgpt.com/docs/app-server .
+
+Checks on this source candidate:
+- Targeted node --test test/config.test.mjs test/model-selection.test.mjs test/integration.test.mjs:
+  PASS11/11. Initial narrower sandbox run:3PASS/1environment failure (loopback listen EPERM);
+  one authorized loopback run of the full targeted set passed. Regression checks cover model
+  resolution, invalid/missing config, create/turn/recovery/import selection and visible failed turn
+  without retry/fallback. Existing integration safety/continuity checks unchanged and passing.
+- ONE real npm run smoke: PASS, smoke_model=gpt-6-astra; two completed turns, gateway/app-server
+  restart with same thread, random README name retained in second answer, microphone TODO found,
+  final resumed model equality PASS, persisted thread turns2. No inference retries/repeated smoke.
+- Source/new-file diff review and git diff --check PASS.
+
+Full release matrix, native approval probes, Screenshot diagnosis, package, deploy, active-cloud
+readback and physical RV101 acceptance NOT RUN in this session. No production restart. Next phase:
+review checkpoint, then release matrix -> package -> deploy -> physical acceptance; do not infer
+physical readiness from this smoke. Linear remains pending release/physical verification.
+
+ALE-467 validation metrics: measured interval13:36:39–13:41:08UTC,4m29s through smoke/diff verification
+(excludes initial context reads and final record/scan/push). Targeted test runs2 (sandbox failure1,
+passing loopback run1); real smoke1; full matrices0; package/deploy/readback0. Read-only effective
+model probes2 (sandbox timeout1, successful retry1). Compactions0 observed. Exact input/cached/output/
+reasoning, model responses/tool calls, context used/max/utilization UNAVAILABLE. Recommendation:
+NEW SESSION because model compatibility checkpoint ends and release validation is a separate phase.
+
+Pre-push secrets review: gitleaks8.30.1 index export and all reachable history each reported only
+curl-auth-user at test/approval-router.test.mjs:55 (history checkpoint7b8c182), manually verified
+synthetic user:pw regression fixture. Scanner exits1; automated clean PASS is not claimed. No real
+credential finding. Origin/main fetched and equals base d3ce24c; reviewed staged files only.

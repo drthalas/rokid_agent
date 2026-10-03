@@ -36,12 +36,23 @@ npm run setup
   "adminPort": 8791,
   "codexPort": 8390,
   "codexBinary": "/opt/homebrew/bin/codex",
+  "model": "gpt-6-astra",
   "projects": { "rikid": "/Users/hermes/Projects/Rikid-agent" },
   "defaultProject": "rikid"
 }
 ```
 
 Это **фрагмент** — сохраните остальные поля tokenFile/adminTokenFile/certFile/keyFile/stateFile/stt. Setup по умолчанию использует `host: 127.0.0.1`. Во время первой проверки был настроен LAN адрес Mac; текущий адрес проверяйте в приватной конфигурации, не выводя её секретные поля. На другом Mac для очков замените на конкретный LAN IPv4 адрес Mac (предпочтительно) или `0.0.0.0`. Только HTTPS gateway будет доступен в LAN; app-server всегда жёстко привязан к 127.0.0.1. Admin HTTP тоже только 127.0.0.1. Не перенаправляйте порты роутера.
+
+Закрепите в приватном gateway config явный `model`, совместимый с вашим Codex account/surface.
+Для текущего ALE-465 compatibility candidate выбран `gpt-6-astra`. Gateway передаёт эту модель
+при создании, импорте, восстановлении thread и каждом turn; смена Desktop default её не заменяет.
+Без `model` сохраняется прежнее наследование Codex defaults. Неподдерживаемая выбранная модель
+должна завершить запрос ошибкой; автоматического fallback нет.
+`npm run smoke` использует явный `model` из `.local/config.json`; `ROKID_SMOKE_CONFIG` выбирает
+другой gateway config, `ROKID_SMOKE_MODEL` явно переопределяет модель smoke. Если модель отсутствует
+или пуста, smoke останавливается до запуска app-server. Fixture, TLS и continuity checks сохраняются;
+production state/credentials не используются в тестовом gateway.
 
 Проекты адресуются короткими aliases `[a-z0-9_-]`. Ни путь, ни произвольные параметры Codex клиент передавать не может. Путь canonicalized через realpath; подмена root симлинком отклоняется. Allowlist определяет cwd, а не отдельный контейнер для чтения файлов.
 

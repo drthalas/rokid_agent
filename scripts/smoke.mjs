@@ -6,7 +6,11 @@ import { Engine } from '../src/engine.mjs';
 import { policy } from '../src/protocol.mjs';
 import { serve } from '../src/server.mjs';
 import { fixture, request, delay } from '../test/helpers.mjs';
+import { smokeModel } from './smoke-model.mjs';
+const model = smokeModel();
+console.log(`smoke_model=${model}`);
 const f = fixture();
+f.config.model = model;
 const marker = 'ROKID_' + randomUUID().slice(0, 8);
 fs.writeFileSync(path.join(f.dir, 'README.md'), `# ${marker}\nInteractive Rokid voice terminal for local Codex on Mac.\n`);
 fs.writeFileSync(path.join(f.dir, 'work.txt'), 'TODO: verify glasses microphone\nTODO: verify reconnect\n');
@@ -46,7 +50,8 @@ try {
     }
   }
   if (!responses[0].includes(marker) || !responses[1].includes(marker) || !/microphone|микрофон/i.test(responses[1])) throw new Error('semantic_continuity_failed');
-  await codex.request('thread/resume', { threadId, cwd: f.config.projects.demo, ...policy });
+  const resumed = await codex.request('thread/resume', { threadId, cwd: f.config.projects.demo, ...policy, model });
+  if (resumed.model !== model) throw new Error('smoke_model_mismatch');
   const read = await codex.request('thread/read', { threadId, includeTurns: true });
   console.log(JSON.stringify({ pass: true, threadId, turns: read.thread.turns.length, responses }, null, 2));
 } finally { engine.close(); await servers?.close(); await codex.close(); f.cleanup(); }

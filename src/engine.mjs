@@ -81,7 +81,7 @@ export class Engine {
     const { thread } = await this.codex.request('thread/read', { threadId: body.threadId, includeTurns: true });
     requireValue(fs.realpathSync(thread.cwd) === cwd, 'thread_project_mismatch', 403);
     requireValue(thread.status?.type !== 'active' && thread.turns?.at(-1)?.status !== 'inProgress', 'thread_active', 409);
-    const resumed=await this.codex.request('thread/resume', { threadId: body.threadId, cwd, ...policy });
+    const resumed=await this.codex.request('thread/resume', { threadId: body.threadId, cwd, ...policy, ...(this.config.model ? { model: this.config.model } : {}) });
     this.codex.recordProfile(resumed);
     await this.codex.verifyCapabilities(body.threadId,cwd);
     const s = { id: randomUUID(), imported:true, project: body.project, threadId: body.threadId, turnId: null, status: 'Done', text: '', partial: '', error: null, uncertain: false, revision: 1, history: [] };
@@ -105,7 +105,7 @@ export class Engine {
           const timing = { requestId: body.requestId, T5: Date.now() };
           this.timings.delete(id); this.timings.set(id, timing);
           if (this.timings.size > 32) this.timings.delete(this.timings.keys().next().value);
-          const r = await this.codex.request('turn/start', { threadId: s.threadId, cwd, ...turnPolicy,
+          const r = await this.codex.request('turn/start', { threadId: s.threadId, cwd, ...turnPolicy, ...(this.config.model ? { model: this.config.model } : {}),
             input: [{ type: 'text', text, text_elements: [] }] });
           timing.T6 = Date.now(); timing.turnId = r.turn.id;
           s.turnId = r.turn.id; updateExchange(s, this.historySecrets);
@@ -254,7 +254,7 @@ export class Engine {
         const cwd = projectPath(this.config, s.project);
         const { thread: original } = await this.codex.request('thread/read', { threadId: s.threadId, includeTurns: true });
         requireValue(fs.realpathSync(original.cwd) === cwd, 'thread_project_mismatch');
-        const resumed = await this.codex.request('thread/resume', { threadId: s.threadId, cwd, ...policy, ...(!s.imported?{developerInstructions:GATEWAY_INSTRUCTIONS}:{}) });
+        const resumed = await this.codex.request('thread/resume', { threadId: s.threadId, cwd, ...policy, ...(this.config.model ? { model: this.config.model } : {}), ...(!s.imported?{developerInstructions:GATEWAY_INSTRUCTIONS}:{}) });
         this.codex.recordProfile(resumed); const {thread}=resumed;
         await this.codex.verifyCapabilities(s.threadId,cwd);
         hydrateHistory(s, original.turns, this.historySecrets);

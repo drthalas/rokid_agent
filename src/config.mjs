@@ -20,6 +20,7 @@ export function loadConfig(file) {
   }
   for (const key of ['port', 'adminPort', 'codexPort']) requireValue(Number.isInteger(c[key]) && c[key] > 0 && c[key] < 65536, 'invalid_port');
   c.host ??= '127.0.0.1'; c.codexBinary ??= 'codex';
+  if (Object.hasOwn(c, 'model')) requireValue(typeof c.model === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(c.model), 'invalid_model');
   return c;
 }
 export function projectPath(c, alias) {
