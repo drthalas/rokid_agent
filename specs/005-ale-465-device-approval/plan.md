@@ -81,3 +81,15 @@ Gmail MIME API under unchanged policy. Test actual image hash→draft readback i
 The installed public turn/steer schema omits experimental additionalContext. Use public input with a
 fixed data-only marker, exact expectedTurnId and no approval authority; do not enable experimental API
 in production merely for metadata. Canonical voice history retains the gateway-owned original prompt.
+
+## Native exact-app persistent consent revision
+
+Prove installed request/response and native storage/cross-turn behavior before enabling the shape.
+Use the existing descriptor kind computer-use with scope=app; strict canonical bundle ID, connector
+identity, native known operation and explicit session/always options are required. Unknown CUA consent
+must not fall through to generic one-action MCP routing. The native response helper needs an explicit
+persistent flag; ordinary accept cannot grant app persistence. Engine requires the existing challenge
+for app scope regardless of risk; local admin one-click accept cannot bypass it. No device identity
+parameter and no trust state on gateway. Frontend scope/labels disclose future tasks and default NO on
+both screens. Amend constitution principleII narrowly to this owner-authorized native exception.
+Targeted router/device/frontend tests plus real safe native high-risk fixture; no release/deploy here.

@@ -12,8 +12,13 @@ starts a different conversation/project. Uncertain delivery MUST NOT silently cr
 
 Codex app-server and admin API MUST remain loopback-only. Device access MUST authenticate through
 the gateway. ALE-465 permits a narrow authenticated device decision only after an explicit physical
-review card for a verified native request with explicit scope (one call or the current turn, never session). Default decline, bounded expiry, current session/turn
-binding and a second high-risk confirmation are mandatory. Unknown or broad grants fail closed; devices
+review card for a verified native request with explicit scope. Ordinary decisions cover one call or
+the current turn, never a blanket session grant. The sole persistent exception is native Computer Use
+consent for one canonical app identity, after two explicit physical confirmations with default NO.
+The native provider MUST own saving, consuming and revoking that consent; no gateway trust-list or
+synthetic persistent approval is permitted. App trust MUST NOT approve unrelated apps or bypass native
+auto_review, sandbox policy or separate sensitive-action decisions. Default decline, bounded expiry,
+current session/turn binding and a second high-risk confirmation remain mandatory. Unknown or broad grants fail closed; devices
 never receive admin credentials. Dangerous actions require a separate explicit human decision. Project routing MUST use the allowlist; no documentation may claim it provides
 complete filesystem or tenant isolation. The selected native profile is workspace-write/on-request/auto_review: eligible safe escalations are reviewed by Codex, while gateway must never manufacture an approval or treat voice text as a human decision.
 
@@ -63,7 +68,7 @@ scope and risk justification, not silent weakening. User and environment instruc
 Preserve adoption/amendment dates on unchanged reruns. Do not regenerate templates or product specs
 merely to update this document.
 
-**Version**: 2.1.0 | **Ratified**: 2026-10-01 | **Last Amended**: 2026-10-03
+**Version**: 3.0.0 | **Ratified**: 2026-10-01 | **Last Amended**: 2026-10-03
 
 Amendment2.0.0 (ALE-465): owner explicitly authorized replacing local-only human decisions with bounded
 physical device review. Other security/privacy/ownership principles are unchanged; no session grants.
@@ -71,3 +76,8 @@ physical device review. Other security/privacy/ownership principles are unchange
 Amendment2.1.0 (ALE-465 physical revision): generic native classes must disclose actual scope; failed
 results remain canonical. Already-emitted tool images may use bounded private temporary copies to
 complete the requested attachment workflow, with no new capture, provider client or approval authority.
+
+Amendment3.0.0 (ALE-465 owner decision): replace the blanket prohibition on persistent approval with
+a narrowly proven native exact-app Computer Use exception. Native Always Allow was saved through
+app-server and consumed across turns; RV101 must disclose future-task scope and require a second
+explicit confirmation. All-app/session-wide safety grants remain forbidden.

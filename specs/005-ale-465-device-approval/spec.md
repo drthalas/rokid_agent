@@ -2,13 +2,13 @@
 
 **Feature Branch**: `main`
 **Created**: 2026-10-02
-**Status**: Revision after physical1.1.3 failure (2026-10-03)
+**Status**: Native exact-app persistent consent revision (2026-10-03)
 **Input**: [ALE-465](https://linear.app/drthalas/issue/ALE-465), owner request and comments.
 
 ## User Scenarios & Testing
 
 ### US1 — Review a concrete action on glasses (P1)
-The wearer sees a dedicated approval card when native Codex needs a person, then selects allow once
+The wearer sees a dedicated approval card when native Codex needs a person, then selects a scope-appropriate allowance
 or decline without returning to the Mac. Why: an opaque Working screen prevents glasses-first use.
 Independent test: a harmless native human request is represented, deliberately allowed, and resumes
 one action in the same turn. A risky simulator additionally requires a second confirmation.
@@ -42,7 +42,8 @@ screenshot and Gmail draft to self with attachment; never send mail.
 - FR-002: Bind one decision to one approval/session/current turn/concrete action; never blanket grants.
 - FR-003: Show only a deterministic, bounded, sanitized description; no raw commands, code, credentials,
   provider payloads, environment or unnecessary private paths.
-- FR-004: Unsupported/complex auth/input/unknown/sensitive/persistent grants immediately fail closed.
+- FR-004: Unsupported/complex auth/input/unknown/sensitive grants immediately fail closed. Persistent
+  grants are forbidden except the verified native exact-app Computer Use consent in FR-018.
 - FR-005: Default to DECLINE on both first and high-risk second screens. Back declines; double-tap
   classification must cancel a pending accept before delivery. Optional generic TTS occurs once per card.
 - FR-006: Decline after30 seconds without choice. Show a clear timeout/unsupported/declined result,
@@ -85,7 +86,7 @@ not general approval support. This revision supersedes any implementation-specif
 - FR-011: Route by verified native request class/schema, not app/provider product names. Inventory
   command, patch, permissions, MCP and Computer Use request/response/scope and display completeness.
 - FR-012: Describe action, target, risk and actual scope. Never label a turn-wide native grant “once”;
-  session/persistent grants remain forbidden. Unknown/opaque shapes fail closed rather than hiding risk.
+  blanket session grants remain forbidden; native exact-app persistence is the FR-018 exception. Unknown/opaque shapes fail closed rather than hiding risk.
 - FR-013: Unsupported request immediately shows its safe reason while native continuation is still busy.
 - FR-014: Every declined/unsupported/timeout exchange retains readable canonical assistant text and
   a separate truthful outcome even for interrupted/failed/uncertain completion. Recovery and next turn
@@ -103,3 +104,23 @@ actually reach50 + screenshot + attached draft + HUD/TTS/history; build/mock is 
 - FR-017: The already-requested native screenshot must be transferable to the existing draft tool in
   the same turn. Any necessary temporary copy is private, bounded and automatically deleted; it never
   creates new capture/approval, changes the original voice history or becomes a public device endpoint.
+
+## Revision: native persistent consent for one Computer Use app
+
+- FR-018: For the proven cua_repl empty form app-consent request with connector_id=computer-use,
+  canonical bundle ID and native persist options session/always, offer DECLINE and ALWAYS ALLOW only.
+  App identity MUST come from native tool_params.app, never fuzzy display-name matching or client input.
+- FR-019: Every persistent accept requires a second default-NO physical selection/tap with an opaque
+  current-request challenge, including low-risk apps. Both screens disclose the exact app and future-task
+  lifetime. Sensitive actions still follow native policy. Never expose an all-app or one-time alternative
+  in this specific app-consent flow.
+- FR-020: After matching second confirmation, transport {action:accept,content:{},_meta:{persist:always}}
+  using the native request ID. Native provider owns saving/consuming/revoking trust; no gateway allowlist,
+  consent-store writes, altered app policy, unconditional approval mode or synthetic approval.
+- FR-021: Prove native store membership and a new user turn with Calculator20+30=50 plus CUA image,
+  with zero repeated app-consent. App trust alone cannot suppress a separate native high-risk fixture.
+  Failed/unknown persistent shapes still fail closed; ordinary nonpersistent decisions stay unchanged.
+
+This owner-authorized exception replaces the earlier blanket persistent-grant prohibition. The pending
+decision remains one-use/current-turn/30s; only the resulting native consent has future-task lifetime.
+Physical first-use/second-confirmation acceptance and release/deploy remain separate gates.

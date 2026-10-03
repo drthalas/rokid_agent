@@ -9,8 +9,16 @@ const bounded=(v,n)=>typeof v==='string'&&v.length>0&&v.length<=n&&!/[\u0000-\u0
 export function approvalDescriptor(a,turnId) {
   if(!a||typeof a!=='object'||!/^[a-f0-9-]{36}$/.test(a.id)||a.turnId!==turnId||!Object.hasOwn(TITLES,a.kind)||
     a.title!==TITLES[a.kind]||!bounded(a.action,72)||!bounded(a.target,96)||!['low','medium','high'].includes(a.risk)||
-    !['once','turn'].includes(a.scope)||(a.kind==='permissions')!==(a.scope==='turn')||a.allowOnGlasses!==true||!Number.isFinite(a.expiresAt))return null;
+    !['once','turn','app'].includes(a.scope)||(a.kind==='permissions')!==(a.scope==='turn')||(a.kind==='computer-use')!==(a.scope==='app')||
+    a.scope==='app'&&!/^[A-Za-z][A-Za-z0-9-]*(?:\.[A-Za-z0-9-]+)+$/.test(a.target)||a.allowOnGlasses!==true||!Number.isFinite(a.expiresAt))return null;
   return {id:a.id,turnId:a.turnId,kind:a.kind,title:a.title,action:a.action,target:a.target,risk:a.risk,scope:a.scope,expiresAt:a.expiresAt};
+}
+export function approvalCopy(a,second) {
+  const app=a?.scope==='app';
+  return {approvalHeading:second?(app?'ВСЕГДА РАЗРЕШАТЬ?':'ПОДТВЕРДИТЬ ДЕЙСТВИЕ?'):(app?'Computer Use · Доступ к приложению':a.title+' · '+a.action),
+    approvalAcceptLabel:app?(second?'ДА, РАЗРЕШИТЬ ВСЕГДА':'РАЗРЕШИТЬ ВСЕГДА'):second?'ДА, ВЫПОЛНИТЬ':a.scope==='turn'?'РАЗРЕШИТЬ НА ЭТОТ ЗАПРОС':'РАЗРЕШИТЬ ОДИН РАЗ',
+    approvalScopeText:app?'Это приложение · Будущие задачи':a.scope==='turn'?'До конца текущего запроса':'Только это действие',
+    approvalDisclosure:app&&second?'Доступ сохранится. Чувствительные действия могут требовать подтверждения.':''};
 }
 export class ApprovalCard {
   constructor({decide,render,speak,schedule=setTimeout,unschedule=clearTimeout,now=Date.now}) {
@@ -29,7 +37,7 @@ export class ApprovalCard {
     if(!this.remaining()){this.armed=false;this.feedback='Время подтверждения истекло. Действие не выполнено.';this.draw();this.speak(this.feedback);return;}
     this.deadlineTimer=this.schedule(()=>{this.deadlineTimer=null;if(this.current?.id===id){this.draw();this.tickDeadline(id)}},1000);
   }
-  draw(done) {const epoch=this.epoch,id=this.current?.id;this.render({approval:this.current,approvalAllow:this.choice,approvalSecond:this.second,approvalSubmitting:this.submitting,approvalRemainingSeconds:this.remaining(),approvalFeedback:this.feedback},()=>{if(this.epoch===epoch&&this.current?.id===id&&!this.submitting&&this.remaining())this.armed=true;done?.()})}
+  draw(done) {const epoch=this.epoch,id=this.current?.id;this.render({approval:this.current,approvalAllow:this.choice,approvalSecond:this.second,approvalSubmitting:this.submitting,approvalRemainingSeconds:this.remaining(),approvalFeedback:this.feedback,...approvalCopy(this.current,this.second)},()=>{if(this.epoch===epoch&&this.current?.id===id&&!this.submitting&&this.remaining())this.armed=true;done?.()})}
   move(direction) {if(!this.current||this.submitting)return;this.cancelTap();this.choice=direction>0;this.draw()}
   cancelTap(){if(this.timer!==null)this.unschedule(this.timer);this.timer=null;this.epoch++}
   tap() {

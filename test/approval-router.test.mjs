@@ -1,11 +1,11 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {deviceApproval,nativeApprovalResponse} from '../src/approvals.mjs';
 const base={threadId:'t',turnId:'v',itemId:'i',startedAtMs:1,cwd:'/project'};
-const app=(name,tool='get_app_state')=>({...base,serverName:'cua_repl',mode:'form',requestedSchema:{type:'object',properties:{}},_meta:{codex_approval_kind:'mcp_tool_call',tool_name:tool,tool_params:{app:name},riskLevel:'low',persist:['session','always']}});
+const app=(name,tool='get_app_state')=>({...base,serverName:'cua_repl',mode:'form',requestedSchema:{type:'object',properties:{}},_meta:{codex_approval_kind:'mcp_tool_call',connector_id:'computer-use',tool_name:tool,tool_params:{app:name},riskLevel:'low',persist:['session','always']}});
 test('Computer Use routing is native class-based, not Calculator/app-name policy',()=>{
  for(const name of ['com.apple.calculator','com.apple.screenshot.launcher','org.example.editor'])for(const tool of ['get_app_state','type_text','click','press_key']){
-  const p=app(name,tool),d=deviceApproval('mcpServer/elicitation/request',p);assert.equal(d.kind,'computer-use');assert.ok(d.target.includes(name));assert.equal(d.scope,'once');
-  assert.deepEqual(nativeApprovalResponse('mcpServer/elicitation/request',p,true),{action:'accept',content:{}});
+  const p=app(name,tool),d=deviceApproval('mcpServer/elicitation/request',p);assert.equal(d.kind,'computer-use');assert.ok(d.target.includes(name));assert.equal(d.scope,'app');
+  assert.deepEqual(nativeApprovalResponse('mcpServer/elicitation/request',p,true,true),{action:'accept',content:{},_meta:{persist:'always'}});
  }
  assert.equal(deviceApproval('mcpServer/elicitation/request',app('app; hidden action')),null);
 });
@@ -56,4 +56,13 @@ test('credentials in simple argv and arbitrary primitive provider payloads stay 
  const p={...base,serverName:'example',mode:'form',requestedSchema:{type:'object',properties:{}},_meta:{codex_approval_kind:'mcp_tool_call',tool_name:'update_record',tool_params:{message:'private body'},riskLevel:'low'}};
  assert.equal(deviceApproval('mcpServer/elicitation/request',p),null);
  assert.equal(deviceApproval('mcpServer/elicitation/request',{...p,_meta:{...p._meta,tool_params:{url:'https://user:pw@example.com/a'}}}),null);
+});
+
+test('persistent app consent requires exact native class, canonical identity and explicit always option',()=>{
+ const p=app('org.example.editor');
+ assert.deepEqual(nativeApprovalResponse('mcpServer/elicitation/request',p,true),{action:'decline',content:null});
+ for(const patch of [{serverName:'other'},{mode:'url'},{requestedSchema:{type:'object',properties:{persist:{type:'string',enum:['always']}}}},{_meta:{...p._meta,connector_id:'other'}},{_meta:{...p._meta,persist:['session']}},{_meta:{...p._meta,persist:['always','all-apps']}},{_meta:{...p._meta,tool_params:{app:'Calculator'}}},{_meta:{...p._meta,tool_params:{app:'*'}}},{_meta:{...p._meta,tool_params:{app:'org.example.editor',allApps:true}}}]){
+  const bad={...p,...patch};assert.equal(deviceApproval('mcpServer/elicitation/request',bad),null);
+  assert.deepEqual(nativeApprovalResponse('mcpServer/elicitation/request',bad,true,true),{action:'decline',content:null});
+ }
 });

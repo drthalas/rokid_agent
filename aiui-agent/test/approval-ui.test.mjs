@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {ApprovalCard,approvalDescriptor} from '../lib/approval-ui.js';
-const a={id:'a'.repeat(36),turnId:'turn',kind:'computer-use',title:'Computer Use',action:'Просмотр окна / снимок',target:'com.apple.calculator',scope:'once',risk:'low',allowOnGlasses:true,expiresAt:100000};
+const a={id:'a'.repeat(36),turnId:'turn',kind:'computer-use',title:'Computer Use',action:'Просмотр окна / снимок',target:'com.apple.calculator',scope:'app',risk:'low',allowOnGlasses:true,expiresAt:100000};
 function harness(decide=async()=>({ok:true})){let tick;const calls=[],views=[],speech=[];const card=new ApprovalCard({decide:async(...args)=>{calls.push(args);return decide(...args)},render:(s,done)=>{views.push(s);done?.()},speak:s=>speech.push(s),now:()=>1000,schedule:(f,ms)=>{if(ms===650)tick=f;return ms},unschedule:id=>{if(id===650)tick=null}});return{card,calls,views,speech,flush:async()=>{const f=tick;tick=null;await f?.()}}}
 test('descriptor drops arbitrary payloads; unknown shape denied',()=>{assert.equal(approvalDescriptor({...a,token:'secret'},a.turnId).token,undefined);assert.equal(approvalDescriptor({...a,title:'secret'},a.turnId),null);assert.equal(approvalDescriptor(a,'foreign'),null)});
 test('default decline, no speech decision, same card TTS once, swipe cancels pending tap',async()=>{
@@ -44,4 +44,17 @@ test('old decision rejection cannot hide or reset a newly refreshed second card'
  let reject;const h=harness(()=>new Promise((_,j)=>reject=j));h.card.show(a);h.card.move(1);h.card.tap();const pending=h.flush();
  const second={...a,id:'b'.repeat(36)};h.card.show(second);h.card.move(1);reject(Error('network_or_tls_error'));await pending;
  assert.equal(h.card.current.id,second.id);assert.equal(h.card.choice,true);assert.equal(h.calls.length,1);
+});
+
+test('persistent app UX has only decline/always, two explicit choices and future-task disclosure',async()=>{
+ const {approvalCopy}=await import('../lib/approval-ui.js');
+ const h=harness(async(id,decision,confirmation)=>decision==='accept'&&!confirmation?{requiresConfirmation:true,confirmation:'app-challenge'}:{ok:true});
+ h.card.show(a);assert.equal(h.views.at(-1).approvalAcceptLabel,'РАЗРЕШИТЬ ВСЕГДА');assert.equal(h.card.choice,false);
+ h.card.move(1);h.card.tap();await h.flush();assert.equal(h.card.second,true);assert.equal(h.card.choice,false);
+ assert.equal(h.views.at(-1).approvalAcceptLabel,'ДА, РАЗРЕШИТЬ ВСЕГДА');assert.ok(h.views.at(-1).approvalDisclosure.includes('Чувствительные действия'));
+ assert.ok(h.views.at(-1).approvalScopeText.includes('Будущие задачи'));assert.equal(h.views.at(-1).approval.target,a.target);
+ assert.ok(!JSON.stringify([approvalCopy(a,false),approvalCopy(a,true)]).includes('ОДИН РАЗ'));
+ h.card.move(1);h.card.tap();await h.flush();assert.equal(h.calls[1][2],'app-challenge');
+ assert.equal(approvalDescriptor({...a,target:'Calculator'},a.turnId),null);assert.equal(approvalDescriptor({...a,scope:'once'},a.turnId),null);
+ const ordinary={...a,kind:'mcp-tool',title:'Интеграция',scope:'once'};assert.equal(approvalCopy(ordinary,false).approvalAcceptLabel,'РАЗРЕШИТЬ ОДИН РАЗ');assert.equal(approvalCopy(ordinary,true).approvalDisclosure,'');
 });

@@ -52,3 +52,12 @@ subset, fail closed for unknown shapes; do not broaden native permission profile
 - [x] T032 [US3] Re-run full SAME-turn Calculator→native screenshot→attached draft with exact image-byte proof; record actual native boundary if unsuccessful.
 
 Checkpoint paused by owner2026-10-03: implementation/targeted tests saved; T028–T030 remain release/deploy/physical handoff work. No new native or cloud cycle during checkpoint.
+
+## Native exact-app persistent consent checkpoint
+- [x] T033 Capture actual native request and Desktop response metadata; prove native store persistence.
+- [x] T034 Prove new user turn Calculator20+30=50 + image with zero app-consent prompts.
+- [x] T035 Implement strict scope=app sanitizer/response and mandatory second current-request challenge.
+- [x] T036 Implement DECLINE/ALWAYS ALLOW HUD, future-task disclosure and default-NO second screen.
+- [x] T037 Targeted exact identity/unsupported/replay/normal/high-risk tests and native safe risk fixture.
+- [x] T038 Finish diff/secrets review, evidence and commit/push coherent checkpoint.
+- [ ] T039 Next phase: release verification, one private deploy/readback and separate physical acceptance.

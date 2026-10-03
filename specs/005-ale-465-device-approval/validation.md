@@ -437,3 +437,175 @@ physical retest NOT RUN, as requested for this coherent fix checkpoint. Producti
 credentials, state, mappings, endpoint/tunnel/VPN/model untouched. Release verification is the next phase.
 Physical end-to-end acceptance remains CRITICAL/unverified; this source checkpoint addresses reproducible
 UX/ACK gaps and improves next-run evidence, not proof that the composite execution now completes.
+
+## Second physical retest release — 2026-10-03
+
+SESSION: CONTINUE. Actual agent MODEL/EFFORT: UNAVAILABLE. WHY: same ALE-465 feature/blocker;
+release the coherent fix without reopening diagnosis or changing approval semantics.
+Declared candidate main `7c4bf45c895441829d8a876c13d61e12759366a7`; clean worktree/index before gates.
+Full applicable matrix ONCE: root60/60 PASS, AIUI53/53 PASS, AIUI check PASS, real recovery smoke PASS
+(two turns with same-thread gateway/app-server restart and explicit gpt-6-astra resumed-model equality).
+Known loopback sandbox workaround used initially; no matrix/check reruns. Index/all-reachable-history
+secret scans found only the same reviewed synthetic curl fixture and scanner-name documentation false
+positives (scanner exit1); exact current/old/admin tokens absent from index; private files untracked.
+
+Private local AIX packed/validated ONCE: VERSION `b1a027e6-55c0-422f-81ca-c9caf83c7154`, SHA256
+`6b147520800f0872b9c1475efe19d6dea34864a6606d801e2114d32bbcde9aa2`. Required files, private config
+semantic equality, countdown/ACK presence, dev exclusion and old/admin credential absence PASS.
+Guarded production restart to candidate: gatewayPID57631. All3 session/thread mappings and exact bounded
+history preserved; protected config/device/admin token/certificate/key/frontend config/origin hashes
+unchanged. Authenticated local/public health200; unauthenticated401; codex/loggedIn/stt true. Explicit
+gpt-6-astra and all3 workspaceWrite/on-request/auto_review profiles PASS. Tunnel/VPN untouched.
+
+Existing private Jarvis agent `6eb5a07566d645d5a1994807fb63cd1e`: ONE source Upload, ONE cloud Package,
+ONE Save Details. Persisted active version1.1.12, Draft, verified after reload. Network/Camera/Microphone/
+Speaker retained; no public Submit for Review. Existing-agent folder import used the known native
+foreground picker fallback. No duplicate/new agent or repeated package/deploy.
+ACTIVE Download Published Version selected the new artifact. Supported Studio CDP download metadata
+provided its credential-free CDN URL; direct private-staging fetch used the known Downloads-access
+fallback without repeating failed local Downloads reads or extracting browser credentials.
+Cloud VERSION `09755694-23d9-4eaa-bb49-c21231a4d665`, MD5 `103525ed6e6b07a9b1e102953f2f3745`,
+SHA256 `1bfe357201c9b550840e86f591aa9e5c43a2ab49fbd8e41424efa313fb854832`.
+Active readback PASS:13 runtime/metadata/license files match candidate, private config equality in memory,
+current device token equality, old/admin token absence, endpoint/project/session/TTS preserved,
+countdown/ACK/error runtime present, dev files excluded. No secret values printed.
+
+Physical retest NOT RUN. ALE-465 Needs Test. Wearer: update glasses resources; Calculator20+30 → image →
+Gmail draft, nothing sent. On every approval verify countdown, select Allow, tap once, observe whether
+card remains while ACK is unconfirmed; report approval sequence and final result. Known uncertainty
+remains why the previous second deliberate physical Accept missed native delivery.
+One local package, one cloud package/deploy, one active artifact validation; no new feature work.
+Release reports/private artifacts retained in ignored private staging. Continue this session for physical
+feedback; no new session required solely because this release checkpoint was reached.
+
+## Native automatic-review feasibility checkpoint — 2026-10-03
+
+SESSION: CONTINUE. Actual agent MODEL/EFFORT: UNAVAILABLE. WHY: same physical blocker, effective native
+permission routing investigation. Source main7c4bf45; deployed private1.1.12. Prior release evidence
+above preserved. No production source/config/policy/process/token/network/cloud changes in this phase.
+
+Desired zero-routine-human-prompt macOS CUA behavior is NOT supported by the inspected native surface.
+Evidence from three distinct approaches (not retries): effective production config/physical events;
+installed schema/provider implementation; isolated real native Calculator probe with supported auto
+settings. Official documentation independently confirms the native app-consent limitation:
+https://learn.chatgpt.com/docs/sandboxing/auto-review (Computer Use app approvals go directly to users).
+https://learn.chatgpt.com/docs/config-file/config-reference (app/MCP auto modes; app access allow still
+requires the normal approval flow).
+
+Installed CLI0.157.1; unified-computer-use plugin26.930.21537; active provider cua_repl (3 tools),
+legacy computer-use MCP disabled (0 tools). Effective production config/read layers: sessionFlags and
+user both workspace-write/on-request/auto_review; system has no conflicting approval override;
+managed requirements show no approval override. All3 runtime profiles match. No explicit per-app,
+per-link or per-tool approval/reviewer overrides found; no computer_use settings were present.
+The installed ComputerUseConfig exposes default_app_access and platform app identity access rules,
+not an app-consent auto-review switch. AppConfig separately supports auto/prompt/writes/approve and
+approvals_reviewer. Allow/deny app-access rules are policy gates, not a bypass of native app consent.
+
+The installed macOS sky computer-use-policy provider calls createElicitation for each app operation,
+with codex_approval_kind=mcp_tool_call, connector_id=computer-use, exact app target/tool_name, risk and
+session/always persistence options. Non-Accept throws the native not-approved error. That provider has
+no approval_mode/approvals_reviewer branch. Inspected policy file SHA256
+8cd1272d7aa836479be6c3f4cc5b0b80526339eedd4852cbb6558f893f6721f8.
+Codex feature tool_call_mcp_elicitation is stable/enabled; this is not a disabled feature diagnosis.
+Root-cause categories C+D: the outer cua_repl.js tool is risk-reviewed, but inner macOS app consent
+remains human-gated. Jarvis's required no-session/global-grant handling means each native operation
+asks again. No forced prompt override found (A/B not evidenced); different native requests/card IDs
+and distinct operations disprove replay as the cause of the observed loop (E).
+
+Physical1.1.12 Calculator turn01a1028f-301a-75d0-ad87-a7ca71b41578:8 human native elicitations/8 RV101
+cards (window state, click,6 key operations),7 accepted and1 declined. This occurred within2 CUA calls,
+not8 duplicate gateway displays. Other later app activity was excluded from the Calculator count.
+
+Isolated real probe: temporary CLI/thread config apps.computer-use.default_tools_approval_mode=auto
+and apps.computer-use.approvals_reviewer=auto_review, explicit gpt-6-astra, ephemeral thread, native
+workspace-write/on-request/auto_review. Effective config readback confirmed both app settings.
+First CUA Calculator read: native outer review approved/low1; inner get_app_state elicitation1;
+ALE-465 human bridge1. Probe deliberately declined, then stopped without retry/bypass. No image and
+no completed20+30 workflow; this is a blocked acceptance, not a successful Calculator proof.
+A preliminary direct mcp_servers.cua_repl.tools override failed startup with invalid transport because
+it created an incomplete direct server definition; removed only that temporary override before the
+bounded app-config probe. Production/user configuration was never written. Ephemeral process ended.
+
+Safe native alternatives assessed: app access allow rules still require normal consent; native Browser
+Use supports automatic domain review but does not replace the requested macOS Calculator app path.
+Session/always persistence, unconditional approve, never/full-access, provider patch/shim and gateway
+fabricated accepts were not used. No safe native configuration path found for the desired app behavior.
+Upstream native CUA risk-review support or an explicit future product/scope decision is required.
+
+Targeted existing model/tool-policy/device-approval/frontend-approval regressions25/25 PASS. They cover
+native profile, disabled capability preservation, default decline, one-use/current-turn, expiry and
+high-risk second confirmation. No new source fix exists to regression-test. Native high-risk simulator
+was NOT RUN after the unsupported-surface stop condition was established; genuine risk-based fallback
+and zero-human Calculator acceptance are therefore not claimed. No full release matrix/package/deploy.
+Two inspection proposals were rejected by native auto-review over raw-object persistence; corrected
+explicit allowlist projections executed successfully. No raw prompts/provider payloads were saved by
+the accepted inspector, and no tokens were printed. Private reports contain only safe metadata.
+ALE-465 remains Needs Fix. Successful implementation checkpoint/commit condition not reached; evidence
+remains uncommitted alongside the prior release evidence. Current production remains unchanged.
+
+## Native exact-app Always Allow checkpoint — 2026-10-03
+
+SESSION: CONTINUE. Actual agent MODEL/EFFORT: UNAVAILABLE. WHY: owner now explicitly authorizes native
+persistent trust for each individual Computer Use app, with mandatory second RV101 confirmation.
+This new scope replaces the earlier prohibition on persistent app consent; ordinary native app-consent
+still remains separate from risk auto_review. Prior release/feasibility evidence above is preserved.
+
+PATH A SUPPORTED. Installed app-server0.157.1 schema accepts action/content/_meta. Installed Desktop
+Computer Use card selects native persist=always and its response builder emits exactly
+`{action:"accept",content:{},_meta:{persist:"always"}}`. No field was invented inside content.
+Fresh isolated actual Calculator request: mcpServer/elicitation/request, mode=form, serverName=cua_repl,
+requestedSchema={type:object,properties:{}}. No persistence enum in that empty schema; native metadata
+contains codex_approval_kind=mcp_tool_call, connector_id=computer-use, tool_name=get_app_state,
+tool_params={app:com.apple.calculator}, persist=[session,always], riskLevel=low. Sanitized message matched
+Calculator app-consent; arbitrary message/provider data not retained.
+
+Native store proof (read-only inspection of the same store used by Desktop Always-allowed apps):
+before Calculator absent /8 entries; after the exact native response Calculator present /9 entries,
+all other entries unchanged. No direct store mutation or gateway trust-list. The app-server/provider
+saved this consent. Calculator remains native Always-allowed after this authorized probe; this affects
+future Calculator tasks even though the production gateway/AIX was not redeployed.
+
+Cross-turn real proof in the same ordinary-policy runtime, separate ephemeral thread:
+- initial consent turn:1 native app-consent, exact always response once, native tool completed;
+- NEW user turn:0 native app-consent/0 human bridge candidates; Calculator20+30 visible50 and1 CUA image;
+-5 native outer tool reviews approved/low in the second turn, proving auto_review remained active.
+One initial CUA call failed then the native agent completed the remaining sequence with4 successful
+calls; no app-consent bypass or repeated approval. Both turns completed. Native store plus behavior,
+not tool success alone, establishes persistence. Profile workspaceWrite/on-request/auto_review and
+model gpt-6-astra retained. Probe child stopped; production mappings/process/config/token untouched.
+
+Separate real safe native high-risk fixture after persistent trust:1 native mcp_tool_call elicitation
+reached ALE-465 bridge within1ms measured handler delay. Descriptor scope once/risk high. First accept
+returned only the confirmation challenge with0 native responses; explicit decline then sent native
+Decline. No destructive implementation, filesystem/network/provider access or global grant in fixture.
+Native profile unchanged. This verifies separate escalation remains live, without real destructive work.
+
+Implementation: verified empty native CUA form + connector + known operation + sole canonical bundle
+ID + exact session/always options gives computer-use scope=app. Fuzzy names, wildcards, unknown schemas,
+other servers/connectors and missing/unknown persistence options fail closed and cannot fall through
+to ordinary MCP acceptance. Every app-scope accept needs the second current-request challenge, even
+low risk. Direct admin one-click accept cannot grant persistence. Native response flag is set only after
+second confirmation; ordinary responses never inherit it. Safe audit records scope/persistence.
+HUD offers DECLINE / ALWAYS ALLOW, then default NO / YES ALWAYS ALLOW; exact bundle identity remains
+visible, future-task scope and separate sensitive-action confirmation are disclosed. No Allow once in
+this flow. Existing nonpersistent approvals preserve their scope and high-risk second step.
+
+Targeted affected tests65/65 PASS; final affected device/audit11/11 PASS; AIUI check PASS; no full release
+matrix, recovery smoke, packaging, cloud deployment or physical RV101 UX test. Two initial fixture
+failures came from accidental test-only connector metadata replacement; corrected without relaxing the
+router. Constitution3.0.0 explicitly records the owner-authorized exact-app exception (major because
+it changes the prior lifetime rule); matching spec/plan/tasks/contract/architecture/instructions updated.
+No template changes or deferred constitution placeholders. Native settings handle revocation.
+
+Next phase: release verification → one private deployment/active readback → physical first app use,
+Always Allow with second confirmation, then later task without repeated app-consent. Calculator is
+already trusted by this probe; first-use physical validation requires owner revocation through native
+Computer Use Settings or a different explicitly chosen untrusted app. No source/cloud deployment here.
+
+Additional persistence verification in a fresh app-server process/ephemeral thread, with no app config
+overrides and no new grants: Calculator20+30=50 PASS,3 successful CUA calls,3 native approved/low reviews,
+0 native human requests/0 bridge requests,1 Calculator image. Native store still contains Calculator
+among9 entries after the original process exited. The saved Calculator-only image was visually inspected:
+20+30 and50 are visible. This also rules out process-memory-only consent. All probe child processes ended.
+Index/all-reachable-history scans: only the same2 reviewed synthetic/documentation false positives;
+exact current/old/admin tokens absent from index, private artifacts untracked. Diff/constitution checks PASS.

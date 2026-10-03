@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {ran
 import {deviceApproval} from '../src/approvals.mjs';
 import {Engine} from '../src/engine.mjs';import {Codex} from '../src/codex.mjs';import {serve} from '../src/server.mjs';
 import {fixture,mockCodex,request,delay} from './helpers.mjs';
-export const calculator=(s,risk='low')=>({threadId:s.threadId,turnId:s.turnId,serverName:'cua_repl',mode:'form',requestedSchema:{type:'object',properties:{}},_meta:{codex_approval_kind:'mcp_tool_call',tool_name:'get_app_state',tool_params:{app:'com.apple.calculator'},riskLevel:risk,persist:['session','always']},message:'private native text'});
+export const calculator=(s,risk='low')=>({threadId:s.threadId,turnId:s.turnId,serverName:'cua_repl',mode:'form',requestedSchema:{type:'object',properties:{}},_meta:{codex_approval_kind:'mcp_tool_call',connector_id:'computer-use',tool_name:'get_app_state',tool_params:{app:'com.apple.calculator'},riskLevel:risk,persist:['session','always']},message:'private native text'});
 const method='mcpServer/elicitation/request';
 test('device sanitizer accepts only proven concrete Calculator read, never raw display/code/grants',()=>{
  const p=calculator({threadId:'t',turnId:'v'}),d=deviceApproval(method,p);
@@ -19,8 +19,8 @@ test('device decisions are authenticated, same-session/turn, one-use; voice gran
  assert.equal((await call(`/v1/sessions/${randomUUID()}/approvals/${a.id}`,{decision:'accept'})).status,409);
  assert.equal((await call(route,{decision:'accept',params:{}})).status,400);
  assert.equal((await call(route,{decision:'yes'})).status,400);
- assert.equal((await call(route,{decision:'accept'})).status,200);await delay(10);
- assert.deepEqual(mock.responses.find(r=>r.id===900).result,{action:'accept',content:{}});
+ const confirmation=await call(route,{decision:'accept'});assert.equal(confirmation.body.requiresConfirmation,true);assert.equal(mock.responses.length,0);assert.throws(()=>engine.decide(a.id,true),/persistent_confirmation_required/);assert.equal((await call(route,{decision:'accept',confirmation:confirmation.body.confirmation})).status,200);await delay(10);
+ assert.deepEqual(mock.responses.find(r=>r.id===900).result,{action:'accept',content:{},_meta:{persist:'always'}});
  assert.equal((await call(route,{decision:'accept'})).status,409);assert.equal(mock.responses.filter(r=>r.id===900).length,1);
 });
 test('high risk needs a second challenge-bound decision, defaults cannot bypass',async t=>{
@@ -67,7 +67,7 @@ test('parallel native approvals queue separate one-use cards instead of declinin
  const{mock,engine,s,call}=await setup(t);mock.send({id:920,method,params:calculator(s)});mock.send({id:921,method,params:calculator(s)});await delay(10);
  assert.equal(engine.listApprovals().length,2);const first=engine.snapshot(s).approval;const queued=engine.listApprovals().find(a=>a.id!==first.id);assert.equal(queued.expiresAt,null);
  assert.equal((await call(`/v1/sessions/${s.id}/approvals/${queued.id}`,{decision:'accept'})).status,409);
- await call(`/v1/sessions/${s.id}/approvals/${first.id}`,{decision:'accept'});await delay(10);const second=engine.snapshot(s).approval;assert.equal(second.id,queued.id);assert.ok(second.expiresAt>Date.now());
+ const challenge=await call(`/v1/sessions/${s.id}/approvals/${first.id}`,{decision:'accept'});await call(`/v1/sessions/${s.id}/approvals/${first.id}`,{decision:'accept',confirmation:challenge.body.confirmation});await delay(10);const second=engine.snapshot(s).approval;assert.equal(second.id,queued.id);assert.ok(second.expiresAt>Date.now());
  await call(`/v1/sessions/${s.id}/approvals/${second.id}`,{decision:'decline'});await delay(10);assert.equal(mock.responses.find(r=>r.id===920).result.action,'accept');assert.equal(mock.responses.find(r=>r.id===921).result.action,'decline');
 });
 test('late exact native completion resolves uncertainty and keeps canonical approval outcome',async t=>{
@@ -77,15 +77,35 @@ test('late exact native completion resolves uncertainty and keeps canonical appr
 
 test('two sequential physical cards distinguish sent Accept from expired Decline in safe audit',async t=>{
  const{mock,engine,s,call}=await setup(t);mock.send({id:940,method,params:calculator(s)});await delay(10);const first=engine.snapshot(s).approval;
- await call(`/v1/sessions/${s.id}/approvals/${first.id}`,{decision:'accept'});await delay(10);
+ const challenge=await call(`/v1/sessions/${s.id}/approvals/${first.id}`,{decision:'accept'});await call(`/v1/sessions/${s.id}/approvals/${first.id}`,{decision:'accept',confirmation:challenge.body.confirmation});await delay(10);
  mock.send({id:941,method,params:{...calculator(s),_meta:{...calculator(s)._meta,tool_name:'click'}}});await delay(10);
  const second=engine.snapshot(s).approval;engine.approvals.get(second.id).expiresAt=Date.now()-1;
  engine.decide(second.id,false,'timeout');await delay(10);
  assert.equal(mock.responses.find(r=>r.id===940).result.action,'accept');assert.equal(mock.responses.find(r=>r.id===941).result.action,'decline');
  const audit=engine.reviewEvents.filter(e=>e.event==='humanApproval/responseSent');
  assert.deepEqual(audit.map(e=>[e.requestId,e.nativeAccepted,e.reason]),[[first.id,true,'accepted'],[second.id,false,'timeout']]);
- assert.equal(audit[1].action,'Нажатие элемента');assert.equal(audit[1].target,'com.apple.calculator');
+ assert.equal(audit[0].persistence,'always');assert.equal(audit[0].scope,'app');assert.equal(audit[1].persistence,null);assert.equal(audit[1].action,'Всегда разрешать доступ к приложению');assert.equal(audit[1].target,'com.apple.calculator');
  assert.ok(!JSON.stringify(engine.reviewEvents).includes('private native text'));assert.ok(!JSON.stringify(engine.reviewEvents).includes('tool_params'));
  mock.finish(s.threadId,'Calculator was not approved');await delay(10);
  assert.ok(s.history.at(-1).assistant.includes('Подтверждение не получено'));
+});
+
+test('persistent challenge is bound to current exact app request; changed client target cannot grant',async t=>{
+ const{mock,engine,s,call}=await setup(t);mock.send({id:950,method,params:calculator(s)});await delay(10);const first=engine.snapshot(s).approval;
+ const route=id=>`/v1/sessions/${s.id}/approvals/${id}`;const challenge=(await call(route(first.id),{decision:'accept'})).body.confirmation;
+ assert.equal(first.scope,'app');assert.equal(first.target,'com.apple.calculator');assert.equal(mock.responses.length,0);
+ assert.equal((await call(route(first.id),{decision:'accept',confirmation:challenge,app:'org.example.other'})).status,400);
+ await call(route(first.id),{decision:'decline'});mock.finish(s.threadId,'declined');await delay(10);
+ await engine.turn(s.id,{requestId:randomUUID(),text:'next'});
+ const secondParams=calculator(s);secondParams._meta.tool_params.app='org.example.editor';mock.send({id:951,method,params:secondParams});await delay(10);
+ const second=engine.snapshot(s).approval;assert.equal(second.target,'org.example.editor');
+ assert.equal((await call(route(second.id),{decision:'accept',confirmation:challenge})).status,409);
+ assert.equal(mock.responses.filter(r=>r.id===951).length,0);assert.ok(!JSON.stringify(engine.data).includes('persist'));
+});
+test('ordinary high-risk approval still uses one-action response without persistent metadata',async t=>{
+ const{mock,engine,s,call}=await setup(t);const p={...calculator(s),serverName:'fixture',_meta:{codex_approval_kind:'mcp_tool_call',tool_name:'simulate_delete',tool_params:{target:'fixture-only'},riskLevel:'high'}};
+ mock.send({id:952,method,params:p});await delay(10);const a=engine.snapshot(s).approval,route=`/v1/sessions/${s.id}/approvals/${a.id}`;
+ assert.equal(a.scope,'once');const first=await call(route,{decision:'accept'});assert.equal(first.body.requiresConfirmation,true);assert.equal(mock.responses.length,0);
+ await call(route,{decision:'accept',confirmation:first.body.confirmation});await delay(10);
+ assert.deepEqual(mock.responses.find(r=>r.id===952).result,{action:'accept',content:{}});
 });

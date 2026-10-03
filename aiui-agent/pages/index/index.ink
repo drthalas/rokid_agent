@@ -15,7 +15,7 @@ import { Conversation, createTransport } from '../../lib/gateway.js';
 import { TempleControls, StatusPulse, ACTIVE_STATES, LABELS, BUSY_STATES, briefAnswer, errorView } from '../../lib/voice-ui.js';
 
 export default {
-  data: { approval:null, approvalAllow:false, approvalSecond:false, approvalSubmitting:false, approvalRemainingSeconds:0, approvalFeedback:'', phase: 'THINKING', label: 'Подключаюсь', statusActive: false, statusOpacity: 1, history: [], errorText: '', hint: '', scroll: 0, scrollTarget: '' },
+  data: { approval:null, approvalAllow:false, approvalSecond:false, approvalSubmitting:false, approvalRemainingSeconds:0, approvalFeedback:'', approvalHeading:'', approvalAcceptLabel:'', approvalScopeText:'', approvalDisclosure:'', phase: 'THINKING', label: 'Подключаюсь', statusActive: false, statusOpacity: 1, history: [], errorText: '', hint: '', scroll: 0, scrollTarget: '' },
   onLoad() {
     this.pageEpoch = 0; this.visible = false; this.spokenTurn = null; this.awaitingStop = false; this.trace = [];
     this.approvalCard = new ApprovalCard({decide:(...args)=>this.client.decideApproval(...args),render:(value,done)=>typeof done==='function'?this.setData(value,done):this.setData(value),speak:text=>this.speak(text)});
@@ -188,13 +188,13 @@ export default {
       <text class="state">{{label}}</text>
     </view>
     <text ink:if="{{errorText}}" class="error">{{errorText}}</text>
-    <view ink:if="{{approval}}" class="approval-card">
-      <text ink:if="{{approvalSecond}}" class="approval-confirm">ПОДТВЕРДИТЬ ДЕЙСТВИЕ?</text>
-      <text ink:if="{{!approvalSecond}}" class="approval-action">{{approval.title}} · {{approval.action}}</text>
+    <view ink:if="{{approval}}" class="approval-card {{approval.scope === 'app' ? 'persistent-approval' : ''}}">
+      <text class="approval-action">{{approvalHeading}}</text>
       <text class="body">{{approval.target}}</text>
-      <text class="approval-scope">{{approvalRemainingSeconds}}с · {{approval.risk === 'high' ? 'Повышенный риск · ' : ''}}{{approval.scope === 'turn' ? 'Доступ до конца текущего запроса' : 'Только это действие'}}</text>
+      <text class="approval-scope">{{approvalRemainingSeconds}}с · {{approval.risk === 'high' ? 'Повышенный риск · ' : ''}}{{approvalScopeText}}</text>
+      <text ink:if="{{approvalDisclosure}}" class="approval-disclosure">{{approvalDisclosure}}</text>
       <text class="approval-choice">{{approvalAllow ? '  ' : '› '}}{{approvalSecond ? 'НЕТ' : 'ОТКЛОНИТЬ'}}</text>
-      <text class="approval-choice">{{approvalAllow ? '› ' : '  '}}{{approvalSecond ? 'ДА, ВЫПОЛНИТЬ' : approval.scope === 'turn' ? 'РАЗРЕШИТЬ НА ЭТОТ ЗАПРОС' : 'РАЗРЕШИТЬ ОДИН РАЗ'}}</text>
+      <text class="approval-choice">{{approvalAllow ? '› ' : '  '}}{{approvalAcceptLabel}}</text>
       <text ink:if="{{approvalFeedback}}" class="hint">{{approvalFeedback}}</text>
       <text ink:if="{{approvalSubmitting}}" class="hint">Отправляю решение…</text>
     </view>
@@ -236,4 +236,6 @@ export default {
 .approval-scope { font-size:11px; line-height:1.05; }
 .approval-confirm { font-size:13px; font-weight:700; line-height:1.05; }
 .hint { font-size: 16px; color: var(--secondary); }
+.persistent-approval .body { font-size:14px; line-height:1.1; }
+.approval-disclosure { font-size:12px; line-height:1.1; }
 </style>

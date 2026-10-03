@@ -134,7 +134,7 @@ for(const fault of ['missing-intervals','pulse-construction','status-render']) {
 
 test('HUD approval replaces busy controls, defaults decline and announces only once',async()=>{
  const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');
- const approval={id:randomUUID(),turnId:'active',kind:'computer-use',title:'Computer Use',action:'Просмотр окна / снимок',target:'com.apple.calculator',scope:'once',risk:'low',expiresAt:Date.now()+30000};
+ const approval={id:randomUUID(),turnId:'active',kind:'computer-use',title:'Computer Use',action:'Просмотр окна / снимок',target:'com.apple.calculator',scope:'app',risk:'low',expiresAt:Date.now()+30000};
  const decisions=[];h.page.client.decideApproval=async(...args)=>{decisions.push(args);return{ok:true}};
  const value={state:'APPROVAL',pendingApproval:true,approval,turnId:'active'};h.page.renderState(value);h.page.renderState(value);
  assert.equal(h.page.data.phase,'APPROVAL');assert.equal(h.page.data.approvalAllow,false);assert.equal(h.spoken.filter(s=>s==='Требуется подтверждение.').length,1);
@@ -145,7 +145,7 @@ test('HUD approval replaces busy controls, defaults decline and announces only o
 
 test('approval keeps choices in compact HUD and restores history projection afterwards',async()=>{
  const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');const history=[{requestId:randomUUID(),turnId:'previous',user:'Question',assistant:'Answer',completed:true}];
- h.page.renderState({state:'APPROVAL',history,approval:{id:randomUUID(),title:'Computer Use',action:'Просмотр окна / снимок',target:'com.apple.calculator',scope:'once',risk:'low',expiresAt:Date.now()+30000}});
+ h.page.renderState({state:'APPROVAL',history,approval:{id:randomUUID(),title:'Computer Use',action:'Просмотр окна / снимок',target:'com.apple.calculator',scope:'app',risk:'low',expiresAt:Date.now()+30000}});
  assert.deepEqual(h.page.data.history,history);h.page.renderState({state:'WORKING',history});assert.equal(h.page.data.approval,null);assert.deepEqual(h.page.data.history,history);
  const markup=fs.readFileSync(path.join(root,'pages/index/index.ink'),'utf8');assert.ok(markup.includes('<scroll-view ink:if="{{!approval}}"'));assert.ok(markup.includes('.approval-screen { padding:6px; gap:2px; }'));
  }finally{h.page.cleanup()}

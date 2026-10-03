@@ -129,7 +129,7 @@ test('old gateway without authoritative history fails visibly instead of silentl
 
 test('device approval lost ACK refreshes only and never persists/replays accept',async()=>{
  const f=fixture(),c=f.make();await c.open();const id=randomUUID(),turnId='approval-turn';
- const approval={id,turnId,kind:'computer-use',title:'Computer Use',action:'Просмотр окна / снимок',target:'com.apple.calculator',scope:'once',risk:'low',allowOnGlasses:true,expiresAt:Date.now()+30000};
+ const approval={id,turnId,kind:'computer-use',title:'Computer Use',action:'Просмотр окна / снимок',target:'com.apple.calculator',scope:'app',risk:'low',allowOnGlasses:true,expiresAt:Date.now()+30000};
  const original=f.transport.request;let pending=true,posts=0;
  f.transport.request=async(m,r,b)=>{if(r.includes('/approvals/')){posts++;pending=false;throw Error('network_or_tls_error')};const s=await original(m,r,b);return{...s,turnId,status:'Working',pendingApproval:pending,approval:pending?approval:null}};
  await c.refresh();assert.equal(f.views.at(-1).state,'APPROVAL');
@@ -145,6 +145,6 @@ test('reopen clears stale in-flight snapshot ordering without replacing the save
 test('approval countdown uses server clock despite device skew and cannot exceed native 30s',async()=>{
  const f=fixture(),c=f.make();await c.open();const sid=c.saved.sessionId;
  const original=f.transport.request.bind(f.transport);let duration=25000;
- f.transport.request=async(m,r,d)=>{const s=await original(m,r,d);if(r==='/v1/sessions/'+sid)return{...s,status:'Working',turnId:'approval-turn',pendingApproval:true,clock:{sent:100000},approval:{id:randomUUID(),turnId:'approval-turn',kind:'computer-use',title:'Computer Use',action:'Нажатие элемента',target:'com.apple.calculator',risk:'low',scope:'once',allowOnGlasses:true,expiresAt:100000+duration}};return s};
+ f.transport.request=async(m,r,d)=>{const s=await original(m,r,d);if(r==='/v1/sessions/'+sid)return{...s,status:'Working',turnId:'approval-turn',pendingApproval:true,clock:{sent:100000},approval:{id:randomUUID(),turnId:'approval-turn',kind:'computer-use',title:'Computer Use',action:'Нажатие элемента',target:'com.apple.calculator',risk:'low',scope:'app',allowOnGlasses:true,expiresAt:100000+duration}};return s};
  await c.refresh();assert.equal(f.views.at(-1).approval.remainingMs,25000);duration=90000;await c.refresh();assert.equal(f.views.at(-1).approval.remainingMs,30000);c.close();
 });

@@ -60,6 +60,14 @@ function descriptor(kind,title,action,target,risk='high',scope='once') {
   return {kind,title,action,target,risk,scope,allowOnGlasses:true};
 }
 const COMPUTER_ACTIONS=Object.freeze({get_app_state:'Просмотр окна / снимок',type_text:'Ввод текста',press_key:'Нажатие клавиши',click:'Нажатие элемента',set_value:'Изменение значения',select_text:'Выбор текста',scroll:'Прокрутка',drag:'Перетаскивание'});
+function persistentComputerApp(params) {
+  const m=params?._meta;
+  if(params?.serverName!=='cua_repl'||m?.connector_id!=='computer-use'||!only(m.tool_params,['app'])||
+    !identifier(m.tool_params.app)||!/^[A-Za-z][A-Za-z0-9-]*(?:\.[A-Za-z0-9-]+)+$/.test(m.tool_params.app)||
+    !Object.hasOwn(COMPUTER_ACTIONS,m.tool_name)||!Array.isArray(m.persist)||m.persist.length!==2||
+    new Set(m.persist).size!==2||!m.persist.every(v=>['session','always'].includes(v)))return null;
+  return m.tool_params.app;
+}
 function permissionTarget(permissions,cwd) {
   const parts=[];
   if(permissions.network?.enabled===true)parts.push('Весь сетевой доступ');
@@ -121,12 +129,12 @@ export function deviceApproval(method,params,context={}) {
     return descriptor('command','Команда','Выполнить команду один раз',target);
   }
   const m=params._meta;
-  if(params.serverName==='cua_repl'&&only(m.tool_params,['app'])&&identifier(m.tool_params.app)&&
-    Object.hasOwn(COMPUTER_ACTIONS,m.tool_name)&&Array.isArray(m.persist)&&m.persist.length===2&&new Set(m.persist).size===2&&m.persist.every(v=>['session','always'].includes(v))){
+  const app=persistentComputerApp(params);
+  if(app){
     const risk=['low','medium','high'].includes(m.riskLevel)?m.riskLevel:'high';
-    // Native app-access class: proven omitted-persist responses re-prompt per native operation.
-    return descriptor('computer-use','Computer Use',COMPUTER_ACTIONS[m.tool_name],m.tool_params.app,risk);
+    return descriptor('computer-use','Computer Use','Всегда разрешать доступ к приложению',app,risk,'app');
   }
+  if(params.serverName==='cua_repl'||m.connector_id==='computer-use')return null;
   if(m.persist!=null||!identifier(params.serverName)||!identifier(m.tool_name,64)||!plain(m.tool_params))return null;
   const entries=Object.entries(m.tool_params);if(!entries.length||entries.length>3)return null;
   const targetKeys=new Set(['app','target','target_id','resource','resource_id','record','record_id','id','name','new_name','filename','path','destination','destination_id','to','recipient','project','project_id','document','document_id','title','label','label_id','folder','folder_id','url','operation']);
@@ -158,9 +166,12 @@ export function supportedApproval(method, params) {
     (schema.required === undefined || (Array.isArray(schema.required) && schema.required.length === 0)) &&
     (schema.additionalProperties === undefined || schema.additionalProperties === false);
 }
-export function nativeApprovalResponse(method, params, allow) {
+export function nativeApprovalResponse(method, params, allow, persistentApp=false) {
   if(method==='item/permissions/requestApproval')return {permissions:allow?(requestedPermissions(params)??{}):{},scope:'turn'};
   if (method === 'mcpServer/elicitation/request') {
+    if(persistentApp)return allow&&supportedApproval(method,params)&&persistentComputerApp(params)?
+      {action:'accept',content:{},_meta:{persist:'always'}}:{action:'decline',content:null};
+    if(params?.serverName==='cua_repl'||params?._meta?.connector_id==='computer-use')return {action:'decline',content:null};
     return allow && supportedApproval(method, params) ? {action:'accept',content:{}} : {action:'decline',content:null};
   }
   return approvalResponse(method, allow && commands.has(method));

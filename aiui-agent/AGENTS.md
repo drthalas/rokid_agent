@@ -26,3 +26,9 @@ GlobalHook is observation only and never starts/stops voice. Enter onKeyUp contr
 APPROVAL defaults to ОТКЛОНИТЬ. Arrows select, Enter confirms, back declines. High-risk uses a second
 default-NO screen. Maximum30s to decide; unsupported requests fail closed. Generic TTS announces once.
 Cards use verified native classes (Computer Use app access, bounded commands/patches, literal turn permissions and bounded MCP confirmations), never an app-name allowlist. The actual action, target and scope must be visible. Unknown/opaque/auth/persistent grants fail closed. Failed/interrupted outcomes remain in history and are spoken once; unsupported denial immediately shows stopping feedback.
+
+## Native persistent app consent
+Verified Computer Use app consent offers DECLINE / ALWAYS ALLOW only, bound to the displayed canonical
+app identity. Always requires a second default-NO physical confirmation, including low-risk apps. The
+second screen discloses future-task access and separate sensitive-action approvals. Native provider
+owns persistence; no frontend/gateway allowlist. Other approval classes retain their ordinary scope.
