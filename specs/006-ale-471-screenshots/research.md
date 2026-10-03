@@ -1,0 +1,9 @@
+# Research — 2026-10-03
+- Physical thread trace at 19:26:34Z confirms model `cua.getApp('com.apple.screencaptureui')`; gateway instructions lacked separate desktop routing. Do not repair this private helper.
+- Existing gateway already exports native images; CUA getApp/getAXState emit text only. Installed getScreenshot explicitly emits image and throws if absent. Capture must be requested after the result is visible.
+- First-two distinct-image cap silently drops later results. This is a regression risk, not proven cause of the reported 20+30 failure. Retain newest two with exact turn/item identity.
+- Later existing trace contains a successful Calculator99 JPEG → Gmail draft after one native reviewer timeout and permitted retry. Existing attachment transport is usable; do not replace it or misreport all historical attachments as failures.
+- Gmail create_draft expects multipart/mixed with image/jpeg or image/png, filename, attachment disposition and body.base64_url_content. Native code-mode can transfer file bytes in memory without printing them to model/logs. Verify read_email DRAFT and MIME parts.
+- CLI screencapture -x -t png failed inside execution sandbox ('could not create image from display'); identical command through native require_escalated/auto_review passed with PNG1920x1080. No privacy controls changed, no UI. ScreenCaptureKit unnecessary after supported CLI works.
+- A child cleanup lease independent of the invoking model turn gives a bounded lifetime on normal parent exit; crash/filesystem failure cannot be promised away. Explicit cleanup follows verified attachment.
+- OpenAI computer-use guide allows existing UI tool interfaces; installed CUA runtime defines concrete methods. Source: https://developers.openai.com/api/docs/guides/tools-computer-use . No API-key route or provider substitution.

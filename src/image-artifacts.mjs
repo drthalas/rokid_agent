@@ -18,12 +18,19 @@ export class ImageArtifacts {
     if(!valid||!bytes.length||bytes.length>LIMIT)return null;
     const digest=createHash('sha256').update(bytes).digest('hex');
     const owned=[...this.files.values()].filter(f=>f.sessionId===sessionId&&f.turnId===turnId);
-    if(owned.some(f=>f.digest===digest)||owned.length>=2||this.files.size>=8)return null;
+    if(owned.some(f=>f.digest===digest))return null;
+    // Keep the latest result, not just the first two intermediate observations.
+    if(owned.length>=2){
+      const oldest=[...this.files].find(([,f])=>f===owned[0]);
+      this.remove(oldest[0]);
+      if(this.files.has(oldest[0]))return null; // Failed unlink must retain capacity.
+    }
+    if(this.files.size>=8)return null;
     if(!this.directory){this.directory=fs.mkdtempSync(path.join(os.tmpdir(),'jarvis-images-'));fs.chmodSync(this.directory,0o700);}
     const id=randomUUID(),file=path.join(this.directory,id+(image.mimeType==='image/png'?'.png':'.jpg'));
     let fd;try{fd=fs.openSync(file,'wx',0o600);fs.writeFileSync(fd,bytes);}catch(error){if(fd!==undefined){try{fs.unlinkSync(file)}catch{}}throw error;}finally{if(fd!==undefined){try{fs.closeSync(fd)}catch{}}}
     const record={sessionId,turnId,digest,path:file};record.timer=setTimeout(()=>this.remove(id),600000);record.timer.unref?.();this.files.set(id,record);
-    return {path:file,mimeType:image.mimeType,bytes:bytes.length};
+    return {path:file,mimeType:image.mimeType,bytes:bytes.length,turnId,itemId:item.id};
   }
   remove(id){
     const f=this.files.get(id);if(!f)return;clearTimeout(f.timer);

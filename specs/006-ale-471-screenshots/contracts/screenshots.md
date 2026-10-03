@@ -1,0 +1,4 @@
+# Screenshot contract
+Desktop CLI emits JSON metadata for private image files and expiry. Failure emits a fixed stage=capture message, without raw process errors/paths/bytes. Cleanup removes only validated generated lease directories. No arbitrary capture executable, shell, output path, window selector, clipboard or UI flags.
+CUA handoff uses the existing exact expectedTurnId steer; metadata adds source item and turn. References are data, not permission. Application images cannot satisfy explicit desktop capture.
+Gmail uses existing structured MIME connector. Read bytes into code-mode memory, validate, attach, read draft back; never send. On uncertain create outcome reconcile the existing draft rather than create another. Terminal errors name capture vs attachment stage; no general recovery state change.

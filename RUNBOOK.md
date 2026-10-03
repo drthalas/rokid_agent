@@ -282,3 +282,28 @@ Current same-turn screenshot attachments use a bounded private temporary copy of
 public turn/steer data. The generated reference does not grant authority or create a user turn. Do not
 copy image/base64/provider payloads to diagnostics. Files are cleaned normally on completion/disconnect/
 shutdown and after10min while running; filesystem failure/crash residues may need local cleanup.
+
+### ALE-471 screenshot capture and drafts
+
+For application results, native CUA `getScreenshot()` emits the image; select the private artifact with
+the matching current turn/item after verifying the result. Earlier intermediate references may have
+been evicted. Full desktop requires `node scripts/desktop-capture.mjs` through native exec, not opening
+Screenshot or private screencaptureui. The helper returns each attached display PNG with dimensions,
+SHA256 and expiry. It uses a0700 system-temp directory and0600 files; native sips decode validates
+output. Clean using `node scripts/desktop-capture.mjs --cleanup <exact-returned-directory>` after
+handoff/failure; independent cleanup expires after ten minutes. Do not copy captures to repo/Desktop.
+
+If sandbox capture says it cannot create a display image, use the same helper through normal native
+require_escalated/on-request/auto_review. If actual macOS Screen Recording permission is absent,
+identify the responsible process/app for the deployed launch context and let the owner enable it in
+System Settings → Privacy & Security → Screen & System Audio Recording. Do not change TCC databases,
+request Full Access or grant consent programmatically. A successful desktop-app launch context does
+not prove a launchd daemon has the same TCC attribution; verify that context before release. ALE-471
+also verified the existing daemon launch context with an isolated capture-only turn and native review.
+
+Use existing Gmail create_draft with actual image bytes in multipart/mixed, image MIME type, filename,
+attachment disposition and base64url content. Verify self/intended recipient, DRAFT and attachment
+MIME/size by readback; never send. Capture failure: “Не удалось сделать снимок рабочего стола”.
+Attachment failure: “Не удалось прикрепить снимок к черновику”. Real local verification:
+`node scripts/screenshot-smoke.mjs --authorized` creates unsent self drafts and private temporary proof
+images; no live daemon restart or glasses acceptance. See [ALE-471 evidence](specs/006-ale-471-screenshots/validation.md).

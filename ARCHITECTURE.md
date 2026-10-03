@@ -221,12 +221,24 @@ no-answer fallback. Matching late native completion reconciles uncertainty witho
 CUA and Node REPL do not share memory, and native Code Mode has no nested CUA in this installation.
 The gateway therefore copies already-emitted successful CUA JPEG/PNG blocks to private temporary files
 (dir0700/file0600). It performs no new capture and has no Gmail client or media device endpoint. Limits:
-8MiB/image,2 per turn/8 total, duplicate-image suppression; normal completion/disconnect/shutdown cleanup
+8MiB/image,newest2 per turn/8 total (oldest same-turn image is removed before replacement), duplicate-image suppression; normal completion/disconnect/shutdown cleanup
 and10-minute healthy-process TTL. Failed unlink is retained for bounded retry. Abrupt process termination
 or persistent filesystem failure may leave private system-temp residues needing local cleanup, as with
 existing STT temporary files; this is not a crash-proof retention guarantee or media archive.
 
+Explicit full-desktop requests use `scripts/desktop-capture.mjs` through the model's normal native exec
+surface, not gateway capture or CUA app-window substitution. The fixed noninteractive macOS
+`/usr/sbin/screencapture -x -t png` invocation captures attached displays, validates PNG bounds and native
+image decode, and returns private metadata. Shell sandbox display restrictions may require native
+require_escalated/auto_review; this does not change workspace-write or macOS TCC. A private directory
+and independent ten-minute cleanup lease bound ordinary retention; explicit cleanup follows handoff.
+A crash before lease registration or persistent filesystem/OS failure remains a cleanup limitation.
+Gmail stays the existing structured connector: multipart MIME bytes, draft creation and readback,
+never an email send for draft-only requests. App capture calls documented CUA getScreenshot after
+checking the result; getApp/getAXState alone need not emit an image. Stage-specific failure guidance
+covers capture vs attachment without modifying the general ERROR state machine (ALE-469).
+
 Public turn/steer with exact expectedTurnId supplies a fixed, explicitly untrusted artifact-data marker;
-this is neither a new task nor approval. Original gateway voice history takes precedence over internal
+this is neither a new task nor approval. Metadata identifies the source item and current turn. Original gateway voice history takes precedence over internal
 steering text. Existing native tools read the file and call the normal connector MIME API. No experimental
 API enablement or permission-profile weakening is needed. [Spec/evidence](specs/005-ale-465-device-approval/validation.md).

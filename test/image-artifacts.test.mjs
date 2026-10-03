@@ -17,3 +17,20 @@ test('duplicate emitted image blocks create one artifact and ambiguous different
 test('failed unlink retains ownership for retry instead of forgetting private file',t=>{
  const a=new ImageArtifacts();try{const image=a.capture('s','t',item());const original=fs.unlinkSync;t.mock.method(fs,'unlinkSync',()=>{throw Object.assign(Error('denied'),{code:'EACCES'})});a.clearTurn('s','t');assert.equal(a.files.size,1);assert.ok(fs.existsSync(image.path));fs.unlinkSync=original;a.clearTurn('s','t');assert.equal(a.files.size,0);assert.equal(fs.existsSync(image.path),false);}finally{a.close()}
 });
+test('third result image replaces oldest same-turn observation and retains exact source identity',()=>{
+ const a=new ImageArtifacts();try{
+  const first=a.capture('s','t',item());
+  const second=a.capture('s','t',item(Buffer.concat([png,Buffer.from([1])])));
+  const final=a.capture('s','t',{...item(Buffer.concat([png,Buffer.from([2])])),id:'result50'});
+  assert.ok(final);assert.equal(final.turnId,'t');assert.equal(final.itemId,'result50');assert.equal(a.files.size,2);
+  assert.equal(fs.existsSync(first.path),false);assert.ok(fs.existsSync(second.path));assert.ok(fs.existsSync(final.path));
+ }finally{a.close()}
+});
+test('failed oldest-image eviction does not exceed per-turn bound',t=>{
+ const a=new ImageArtifacts();try{
+  a.capture('s','t',item());a.capture('s','t',item(Buffer.concat([png,Buffer.from([1])])));
+  const original=fs.unlinkSync;t.mock.method(fs,'unlinkSync',()=>{throw Object.assign(Error('denied'),{code:'EACCES'})});
+  assert.equal(a.capture('s','t',item(Buffer.concat([png,Buffer.from([2])]))),null);assert.equal(a.files.size,2);
+  fs.unlinkSync=original;
+ }finally{a.close()}
+});
