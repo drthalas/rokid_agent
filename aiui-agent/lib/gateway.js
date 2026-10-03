@@ -108,6 +108,7 @@ export class Conversation {
     this.busy=active||s.uncertain===true;
     this.retryMs = 1000;
     const approval=approvalDescriptor(s.approval,s.turnId);
+    if(approval)approval.remainingMs=Math.max(0,Math.min(30000,approval.expiresAt-(Number.isFinite(s.clock?.sent)?s.clock.sent:Date.now())));
     if(s.pendingApproval&&!approval)throw new Error('approval_unavailable');
     const current=this.history.exchanges.find(e=>e.turnId===s.turnId);
     const denied=!!(s.approvalNotice||current?.approvalNotice);

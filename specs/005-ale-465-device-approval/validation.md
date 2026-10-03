@@ -381,3 +381,59 @@ Pre-push index/all-reachable-history secret scans returned only the same two rev
 public scanner-name false positives (scanner exits1); no real credential finding. Exact old/new/admin
 values absent from index; protected private files untracked. Diff whitespace checks PASS, origin/main
 matches candidate. Archive buffer overflow changed to file-backed export; no scan rules suppressed.
+
+## Physical sequential-card failure diagnosis and bounded fix — 2026-10-03
+
+SESSION: CONTINUE. Actual agent MODEL/EFFORT: UNAVAILABLE. WHY: exact physical-turn security/continuation
+failure diagnosis followed by targeted regressions; no release/package/deploy or new physical turn.
+Physical input candidate main5120c22 / private Jarvis1.1.9 / runtime gpt-6-astra. Wearer reports two
+sequential cards and two deliberate approvals, then ERROR with no successful composite result.
+Card presentation/sequential navigation physically PASS; delivery of both native Accepts is NOT PASS.
+
+Existing session `d037e836-7163-41b4-ad0b-f3aa29c52622`, thread
+`01a0f8e4-52b9-7673-bf85-d1020e9c20ae`, turn `01a10248-a1ed-7772-b655-c69e808f8650` correlated
+via bounded production admin events, read-only thread/read and existing native process logs.
+Both native auto-review decisions were approved/low. Both human requests were
+mcpServer/elicitation/request, represented by the supported computer-use class, Calculator target.
+#1 card `e386db7b-9788-4930-9366-ccc21def6833`, pending1791039699978ms: Calculator window/state access.
+Native request0 response Accept at1791039713s; CUA item `call_vpbNknlx04SQ9G9UsZ30tza3` completed
+at1791039714908ms and returned Calculator AX controls, with no image content.
+#2 card `1bebdb05-9524-4960-90cf-e54a45a66330`, pending1791039728745ms: Calculator interaction
+(clear element and key input in the selected app); native request1 response Decline at1791039758s.
+CUA item `call_bGHYUW7tFYczFkdjRC0FAmVH` failed at1791039758755ms with exactly
+“Computer Use was not approved to use Calculator”. The response logs belong to the same native process
+as this turn. The second response landed at the30s expiry boundary; session approvalNotice=timeout.
+The exact second native action subtype/card text was not retained by the old bounded audit.
+
+Confirmed first failure: native app permission declined by expiry before Calculator interaction could
+complete. H1 Screenshot utility NOT INVOLVED; H2 no new CUA screenshot existed; H3/H4 not reached.
+No image result/artifact or Gmail tool was produced in this turn. Existing previous image/draft proof
+does not establish an image for this request. No denial bypass or alternate execution was attempted.
+Native final turn status completed, no app-server turn error; gateway Done/error=null/uncertain=false,
+with timeout explanation prepended to the assistant's failure explanation in canonical history.
+History outcome completed is the native completion flag, not a successful user-task outcome.
+
+Evidence does NOT show why the wearer's second deliberate input did not become native Accept:
+late/canceled input versus request delivery/ACK failure cannot be distinguished retrospectively.
+No claim that the wearer failed to approve, or that both native responses were accepted.
+Three distinct approaches: bounded admin correlation; exact read-only thread/tool result inspection;
+native log response/timing correlation. No polling/retries counted as new hypotheses, no new inference.
+
+Targeted regression reproduction before fix:3 failures (silent card clearing on rejected decision ACK,
+missing deadline/late-accept guard, and ERROR clearing the useful visible explanation). These are verified
+code defects; rejected ACK as the cause of THIS physical timeout remains an unproven hypothesis.
+Small fix: display server-clock-based remaining time without extending native30s; reject delayed expired
+Accept locally; explicitly show/speak expiry. An unconfirmed ACK keeps the reconciled current card visible,
+defaults NO and requires a fresh explicit choice; old rejection cannot clear a newer card. No automatic
+Accept replay. ERROR shows a brief current-turn explanation above history; CANCELLED shows its reason.
+Bounded local-only human approval audit now records sanitized action/target and response sent/reason,
+without raw native/provider payloads. Default decline, challenge-bound high-risk second confirmation,
+turn binding, one-use responses, loopback admin and native approval policy unchanged.
+
+Checks: targeted approval-device/router + frontend approval/gateway/page57/57 PASS; after final deadline
+hardening, affected approval/page23/23 PASS; AIUI manifest/Ink/import/handler/JS check PASS. Initial failing
+regressions were not masked. Full root/AIUI matrices, real smoke, packaging, cloud deploy/readback and
+physical retest NOT RUN, as requested for this coherent fix checkpoint. Production processes/config,
+credentials, state, mappings, endpoint/tunnel/VPN/model untouched. Release verification is the next phase.
+Physical end-to-end acceptance remains CRITICAL/unverified; this source checkpoint addresses reproducible
+UX/ACK gaps and improves next-run evidence, not proof that the composite execution now completes.

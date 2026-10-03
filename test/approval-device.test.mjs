@@ -74,3 +74,18 @@ test('late exact native completion resolves uncertainty and keeps canonical appr
  const{mock,engine,s}=await setup(t);engine.declined(s,'unsupported');s.status='Error';s.error='approval_completion_uncertain';s.uncertain=true;
  mock.finish(s.threadId,'Safe final after cancellation');await delay(10);assert.equal(s.uncertain,false);assert.equal(s.status,'Done');assert.ok(s.history.at(-1).assistant.includes('Действие не выполнено'));assert.ok(s.history.at(-1).assistant.includes('Safe final'));
 });
+
+test('two sequential physical cards distinguish sent Accept from expired Decline in safe audit',async t=>{
+ const{mock,engine,s,call}=await setup(t);mock.send({id:940,method,params:calculator(s)});await delay(10);const first=engine.snapshot(s).approval;
+ await call(`/v1/sessions/${s.id}/approvals/${first.id}`,{decision:'accept'});await delay(10);
+ mock.send({id:941,method,params:{...calculator(s),_meta:{...calculator(s)._meta,tool_name:'click'}}});await delay(10);
+ const second=engine.snapshot(s).approval;engine.approvals.get(second.id).expiresAt=Date.now()-1;
+ engine.decide(second.id,false,'timeout');await delay(10);
+ assert.equal(mock.responses.find(r=>r.id===940).result.action,'accept');assert.equal(mock.responses.find(r=>r.id===941).result.action,'decline');
+ const audit=engine.reviewEvents.filter(e=>e.event==='humanApproval/responseSent');
+ assert.deepEqual(audit.map(e=>[e.requestId,e.nativeAccepted,e.reason]),[[first.id,true,'accepted'],[second.id,false,'timeout']]);
+ assert.equal(audit[1].action,'Нажатие элемента');assert.equal(audit[1].target,'com.apple.calculator');
+ assert.ok(!JSON.stringify(engine.reviewEvents).includes('private native text'));assert.ok(!JSON.stringify(engine.reviewEvents).includes('tool_params'));
+ mock.finish(s.threadId,'Calculator was not approved');await delay(10);
+ assert.ok(s.history.at(-1).assistant.includes('Подтверждение не получено'));
+});

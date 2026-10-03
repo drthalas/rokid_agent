@@ -13,16 +13,23 @@ export function approvalDescriptor(a,turnId) {
   return {id:a.id,turnId:a.turnId,kind:a.kind,title:a.title,action:a.action,target:a.target,risk:a.risk,scope:a.scope,expiresAt:a.expiresAt};
 }
 export class ApprovalCard {
-  constructor({decide,render,speak,schedule=setTimeout,unschedule=clearTimeout}) {
-    Object.assign(this,{decide,render,speak,schedule,unschedule});this.current=null;this.timer=null;this.epoch=0;this.announced=[];
+  constructor({decide,render,speak,schedule=setTimeout,unschedule=clearTimeout,now=Date.now}) {
+    Object.assign(this,{decide,render,speak,schedule,unschedule,now});this.current=null;this.timer=null;this.deadlineTimer=null;this.epoch=0;this.announced=[];
   }
   show(a) {
     if(this.current?.id===a.id)return;
     this.clear();this.current=a;this.choice=false;this.second=false;this.confirmation=undefined;this.submitting=false;this.armed=false;
-    const epoch=this.epoch;this.draw(()=>{if(this.epoch===epoch&&this.current?.id===a.id)this.armed=true});
-    if(!this.announced.includes(a.id)){this.announced.push(a.id);this.announced=this.announced.slice(-16);this.speak('Требуется подтверждение.');}
+    this.deadline=this.now()+(Number.isFinite(a.remainingMs)?Math.max(0,Math.min(30000,a.remainingMs)):Number.isFinite(a.expiresAt)?Math.max(0,Math.min(30000,a.expiresAt-this.now())):0);this.feedback='';
+    this.draw();this.tickDeadline(a.id);
+    if(this.remaining()&&!this.announced.includes(a.id)){this.announced.push(a.id);this.announced=this.announced.slice(-16);this.speak('Требуется подтверждение.');}
   }
-  draw(done) {const epoch=this.epoch,id=this.current?.id;this.render({approval:this.current,approvalAllow:this.choice,approvalSecond:this.second,approvalSubmitting:this.submitting},()=>{if(this.epoch===epoch&&this.current?.id===id&&!this.submitting)this.armed=true;done?.()})}
+  remaining(){return Math.max(0,Math.ceil((this.deadline-this.now())/1000))}
+  tickDeadline(id){
+    if(this.current?.id!==id)return;
+    if(!this.remaining()){this.armed=false;this.feedback='Время подтверждения истекло. Действие не выполнено.';this.draw();this.speak(this.feedback);return;}
+    this.deadlineTimer=this.schedule(()=>{this.deadlineTimer=null;if(this.current?.id===id){this.draw();this.tickDeadline(id)}},1000);
+  }
+  draw(done) {const epoch=this.epoch,id=this.current?.id;this.render({approval:this.current,approvalAllow:this.choice,approvalSecond:this.second,approvalSubmitting:this.submitting,approvalRemainingSeconds:this.remaining(),approvalFeedback:this.feedback},()=>{if(this.epoch===epoch&&this.current?.id===id&&!this.submitting&&this.remaining())this.armed=true;done?.()})}
   move(direction) {if(!this.current||this.submitting)return;this.cancelTap();this.choice=direction>0;this.draw()}
   cancelTap(){if(this.timer!==null)this.unschedule(this.timer);this.timer=null;this.epoch++}
   tap() {
@@ -31,15 +38,16 @@ export class ApprovalCard {
     // Enter followed by native Backspace must not deliver an accidental acceptance.
     this.timer=this.schedule(async()=>{
       this.timer=null;if(!this.current||this.current.id!==id||epoch!==this.epoch)return;
+      if(!this.remaining()){this.armed=false;this.feedback='Время подтверждения истекло. Действие не выполнено.';this.draw();return;}
       this.submitting=true;this.draw();
       try {
         const result=await this.decide(id,decision,decision==='accept'?this.confirmation:undefined);
         if(!this.current||this.current.id!==id||epoch!==this.epoch)return;
         if(result?.requiresConfirmation){this.confirmation=result.confirmation;this.second=true;this.choice=false;this.submitting=false;this.armed=false;this.draw();}
         else this.clear();
-      } catch (_) {if(this.current?.id===id){this.clear();}}
+      } catch (_) {if(this.current?.id===id){this.submitting=false;this.choice=false;this.armed=false;this.feedback=this.remaining()?'Решение не подтверждено. Выберите снова.':'Время подтверждения истекло. Действие не выполнено.';this.draw();}}
     },650);
   }
-  clear(){this.cancelTap();this.current=null;this.armed=false;this.confirmation=undefined;this.render({approval:null,approvalAllow:false,approvalSecond:false,approvalSubmitting:false})}
+  clear(){this.cancelTap();if(this.deadlineTimer!==null)this.unschedule(this.deadlineTimer);this.deadlineTimer=null;this.current=null;this.armed=false;this.confirmation=undefined;this.feedback='';this.render({approval:null,approvalAllow:false,approvalSecond:false,approvalSubmitting:false,approvalFeedback:'',approvalRemainingSeconds:0})}
   exit(){const a=this.current;try{this.clear()}catch(_){}if(a)this.decide(a.id,'decline',undefined,true).catch(()=>{})}
 }

@@ -145,7 +145,7 @@ test('HUD approval replaces busy controls, defaults decline and announces only o
 
 test('approval keeps choices in compact HUD and restores history projection afterwards',async()=>{
  const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');const history=[{requestId:randomUUID(),turnId:'previous',user:'Question',assistant:'Answer',completed:true}];
- h.page.renderState({state:'APPROVAL',history,approval:{id:randomUUID(),title:'Computer Use',action:'Просмотр окна / снимок',target:'com.apple.calculator',scope:'once',risk:'low'}});
+ h.page.renderState({state:'APPROVAL',history,approval:{id:randomUUID(),title:'Computer Use',action:'Просмотр окна / снимок',target:'com.apple.calculator',scope:'once',risk:'low',expiresAt:Date.now()+30000}});
  assert.deepEqual(h.page.data.history,history);h.page.renderState({state:'WORKING',history});assert.equal(h.page.data.approval,null);assert.deepEqual(h.page.data.history,history);
  const markup=fs.readFileSync(path.join(root,'pages/index/index.ink'),'utf8');assert.ok(markup.includes('<scroll-view ink:if="{{!approval}}"'));assert.ok(markup.includes('.approval-screen { padding:6px; gap:2px; }'));
  }finally{h.page.cleanup()}
@@ -156,7 +156,17 @@ test('unsupported feedback is immediate and unsuccessful canonical result render
  const history=[{requestId,turnId,user:'Capture',assistant:'',completed:false,outcome:'pending'}];
  h.page.renderState({state:'STOPPING',turnId,busy:true,history,approvalReason:'unsupported',approvalMessage:reason});assert.ok(h.page.data.errorText.includes('Останавливаю'));assert.equal(h.spoken.length,0);
  history[0]={...history[0],assistant:reason,outcome:'interrupted',approvalNotice:'unsupported'};const terminal={state:'CANCELLED',turnId,busy:false,history,approvalMessage:reason};
- h.page.renderState(terminal);h.page.renderState(terminal);assert.equal(h.page.data.phase,'CANCELLED');assert.equal(h.page.data.history[0].completed,false);assert.equal(h.spoken.length,1);assert.ok(h.spoken[0].includes('Действие не выполнено'));
+ h.page.renderState(terminal);h.page.renderState(terminal);assert.equal(h.page.data.phase,'CANCELLED');assert.equal(h.page.data.errorText,reason);assert.equal(h.page.data.history[0].completed,false);assert.equal(h.spoken.length,1);assert.ok(h.spoken[0].includes('Действие не выполнено'));
  h.page.renderState({...terminal,state:'READY',restoring:true});assert.equal(h.spoken.length,1);
+ }finally{h.page.cleanup()}
+});
+
+test('ERROR always keeps a visible current-turn explanation above long history and speaks once',async()=>{
+ const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');const turnId='error-turn',reason='Не удалось выполнить снимок экрана.';
+ const history=[{requestId:randomUUID(),turnId,user:'Длинный запрос. '.repeat(100),assistant:reason,completed:false,outcome:'failed'}];
+ const value={state:'ERROR',detail:'turn_failed',turnId,busy:false,history};h.page.renderState(value);h.page.renderState(value);
+ assert.equal(h.page.data.errorText,reason);assert.equal(h.spoken.filter(x=>x===reason).length,1);
+ h.page.renderState({state:'ERROR',detail:'network_or_tls_error',turnId:'other-turn',busy:false,history});
+ assert.equal(h.page.data.errorText,'Нет связи с Mac');
  }finally{h.page.cleanup()}
 });

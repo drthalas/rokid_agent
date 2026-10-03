@@ -34,3 +34,11 @@ Private generated image data has no device route. A successful CUA image can pro
 JPEG/PNG plus public turn/steer metadata tied to exact expectedTurnId. It is marked untrusted data and
 never approves an action; canonical user text stays the original gateway prompt. Normal cleanup and
 TTL run while healthy; crash/persistent filesystem failures may leave private temp residues.
+
+The frontend displays remaining decision time using the snapshot server clock (presentation only;
+the gateway's deadline remains authoritative). Expired cards cannot send a delayed Accept. A failed
+or ambiguous decision ACK is reconciled with GET, never automatically replayed; a still-current card
+remains visible, defaults NO and requires another deliberate choice. ERROR/CANCELLED expose a short
+current-turn explanation above history, so a long request cannot conceal the terminal reason.
+Local-only bounded runtime review evidence records sanitized kind/action/target and the native response
+sent (Accept/Decline and reason). This is response evidence, never proof that the tool executed.

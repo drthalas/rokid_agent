@@ -211,7 +211,7 @@ export class Engine {
     const id=randomUUID(),receivedAt=Date.now();
     const a={id,rpcId:m.id,method:m.method,params:m.params,sessionId:s.id,turnId:s.turnId,receivedAt,expiresAt:null,descriptor};
     this.approvals.set(id,a);this.activateApproval(s.id);s.revision++;this.save();
-    this.reviewEvents.push({event:'humanApproval/pending',sessionId:s.id,threadId:s.threadId,turnId:s.turnId,requestId:id,method:m.method,receivedAt,at:Date.now()});this.reviewEvents=this.reviewEvents.slice(-64);
+    this.reviewEvents.push({event:'humanApproval/pending',sessionId:s.id,threadId:s.threadId,turnId:s.turnId,requestId:id,method:m.method,kind:descriptor.kind,action:descriptor.action,target:descriptor.target,risk:descriptor.risk,receivedAt,at:Date.now()});this.reviewEvents=this.reviewEvents.slice(-64);
   }
   activateApproval(sessionId) {
     const queue=[...this.approvals.values()].filter(a=>a.sessionId===sessionId);
@@ -237,6 +237,7 @@ export class Engine {
     clearTimeout(a.timer);this.approvals.delete(id);
     const accepted=allow&&current&&Date.now()<a.expiresAt;
     this.codex.send({id:a.rpcId,result:nativeApprovalResponse(a.method,a.params,accepted)});
+    this.reviewEvents.push({event:'humanApproval/responseSent',sessionId:s.id,threadId:s.threadId,turnId:a.turnId,requestId:id,method:a.method,kind:a.descriptor.kind,action:a.descriptor.action,target:a.descriptor.target,requestedAllow:allow,nativeAccepted:accepted,reason:accepted?'accepted':!current?'stale':Date.now()>=a.expiresAt?'timeout':reason,at:Date.now()});this.reviewEvents=this.reviewEvents.slice(-64);
     if(!accepted){for(const [otherId,other] of this.approvals)if(other.sessionId===s.id){clearTimeout(other.timer);this.approvals.delete(otherId);this.codex.send({id:other.rpcId,result:nativeApprovalResponse(other.method,other.params,false)});}}
     else this.activateApproval(s.id);
     s.revision++;

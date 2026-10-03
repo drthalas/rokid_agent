@@ -141,3 +141,10 @@ test('reopen clears stale in-flight snapshot ordering without replacing the save
  const f=fixture(),c=f.make();await c.open();const id=c.saved.sessionId;c.last={...c.last,revision:999};const original=f.transport.request;
  f.transport.request=async(...args)=>({...await original(...args),revision:1});await c.open();assert.equal(c.saved.sessionId,id);assert.equal(c.last.revision,1);assert.equal(f.views.at(-1).state,'READY');c.close();
 });
+
+test('approval countdown uses server clock despite device skew and cannot exceed native 30s',async()=>{
+ const f=fixture(),c=f.make();await c.open();const sid=c.saved.sessionId;
+ const original=f.transport.request.bind(f.transport);let duration=25000;
+ f.transport.request=async(m,r,d)=>{const s=await original(m,r,d);if(r==='/v1/sessions/'+sid)return{...s,status:'Working',turnId:'approval-turn',pendingApproval:true,clock:{sent:100000},approval:{id:randomUUID(),turnId:'approval-turn',kind:'computer-use',title:'Computer Use',action:'Нажатие элемента',target:'com.apple.calculator',risk:'low',scope:'once',allowOnGlasses:true,expiresAt:100000+duration}};return s};
+ await c.refresh();assert.equal(f.views.at(-1).approval.remainingMs,25000);duration=90000;await c.refresh();assert.equal(f.views.at(-1).approval.remainingMs,30000);c.close();
+});

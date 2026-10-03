@@ -15,7 +15,7 @@ import { Conversation, createTransport } from '../../lib/gateway.js';
 import { TempleControls, StatusPulse, ACTIVE_STATES, LABELS, BUSY_STATES, briefAnswer, errorView } from '../../lib/voice-ui.js';
 
 export default {
-  data: { approval:null, approvalAllow:false, approvalSecond:false, approvalSubmitting:false, phase: 'THINKING', label: 'Подключаюсь', statusActive: false, statusOpacity: 1, history: [], errorText: '', hint: '', scroll: 0, scrollTarget: '' },
+  data: { approval:null, approvalAllow:false, approvalSecond:false, approvalSubmitting:false, approvalRemainingSeconds:0, approvalFeedback:'', phase: 'THINKING', label: 'Подключаюсь', statusActive: false, statusOpacity: 1, history: [], errorText: '', hint: '', scroll: 0, scrollTarget: '' },
   onLoad() {
     this.pageEpoch = 0; this.visible = false; this.spokenTurn = null; this.awaitingStop = false; this.trace = [];
     this.approvalCard = new ApprovalCard({decide:(...args)=>this.client.decideApproval(...args),render:(value,done)=>typeof done==='function'?this.setData(value,done):this.setData(value),speak:text=>this.speak(text)});
@@ -67,10 +67,10 @@ export default {
     const changed = revision !== this.historyRevision;
     this.historyRevision = revision;
     const update = { history, ...(changed && latest ? { scrollTarget: 'exchange-' + latest.requestId } : {}) };
-    if (value.state === 'ERROR') { this.approvalCard.clear(); this.setData(update); this.showError(value.detail); if(!value.busy&&latest?.turnId===value.turnId&&latest.assistant)this.setData({errorText:''}); this.speakOutcome(value,latest); return; }
+    if (value.state === 'ERROR') { this.approvalCard.clear(); this.setData(update); this.showError(value.detail); if(!value.busy&&latest?.turnId===value.turnId&&latest.assistant)this.setData({errorText:briefAnswer(latest.assistant)}); this.speakOutcome(value,latest); return; }
     const phase = value.state;
     if(phase!=='APPROVAL'&&this.approvalCard.current)this.approvalCard.clear();
-    this.setPhaseData({ ...update, phase, label: LABELS[phase] || LABELS.ERROR, errorText: phase==='STOPPING'?(value.approvalReason==='unsupported'?'Подтверждение недоступно. Останавливаю…':value.approvalReason==='timeout'?'Время подтверждения истекло. Останавливаю…':'Действие отклонено. Останавливаю…'):'',
+    this.setPhaseData({ ...update, phase, label: LABELS[phase] || LABELS.ERROR, errorText: phase==='CANCELLED'?(value.approvalMessage||briefAnswer(latest?.assistant)):phase==='STOPPING'?(value.approvalReason==='unsupported'?'Подтверждение недоступно. Останавливаю…':value.approvalReason==='timeout'?'Время подтверждения истекло. Останавливаю…':'Действие отклонено. Останавливаю…'):'',
       hint: phase === 'READY' ? 'Нажмите на дужку и говорите' :
         ['DONE','CANCELLED'].includes(phase) ? 'Нажмите для следующей реплики' :
         phase === 'APPROVAL' ? 'Свайп — выбор · Нажатие — подтвердить' :
@@ -192,9 +192,10 @@ export default {
       <text ink:if="{{approvalSecond}}" class="approval-confirm">ПОДТВЕРДИТЬ ДЕЙСТВИЕ?</text>
       <text ink:if="{{!approvalSecond}}" class="approval-action">{{approval.title}} · {{approval.action}}</text>
       <text class="body">{{approval.target}}</text>
-      <text class="approval-scope">{{approval.risk === 'high' ? 'Повышенный риск · ' : ''}}{{approval.scope === 'turn' ? 'Доступ до конца текущего запроса' : 'Только это действие'}}</text>
+      <text class="approval-scope">{{approvalRemainingSeconds}}с · {{approval.risk === 'high' ? 'Повышенный риск · ' : ''}}{{approval.scope === 'turn' ? 'Доступ до конца текущего запроса' : 'Только это действие'}}</text>
       <text class="approval-choice">{{approvalAllow ? '  ' : '› '}}{{approvalSecond ? 'НЕТ' : 'ОТКЛОНИТЬ'}}</text>
       <text class="approval-choice">{{approvalAllow ? '› ' : '  '}}{{approvalSecond ? 'ДА, ВЫПОЛНИТЬ' : approval.scope === 'turn' ? 'РАЗРЕШИТЬ НА ЭТОТ ЗАПРОС' : 'РАЗРЕШИТЬ ОДИН РАЗ'}}</text>
+      <text ink:if="{{approvalFeedback}}" class="hint">{{approvalFeedback}}</text>
       <text ink:if="{{approvalSubmitting}}" class="hint">Отправляю решение…</text>
     </view>
     <scroll-view ink:if="{{!approval}}" class="answer" scroll-y="true" scroll-top="{{scroll}}" scroll-into-view="{{scrollTarget}}" bindscroll="handleScroll">
