@@ -126,3 +126,13 @@ test('old gateway without authoritative history fails visibly instead of silentl
  const f=fixture(),c=f.make();const request=f.transport.request.bind(f.transport);f.transport.request=async(...a)=>{const v=await request(...a);delete v.history;return v};
  await c.open();assert.equal(f.views.at(-1).detail,'gateway_history_unavailable');assert.deepEqual(c.history.exchanges,[]);
 });
+
+test('device approval lost ACK refreshes only and never persists/replays accept',async()=>{
+ const f=fixture(),c=f.make();await c.open();const id=randomUUID(),turnId='approval-turn';
+ const approval={id,turnId,kind:'computer-use',title:'Calculator',description:'Прочитать окно Calculator один раз',risk:'low',allowOnGlasses:true,expiresAt:Date.now()+30000};
+ const original=f.transport.request;let pending=true,posts=0;
+ f.transport.request=async(m,r,b)=>{if(r.includes('/approvals/')){posts++;pending=false;throw Error('network_or_tls_error')};const s=await original(m,r,b);return{...s,turnId,status:'Working',pendingApproval:pending,approval:pending?approval:null}};
+ await c.refresh();assert.equal(f.views.at(-1).state,'APPROVAL');
+ await assert.rejects(c.decideApproval(id,'accept'),/network/);assert.equal(posts,1);assert.equal(c.saved.pending,null);assert.equal(f.views.at(-1).state,'WORKING');
+ c.close();await c.open();assert.equal(posts,1);c.close();
+});

@@ -152,7 +152,7 @@ UX:
 
 ## 6. Approvals и безопасность
 
-Daemon выбирает native `workspace-write`, `approvalPolicy: on-request`, `approvalsReviewer: auto_review`. Допустимые операции и escalation рассматривает Codex; gateway не отвечает accept самостоятельно. Настоящие human requests сразу видны как pending и ждут решения/native resolution/cancel/disconnect. Автоматического 120-секундного отказа нет; явно заданный approvalTimeoutMs остаётся опциональным:
+Daemon выбирает native `workspace-write`, `approvalPolicy: on-request`, `approvalsReviewer: auto_review`. Допустимые операции и escalation рассматривает Codex; gateway не отвечает accept самостоятельно. ALE-465: безопасно представимый запрос показывает APPROVAL на RV101, максимум30с (approvalTimeoutMs может только сократить срок); неизвестные grants/forms сразу отклоняются. Локальные инструменты остаются для диагностики текущих запросов:
 
 ```sh
 npm run ctl -- approvals
@@ -161,7 +161,7 @@ npm run ctl -- decline APPROVAL_UUID
 npm run ctl -- accept APPROVAL_UUID
 ```
 
-Прочитайте точную команду и пути, а не только reason от модели. Accept разрешает **одно** действие, которое может выйти из sandbox; это не обещание защиты за пределами approved action. Для опасного действия отдельное решение необходимо. Device API не содержит маршрута approval; даже device token не работает на admin API. Не подменяйте выбранный Approve for me режимом danger-full-access или approval_policy=never.
+Прочитайте точную команду и пути, а не только reason от модели. Accept разрешает **одно** действие, которое может выйти из sandbox; это не обещание защиты за пределами approved action. Для опасного действия отдельное решение необходимо. Device API содержит только current-request approval route; device token не работает на admin API. Не подменяйте выбранный Approve for me режимом danger-full-access или approval_policy=never.
 
 Allowlist ограничивает выбор рабочего проекта, но Codex может читать и другие доступные локальные файлы. Этот MVP предназначен одному владельцу, не для недоверенных пользователей и не для multi-tenant isolation. MCP/apps/plugins/skills наследуются из effective Codex config; user-disabled capabilities остаются выключенными. Native hook trust сохраняется, но side effects доверенных startup/hooks не ограничиваются tool approvals. App/MCP/plugin approval modes и reviewers наследуются без clamps; native default shell network остаётся ограниченным, host/browser/tool network рассматривается отдельно. Credentials не копируются; child environment сохраняет прежний allowlist (env-only credentials вне него недоступны).
 
@@ -236,9 +236,8 @@ npm run ctl -- decline APPROVAL_ID
 ```
 
 `accept` выполняется только после отдельного решения владельца, не на основании голосового prompt.
-Для MCP поддерживается пустая native confirmation form с `_meta.codex_approval_kind=mcp_tool_call`;
-URL/OAuth/device-proof/free-text формы отклоняются, а не заполняются автоматически. Pending виден на
-существующем HUD. Просматривайте параметры только локально; не копируйте approval details в логи/Linear.
+ALE-465 поддерживает только проверенную пустую native form Calculator get_app_state;
+остальные command/file/grant/MCP/auth/input формы немедленно отклоняются. На HUD появляется APPROVAL. Просматривайте параметры только локально; не копируйте approval details в логи/Linear.
 Tool events содержат только bounded identifiers/status, не пользовательские данные. Не вызывайте
 `mcpServer/tool/call` напрямую для write acceptance: это диагностический API, не нормальный model turn.
 
@@ -249,4 +248,20 @@ Endpoint/token/private AIX менять не требуется. Проверя�
 
 Для MCP применяется normal native policy, без Jarvis blanket prompt. Существующие Computer Use app-level grants могут требовать человека даже при auto_review. Не выдавайте новые app permissions или auth proofs автоматически. Смотрите фактические review events и surface evidence.
 
-`human-approval-smoke.mjs` использует non-executing MCP simulator: реальный app-server human request → pending → decline, без файлового/сетевого destructive handler. Это проверка flow, не обещание универсальной классификации риска native reviewer.
+`human-approval-smoke.mjs` использует non-executing MCP simulator: реальный app-server human request → immediate unsupported decline, без файлового/сетевого destructive handler. Это проверка flow, не обещание универсальной классификации риска native reviewer.
+
+## ALE-465 wearer approval verification
+
+Supported: Calculator get_app_state exact one-read shape. Unknown shell/file/permission grants, other
+MCP tools and auth/input forms fail closed. No session/always grants; no changes to native auto_review.
+APPROVAL defaults DECLINE; swipe selects, tap confirms, back declines. High-risk requires a second
+default-NO card. Timeout30s declines; native completion grace10s, then interrupt and uncertain error
+after5s if no terminal event. Do not interpret that error as confirmed cancellation of the entire turn.
+
+Only after explicit owner authorization for isolated Calculator controls read:
+`node scripts/device-approval-smoke.mjs --calculator-read-authorized`. It uses ephemeral threads and
+real HTTPS/device decision → native app-server, never production Jarvis. `npm run smoke` verifies thread
+continuity; `node scripts/tool-parity-smoke.mjs` verifies automatic safe MCP review.
+
+Physical candidate must update both gateway and private cloud AIX, then ACTIVE readback per AIUI_SETUP.
+Test allowed/declined/timeout/back, same session/thread and TTS/history separately. No email send.

@@ -85,3 +85,11 @@ was measured at0ms in gateway /983ms first poll; no default120s expiry remains. 
 surface differences, including Desktop UI filesystem guard differences, are explicit in
 [validation](../specs/004-ale-453-tool-parity/validation.md). AIX1.0.19 is unchanged. Physical permission
 acceptance remains separate; Linear is Needs Test.
+
+## ALE-465 candidate — 2026-10-03
+
+[Device approval specification/evidence](../specs/005-ale-465-device-approval/validation.md) adds a narrow
+physical current-request decision boundary. Real isolated Calculator read lifetime/API and native safe
+auto_review proved; full physical workflow remains separate. Private source0.5.0 candidate includes
+default-decline APPROVAL,30s timeout and high-risk second confirmation. Linear remains authoritative;
+cloud/physical readiness must be read from latest deployment evidence, not this build summary.

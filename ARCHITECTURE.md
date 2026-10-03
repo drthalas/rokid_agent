@@ -70,8 +70,8 @@ The gateway initializes JSON-RPC, calls thread/start for a new session and turn/
 
 See [ADR-002](docs/adr/ADR-002-loopback-boundary.md) and [ADR-003](docs/adr/ADR-003-private-deployment.md).
 
-- Codex is hard-coded to IPv4 loopback; normal startup owns its child and refuses an occupied port. Device HTTPS and admin loopback HTTP have distinct random bearer tokens. Glasses have no approval route and never receive the admin credential or Codex account credentials.
-- Every new/resumed thread selects native workspace-write/on-request/auto_review. Turns inherit native thread roots/network rather than forcing read-only. Eligible approvals are handled by Codex auto-review, not by gateway acceptance. Actual human command/file/native confirmation RPCs are exposed immediately and remain pending until resolution/cancel/disconnect; only an explicitly configured timeout expires them. Unsupported auth/input forms are never fabricated.
+- Codex is hard-coded to IPv4 loopback; normal startup owns its child and refuses an occupied port. Device HTTPS and admin loopback HTTP have distinct random bearer tokens. Glasses have only the narrow current-request approval route below and never receive admin or Codex credentials.
+- Every new/resumed thread selects native workspace-write/on-request/auto_review. Turns inherit native thread roots/network rather than forcing read-only. Eligible approvals are handled by Codex auto-review, not by gateway acceptance. Actual human requests go through the ALE-465 sanitizer. Proven Calculator window-read requests show a physical default-decline card with a maximum30s expiry; unsupported command/file/permissions/auth/input forms immediately decline. No native persistence metadata is returned. High-risk requests require a second challenge-bound decision.
 - Realpath allowlist constrains selected cwd, **not all readable files**. This is a single-owner MVP. Native MCP/apps/plugins/skills/hook trust and app/MCP approval modes/reviewers are inherited unchanged; user-disabled capabilities stay disabled. No blanket MCP prompt or per-app reviewer override. The existing child environment allowlist remains; credentials are not copied. Host tool/browser networking is separate from the shell sandbox, whose observed native default is restricted. Trusted startup/hooks retain native trust semantics.
 - AIUI verifies public CA/hostname TLS. Android uses out-of-band leaf certificate pinning. The authorized smoke-only `--no-tls-verify` exception is restricted to cloudflared → HTTPS gateway on the same Mac; no client-side TLS bypass and no router port forwarding. Cloudflare terminates TLS and is a trusted transport processor able to observe requests; it is not end-to-end encryption directly to Mac.
 - Private `config.js`, configured AIX, cloud downloads, tokens, keys, logs and browser/Rokid sessions stay ignored. AIX JavaScript is readable: private cloud distribution is a credential-bearing trust boundary, not encrypted secret storage.
@@ -82,7 +82,7 @@ See [ADR-002](docs/adr/ADR-002-loopback-boundary.md) and [ADR-003](docs/adr/ADR-
 
 Client retries retain UUID/session, refresh snapshots and never silently create a replacement thread. Endpoint changes alter AIUI storage namespace; use an explicit existing gateway session to preserve continuity. STT validation/busy/no-speech/timeout yields bounded errors, never a speculative turn. TTS failure falls back to HUD.
 
-RPC disconnect rejects outstanding calls, clears local approval handles, marks active work uncertain, then attempts resume/read recovery. Only matching known turn history resolves uncertainty; otherwise local review/reconcile is required. Explicitly configured approval expiry declines; there is no gateway default human timeout. Corrupt state fails startup; **missing state currently initializes an empty store**, so deleting it loses gateway mappings/dedupe records and is not a recovery procedure. Sessions without any turn may lack a resumable Codex rollout. Capacity errors preserve dedupe records rather than silently evicting them (normal creation: 100 sessions; mutations: 10,000 UUIDs; import does not apply the session cap).
+RPC disconnect rejects outstanding calls, clears local approval handles, marks active work uncertain, then attempts resume/read recovery. Only matching known turn history resolves uncertainty; otherwise local review/reconcile is required. Human expiry defaults to30s (configuration can only shorten it). Declines allow10s for native conclusion, then interrupt; after5s without terminal evidence the snapshot reports an uncertain error, never false success. Corrupt state fails startup; **missing state currently initializes an empty store**, so deleting it loses gateway mappings/dedupe records and is not a recovery procedure. Sessions without any turn may lack a resumable Codex rollout. Capacity errors preserve dedupe records rather than silently evicting them (normal creation: 100 sessions; mutations: 10,000 UUIDs; import does not apply the session cap).
 
 ## Bounded latency diagnosis
 
@@ -191,3 +191,20 @@ Local `/admin/runtime` exposes sanitized profile/review metadata; it never expos
 commands, tool parameters or auth data to glasses. Review notifications are never treated as accepts.
 
 Resolved-profile comparison also found a Desktop UI-injected project `.aws` read-only entry absent from the standalone workspace-write profile. The directory is absent in this workspace. This is a disclosed session-layer difference, not a claim of identical Desktop protected-path compilation; no custom second profile was introduced.
+
+## ALE-465 device human decisions
+
+Snapshot retains pendingApproval boolean and adds sanitized approval `{id,turnId,kind,title,description,
+risk,allowOnGlasses,expiresAt}` plus a fixed outcome enum. POST /v1/sessions/:sessionId/approvals/:id
+accepts decision accept/decline and optional high-risk confirmation challenge. Existing device bearer,
+Origin rejection and loopback admin remain. No raw params, command, arbitrary reason or provider payload
+is displayed. Current supported shape is native cua_repl get_app_state for Calculator only; real
+omitted-persist tests re-prompted on the next read with/without runtime reset and in fresh threads.
+This is one window read, not arbitrary code execution or a conversation-wide app permission.
+
+The UI enters APPROVAL; arrows select, Enter confirms after650ms host Backspace classification guard,
+back/hide declines best-effort through a request independent of page polling cleanup. Server expiry is
+authoritative on disconnect. Both confirmation screens default decline, and only a second deliberate
+choice can supply the high-risk challenge. Accept is never stored/replayed after ambiguous delivery.
+Native auto_review notifications do not create a card. Fixed cancellation notices are appended once to
+the final exchange; an uncertain native stop remains visibly uncertain. See [spec](specs/005-ale-465-device-approval/spec.md).

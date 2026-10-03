@@ -132,8 +132,13 @@ for(const fault of ['missing-intervals','pulse-construction','status-render']) {
  });
 }
 
-test('existing HUD shows genuine pending approval immediately while keeping WORKING controls',async()=>{
- const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');h.page.renderState({state:'WORKING',pendingApproval:true});
- assert.equal(h.page.data.phase,'WORKING');assert.equal(h.page.data.hint,'Ожидает подтверждения на Mac');
+test('HUD approval replaces busy controls, defaults decline and announces only once',async()=>{
+ const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');
+ const approval={id:randomUUID(),turnId:'active',kind:'computer-use',title:'Calculator',description:'Прочитать окно Calculator один раз',risk:'low',expiresAt:Date.now()+30000};
+ const decisions=[];h.page.client.decideApproval=async(...args)=>{decisions.push(args);return{ok:true}};
+ const value={state:'APPROVAL',pendingApproval:true,approval,turnId:'active'};h.page.renderState(value);h.page.renderState(value);
+ assert.equal(h.page.data.phase,'APPROVAL');assert.equal(h.page.data.approvalAllow,false);assert.equal(h.spoken.filter(s=>s==='Требуется подтверждение.').length,1);
+ h.page.onKeyUp({code:'ArrowDown',preventDefault(){}});assert.equal(h.page.data.approvalAllow,true);h.tap();h.back();await pause(700);
+ assert.equal(decisions.length,1);assert.equal(decisions[0][1],'decline');assert.equal(h.order.filter(s=>s==='record').length,0);
  }finally{h.page.cleanup()}
 });

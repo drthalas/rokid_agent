@@ -252,7 +252,7 @@ Backend unavailable: **Codex недоступен на Mac** и короткий
 | browser_origin_forbidden в Craft | Это браузерный preview, не native device test. Не отключать security check gateway ради preview. |
 | invalid_gateway_session / session_not_found | Нужен gateway id, не Codex threadId; проверьте ctl sessions. Не создавайте новый thread автоматически для маскировки ошибки. |
 | Микрофон недоступен | RECORD_AUDIO в app.json и Upload capabilities; разрешение host; поддержка RecorderManager; запуск от tap/voice event, не из фонового timer. |
-| Нет Done / требуется approval | Состояние gateway/Codex и `npm run ctl -- approvals`; решение принимается только на Mac. |
+| Нет Done / требуется approval | Состояние gateway/Codex и `npm run ctl -- approvals`; проверенный запрос Calculator показывается отдельной карточкой APPROVAL на очках; неподдерживаемые формы отклоняются. |
 | Нет TTS | Старый runtime/недоступный speech service/язык; HUD продолжает работать. |
 
 При неопределённом результате POST сохранённый requestId повторяется, новый prompt не создаётся. Если gateway возвращает request_outcome_unknown/session_busy_or_uncertain, сверяйте thread на Mac; не очищайте storage и не переключайте session вслепую. `sessionId` в приватном config позволяет явно выбрать проверенную сессию при следующей сборке.
@@ -332,3 +332,15 @@ Labels **ВЫ / JARVIS**: 23px/700, полная яркость, отдельн�
 между exchanges зелёный разделитель. Статус — label + маленькая точка. LISTENING/TRANSCRIBING/
 THINKING/WORKING пульсируют через opacity/transition с одним таймером 600 ms; static/hide/unload
 останавливают таймер. CSS animation/keyframes и большой spinner не используются.
+
+## ALE-465 physical approval card
+
+After deploying matching gateway and private AIX, verify ACTIVE cloud readback includes lib/approval-ui.js
+and current private config. Update resources through Hi Rokid. The card defaults ОТКЛОНИТЬ; swipe chooses,
+tap confirms, back declines. High-risk uses second default НЕТ. No decision for30s means decline. The
+currently supported approval is one Calculator window read; other grants/forms may fail closed.
+
+Main wearer scenario: Calculator20+30, screenshot, Gmail draft to self with attachment, never send. A
+later unsupported native request is a recorded acceptance boundary, not permission to broaden scope.
+Unit/cloud packaging does not establish physical acceptance. Roll back matching gateway/AIX together
+using retained private artifacts/source; preserve tokens, endpoint, session/thread and Camera permission.

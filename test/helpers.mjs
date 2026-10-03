@@ -71,3 +71,5 @@ export function request(config, port, route, body, { admin = false, token, metho
   });
 }
 export const delay = ms => new Promise(r => setTimeout(r, ms));
+
+export const calculatorApproval = s => ({threadId:s.threadId,turnId:s.turnId,serverName:'cua_repl',mode:'form',requestedSchema:{type:'object',properties:{}},_meta:{codex_approval_kind:'mcp_tool_call',tool_name:'get_app_state',tool_params:{app:'com.apple.calculator'},riskLevel:'low',persist:['session','always']}});

@@ -1,6 +1,6 @@
 // Frontend-only presentation and RV101 key normalization. No transport credentials here.
 export const BUSY_STATES = ['TRANSCRIBING', 'THINKING', 'WORKING'];
-export const LABELS = { READY: 'Готов', LISTENING: 'Слушаю', TRANSCRIBING: 'Распознаю', THINKING: 'Думаю', WORKING: 'Выполняю', DONE: 'Готово', ERROR: 'Ошибка' };
+export const LABELS = { APPROVAL: 'Требуется подтверждение', READY: 'Готов', LISTENING: 'Слушаю', TRANSCRIBING: 'Распознаю', THINKING: 'Думаю', WORKING: 'Выполняю', DONE: 'Готово', ERROR: 'Ошибка' };
 export function briefAnswer(text, limit = 300) {
   const plain = String(text || '').replace(/```[\s\S]*?```/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[#*_`>]/g, '').replace(/\s+/g, ' ').trim();
   if (!plain) return text ? 'Ответ содержит код. Полный текст ниже.' : '';
@@ -22,6 +22,8 @@ const ERROR_MESSAGES = {
   session_mismatch: 'Диалог изменился. Проверьте Mac', thread_mismatch: 'Диалог изменился. Проверьте Mac',
   session_not_found: 'Диалог не найден на Mac', connection_not_configured: 'Подключение к Mac не настроено',
   invalid_response: 'Не удалось прочитать ответ Mac', invalid_snapshot: 'Не удалось прочитать ответ Mac',
+  approval_unavailable: 'Это подтверждение недоступно на очках', approval_not_current: 'Подтверждение уже закрыто',
+  approval_completion_uncertain: 'Действие отклонено. Состояние задачи нужно проверить на Mac',
   gateway_history_unavailable: 'Обновите gateway на Mac',
   client_error: 'Не удалось выполнить запрос', gateway_error: 'Ошибка на Mac', turn_interrupted: 'Задача остановлена'
 };

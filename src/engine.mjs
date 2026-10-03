@@ -4,12 +4,12 @@ import { randomUUID } from 'node:crypto';
 import { Fault, requireValue, requestId, prompt, fingerprint, busy, policy, turnPolicy, reduceEvent } from './protocol.mjs';
 import { boundHistory, startExchange, updateExchange, hydrateHistory } from './history.mjs';
 import { projectPath } from './config.mjs';
-import { supportedApproval, nativeApprovalResponse } from './approvals.mjs';
+import { deviceApproval, APPROVAL_NOTICES, nativeApprovalResponse } from './approvals.mjs';
 import { toolEvidence, reviewEvidence } from './tool-evidence.mjs';
 
 export class Engine {
   constructor(config, codex) {
-    this.config = config; this.codex = codex; this.approvals = new Map(); this.locks = new Set();
+    this.config = config; this.codex = codex; this.approvals = new Map(); this.locks = new Set(); this.approvalFinishes = new Map();
     this.data = fs.existsSync(config.stateFile) ? JSON.parse(fs.readFileSync(config.stateFile, 'utf8')) : { version: 1, sessions: {}, requests: {} };
     requireValue(this.data.version === 1 && this.data.sessions && this.data.requests, 'invalid_state');
     this.historySecrets = [config.tokenFile, config.adminTokenFile].filter(Boolean).map(p=>fs.readFileSync(p,'utf8').trim());
@@ -22,6 +22,7 @@ export class Engine {
       this.recovered = false;
       for (const a of this.approvals.values()) clearTimeout(a.timer);
       this.approvals.clear();
+      for (const timer of this.approvalFinishes.values()) clearTimeout(timer); this.approvalFinishes.clear();
       for (const s of Object.values(this.data.sessions)) if (busy(s)) { s.status = 'Error'; s.error = 'connection_lost'; s.uncertain = true; s.revision++; }
       this.save();
     });
@@ -35,10 +36,13 @@ export class Engine {
   }
   get(id) { requireValue(Object.hasOwn(this.data.sessions, id), 'session_not_found', 404); return this.data.sessions[id]; }
   snapshot(s) {
+    const currentApproval = [...this.approvals.values()].find(a => a.sessionId === s.id && a.turnId === s.turnId && busy(s));
     return { id: s.id, project: s.project, threadId: s.threadId, turnId: s.turnId, status: s.status,
       history: {sessionId:s.id,threadId:s.threadId,exchanges:boundHistory(s.history,this.historySecrets)},
       text: s.text, partial: s.partial, error: s.error, uncertain: s.uncertain, revision: s.revision,
-      pendingApproval: [...this.approvals.values()].some(a => a.sessionId === s.id),
+      approvalNotice: Object.hasOwn(APPROVAL_NOTICES,s.approvalNotice)?s.approvalNotice:null,
+      pendingApproval: !!currentApproval,
+      approval: currentApproval ? {...currentApproval.descriptor,id:currentApproval.id,turnId:currentApproval.turnId,expiresAt:currentApproval.expiresAt} : null,
       ...(this.timings.has(s.id) ? {timing:{...this.timings.get(s.id)}} : {}) };
   }
   ready() { requireValue(this.codex.ready && this.recovered, 'codex_unavailable', 503); }
@@ -89,6 +93,7 @@ export class Engine {
       return await this.once(body.requestId, ['turn', id, text], async () => {
         // Persist BEFORE sending. Retrying the same request must never duplicate a turn.
         this.data.requests[body.requestId].sessionId = id;
+        s.approvalNotice = null; this.clearApprovalFinish(s.id);
         s.status = 'Thinking'; s.error = null; s.text = ''; s.partial = ''; s.turnId = null; s.revision++;
         startExchange(s, body.requestId, text, this.historySecrets);
         this.save();
@@ -111,6 +116,7 @@ export class Engine {
   async stop(id) {
     const s = this.get(id); this.ready();
     if (!s.turnId && (busy(s) || s.uncertain)) throw new Fault('turn_id_unknown_reconcile_locally', 409);
+    for (const a of [...this.approvals.values()]) if (a.sessionId === id) this.decide(a.id, false);
     if (busy(s) || s.uncertain) await this.codex.request('turn/interrupt', { threadId: s.threadId, turnId: s.turnId });
     return this.snapshot(s);
   }
@@ -122,6 +128,7 @@ export class Engine {
       if(evidence){this.toolEvents.push(evidence);this.toolEvents=this.toolEvents.slice(-64);}
     }
     for (const s of Object.values(this.data.sessions)) if (reduceEvent(s, method, p)) {
+      if (!busy(s)) { this.clearApprovalFinish(s.id); this.applyApprovalNotice(s); }
       updateExchange(s, this.historySecrets);
       const timing = this.timings.get(s.id);
       if (timing) {
@@ -136,30 +143,70 @@ export class Engine {
       if (a.rpcId === p.requestId) { clearTimeout(a.timer); this.approvals.delete(id); }
     }
   }
+  applyApprovalNotice(s) {
+    const notice = APPROVAL_NOTICES[s.approvalNotice];
+    if (notice && !s.text?.includes(notice)) s.text = [notice, s.text].filter(Boolean).join('\n\n').slice(0,16000);
+  }
+  clearApprovalFinish(id) { clearTimeout(this.approvalFinishes.get(id)); this.approvalFinishes.delete(id); }
+  declined(s, reason) {
+    s.approvalNotice = reason; s.revision++; this.save();
+    // Let Codex finish safely after decline, but bound opaque continuation. Never label
+    // an unknown interrupt as success or allow a new turn while its outcome is uncertain.
+    if (this.approvalFinishes.has(s.id)) return;
+    const turnId = s.turnId;
+    const timer = setTimeout(async () => {
+      this.approvalFinishes.delete(s.id);
+      if (!busy(s) || s.turnId !== turnId) return;
+      const stalled = setTimeout(() => {
+        this.approvalFinishes.delete(s.id);
+        if (!busy(s) || s.turnId !== turnId) return;
+        s.status='Error'; s.error='approval_completion_uncertain'; s.uncertain=true;
+        this.applyApprovalNotice(s); updateExchange(s,this.historySecrets); s.revision++; this.save();
+      },5000);
+      this.approvalFinishes.set(s.id,stalled);
+      try { await this.codex.request('turn/interrupt',{threadId:s.threadId,turnId}); } catch {}
+    },10000);
+    this.approvalFinishes.set(s.id,timer);
+  }
   approval(m) {
+    if ([...this.approvals.values()].some(a => a.rpcId === m.id)) return;
     const s = Object.values(this.data.sessions).find(s => s.threadId === m.params?.threadId && busy(s));
-    const stale=m.params?.turnId && m.params.turnId!==s?.turnId;
-    if (!s || stale || !supportedApproval(m.method,m.params)) {
-      if (m.method === 'item/permissions/requestApproval' || m.method === 'mcpServer/elicitation/request') this.codex.send({ id: m.id, result: nativeApprovalResponse(m.method,m.params,false) });
-      else this.codex.send({ id: m.id, error: { code: -32601, message: 'Unsupported request; denied' } });
+    const stale = !s?.turnId || m.params?.turnId !== s.turnId;
+    const descriptor = deviceApproval(m.method,m.params);
+    if (!s || stale || !descriptor || [...this.approvals.values()].some(a=>a.sessionId===s.id)) {
+      if (['item/permissions/requestApproval','mcpServer/elicitation/request','item/commandExecution/requestApproval','item/fileChange/requestApproval'].includes(m.method))
+        this.codex.send({id:m.id,result:nativeApprovalResponse(m.method,m.params,false)});
+      else this.codex.send({id:m.id,error:{code:-32601,message:'Unsupported request; denied'}});
+      if (s && (!stale || !m.params?.turnId)) this.declined(s,'unsupported');
       return;
     }
-    const id = randomUUID();
-    const receivedAt=Date.now(),timeout=this.config.approvalTimeoutMs;
-    const a = { id, rpcId: m.id, method: m.method, params: m.params, sessionId: s.id, turnId:s.turnId, receivedAt, expiresAt: Number.isFinite(timeout)&&timeout>0?receivedAt+timeout:null };
-    if(a.expiresAt!==null)a.timer=setTimeout(() => { try { this.decide(id, false); } catch {} },timeout);
-    this.approvals.set(id, a); s.revision++;
+    const id=randomUUID(),receivedAt=Date.now();
+    const timeout=Number.isFinite(this.config.approvalTimeoutMs)&&this.config.approvalTimeoutMs>0?Math.min(this.config.approvalTimeoutMs,30000):30000;
+    const a={id,rpcId:m.id,method:m.method,params:m.params,sessionId:s.id,turnId:s.turnId,receivedAt,expiresAt:receivedAt+timeout,descriptor};
+    a.timer=setTimeout(()=>{try{this.decide(id,false,'timeout')}catch{}},timeout);
+    this.approvals.set(id,a);s.revision++;
     this.reviewEvents.push({event:'humanApproval/pending',sessionId:s.id,threadId:s.threadId,turnId:s.turnId,requestId:id,method:m.method,receivedAt,at:Date.now()});this.reviewEvents=this.reviewEvents.slice(-64);
   }
-  listApprovals() { return [...this.approvals.values()].map(({ timer, rpcId, ...a }) => a); }
-  decide(id, allow) {
-    const a = this.approvals.get(id); requireValue(a, 'approval_not_found', 404);
-    clearTimeout(a.timer); this.approvals.delete(id);
-    const session=this.get(a.sessionId);
-    const current=busy(session)&&session.turnId===a.turnId;
-    this.codex.send({ id: a.rpcId, result: nativeApprovalResponse(a.method,a.params,allow && current && (a.expiresAt===null || Date.now()<a.expiresAt)) });
-    this.get(a.sessionId).revision++;
-    return { ok: true };
+  listApprovals() { return [...this.approvals.values()].map(({timer,rpcId,confirmation,...a})=>a); }
+  decideDevice(sessionId,id,decision,confirmation) {
+    const a=this.approvals.get(id),s=a&&this.data.sessions[sessionId];
+    requireValue(a&&s&&a.sessionId===sessionId&&a.turnId===s.turnId&&busy(s)&&!s.uncertain&&Date.now()<a.expiresAt&&a.descriptor.allowOnGlasses,'approval_not_current',409);
+    requireValue(['accept','decline'].includes(decision),'invalid_decision');
+    if (decision==='accept' && a.descriptor.risk==='high') {
+      if (confirmation===undefined) { a.confirmation??=randomUUID(); return {requiresConfirmation:true,confirmation:a.confirmation}; }
+      requireValue(typeof confirmation==='string'&&a.confirmation&&confirmation===a.confirmation,'approval_confirmation_invalid',409);
+    } else requireValue(confirmation===undefined,'approval_confirmation_invalid',409);
+    return this.decide(id,decision==='accept');
+  }
+  decide(id,allow,reason='declined') {
+    const a=this.approvals.get(id);requireValue(a,'approval_not_found',404);
+    const s=this.get(a.sessionId),current=busy(s)&&s.turnId===a.turnId&&!s.uncertain;
+    clearTimeout(a.timer);this.approvals.delete(id);
+    const accepted=allow&&current&&Date.now()<a.expiresAt;
+    this.codex.send({id:a.rpcId,result:nativeApprovalResponse(a.method,a.params,accepted)});
+    s.revision++;
+    if (!accepted&&current) this.declined(s,reason);
+    return {ok:true};
   }
   clearApprovals(sessionId) {
     for (const [id, a] of this.approvals) if (a.sessionId === sessionId) { clearTimeout(a.timer); this.approvals.delete(id); }
@@ -184,9 +231,10 @@ export class Engine {
           } else { s.status = 'Error'; s.error = 'recovery_requires_local_review'; s.uncertain = true; }
         }
       } catch { s.status = 'Error'; s.error = 'resume_failed'; s.uncertain = true; }
+      if (!busy(s)) { this.applyApprovalNotice(s); updateExchange(s,this.historySecrets); }
       s.revision++;
     }
     this.save(); this.recovered = true;
   }
-  close() { for (const a of this.approvals.values()) clearTimeout(a.timer); this.approvals.clear(); }
+  close() { for (const timer of this.approvalFinishes.values()) clearTimeout(timer); this.approvalFinishes.clear(); for (const a of this.approvals.values()) clearTimeout(a.timer); this.approvals.clear(); }
 }

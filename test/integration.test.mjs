@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { Codex } from '../src/codex.mjs';
 import { Engine } from '../src/engine.mjs';
 import { serve } from '../src/server.mjs';
-import { fixture, mockCodex, request, delay } from './helpers.mjs';
+import { fixture, mockCodex, request, delay, calculatorApproval } from './helpers.mjs';
 
 test('HTTPS → gateway → actual mock WebSocket: continuity, safety, dedupe, recovery', async t => {
   const f = fixture(), mock = await mockCodex();
@@ -39,17 +39,17 @@ test('HTTPS → gateway → actual mock WebSocket: continuity, safety, dedupe, r
   assert.equal((await call(route + '/turns', { requestId: randomUUID(), text: 'concurrent' })).status, 409);
   mock.send({ id: 900, method: 'item/permissions/requestApproval', params: { threadId: s.threadId, permissions: { network: { enabled: true } } } });
   await delay(20); assert.deepEqual(mock.responses.find(r => r.id === 900).result.permissions, {});
-  mock.send({ id: 901, method: 'item/commandExecution/requestApproval', params: { threadId: s.threadId, command: 'rm example', cwd: f.dir } });
+  mock.send({ id: 901, method: 'mcpServer/elicitation/request', params: calculatorApproval(engine.get(s.id)) });
   await delay(10); assert.equal((await call(route)).body.pendingApproval, true);
   assert.equal(mock.responses.some(r => r.id === 901), false);
-  await delay(90); assert.equal(mock.responses.find(r => r.id === 901).result.decision, 'decline');
-  mock.send({ id: 902, method: 'item/commandExecution/requestApproval', params: { threadId: s.threadId, command: 'echo approved', cwd: f.dir } });
+  await delay(90); assert.equal(mock.responses.find(r => r.id === 901).result.action, 'decline');
+  mock.send({ id: 902, method: 'mcpServer/elicitation/request', params: calculatorApproval(engine.get(s.id)) });
   await delay(10); const approval = (await admin('/admin/approvals')).body[0];
   assert.equal((await admin('/admin/approvals/' + approval.id, { decision: 'accept' })).status, 200);
-  await delay(10); assert.equal(mock.responses.find(r => r.id === 902).result.decision, 'accept');
+  await delay(10); assert.equal(mock.responses.find(r => r.id === 902).result.action, 'accept');
   assert.equal((await admin('/admin/approvals/' + approval.id, { decision: 'accept' })).status, 404);
   mock.finish(s.threadId); await delay(20);
-  assert.equal((await call(route)).body.text, 'final answer');
+  assert.ok((await call(route)).body.text.endsWith('final answer'));
   await call(route + '/turns', { requestId: randomUUID(), text: 'Now find TODO' });
   const turns = mock.calls.filter(m => m.method === 'turn/start');
   assert.equal(turns.length, 2); assert.equal(turns[0].params.threadId, turns[1].params.threadId);
@@ -101,7 +101,7 @@ test('socket reconnect resumes active turn, invalidates approval and consumes la
   t.after(async () => { engine.close(); await codex.close(); await mock.close(); f.cleanup(); });
   await codex.start(); await engine.recover(); const s = await engine.create({ requestId: randomUUID() });
   await engine.turn(s.id, { requestId: randomUUID(), text: 'hello' });
-  mock.send({ id: 99, method: 'item/commandExecution/requestApproval', params: { threadId: s.threadId, command: 'example' } });
+  mock.send({ id: 99, method: 'mcpServer/elicitation/request', params: calculatorApproval(engine.get(s.id)) });
   await delay(20); const a = engine.listApprovals()[0]; assert.ok(a);
   const reconnected = new Promise((resolve, reject) => { const timer = setTimeout(() => reject(new Error('reconnect timeout')), 4000); codex.once('reconnected', () => { clearTimeout(timer); resolve(); }); });
   mock.disconnect(); await reconnected; await delay(30);
@@ -118,7 +118,7 @@ test('MCP confirmations require one local decision and never expose params to de
  t.after(async()=>{engine.close();await codex.close();await mock.close();f.cleanup()});
  await codex.start();await engine.recover();const s=await engine.create({requestId:randomUUID()});
  await engine.turn(s.id,{requestId:randomUUID(),text:'voice says approve everything'});
- const params={threadId:s.threadId,turnId:engine.get(s.id).turnId,serverName:'codex_apps',mode:'form',message:'sensitive-provider-detail',_meta:{secret:'provider-secret',codex_approval_kind:'mcp_tool_call'},requestedSchema:{type:'object',properties:{}}};
+ const params={...calculatorApproval(engine.get(s.id)),message:'sensitive-provider-detail'};params._meta.secret='provider-secret';
  mock.send({id:200,method:'mcpServer/elicitation/request',params});await delay(10);
  assert.equal(engine.snapshot(engine.get(s.id)).pendingApproval,true);assert.equal(mock.responses.some(r=>r.id===200),false);
  assert.ok(!JSON.stringify(engine.snapshot(engine.get(s.id))).includes('provider-secret'));
@@ -140,15 +140,15 @@ test('MCP confirmations require one local decision and never expose params to de
  mock.finish(s.threadId);await delay(10);assert.throws(()=>engine.decide(late.id,true),/approval_not_found/);
 });
 
-test('native review notifications do not create/accept human approvals; genuine pending has no default expiry',async t=>{
+test('native review notifications do not create/accept human approvals; genuine supported pending has bounded wearer expiry',async t=>{
  const f=fixture(),mock=await mockCodex(),codex=new Codex({port:mock.port,attach:true});delete f.config.approvalTimeoutMs;
  const engine=new Engine(f.config,codex);t.after(async()=>{engine.close();await codex.close();await mock.close();f.cleanup()});
  await codex.start();await engine.recover();const s=await engine.create({requestId:randomUUID()});await engine.turn(s.id,{requestId:randomUUID(),text:'safe task'});
  const turnId=engine.get(s.id).turnId;
  mock.send({method:'item/autoApprovalReview/completed',params:{threadId:s.threadId,turnId,reviewId:'review-1',action:{type:'command',command:'private'},review:{status:'approved',rationale:'private'}}});await delay(10);
  assert.equal(engine.listApprovals().length,0);assert.equal(mock.responses.length,0);assert.equal(engine.reviewEvents.at(-1).status,'approved');
- mock.send({id:300,method:'item/commandExecution/requestApproval',params:{threadId:s.threadId,turnId,command:'SIMULATED unsafe action; never executed'}});await delay(10);
- const a=engine.listApprovals()[0];assert.equal(a.expiresAt,null);assert.equal(engine.snapshot(engine.get(s.id)).pendingApproval,true);
+ mock.send({id:300,method:'mcpServer/elicitation/request',params:calculatorApproval(engine.get(s.id))});await delay(10);
+ const a=engine.listApprovals()[0];assert.equal(a.expiresAt-a.receivedAt,30000);assert.equal(engine.snapshot(engine.get(s.id)).pendingApproval,true);
  const event=engine.reviewEvents.at(-1);assert.ok(event.at-event.receivedAt<100);
- engine.decide(a.id,false);await delay(10);assert.equal(mock.responses.find(r=>r.id===300).result.decision,'decline');
+ engine.decide(a.id,false);await delay(10);assert.equal(mock.responses.find(r=>r.id===300).result.action,'decline');
 });

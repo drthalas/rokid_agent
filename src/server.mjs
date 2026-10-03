@@ -57,6 +57,11 @@ export async function serve(config, engine) {
         const audio = await body(req, MAX_AUDIO, false), T2 = Date.now();
         result = await stt.transcribe(audio); result.timing.T2 = T2;
       } else if (req.method === 'POST' && p === '/v1/sessions') result = await engine.create(object(await body(req, 32768), ['requestId', 'project']));
+      else if (req.method === 'POST' && /^\/v1\/sessions\/[a-f0-9-]{36}\/approvals\/[a-f0-9-]{36}$/.test(p)) {
+        const parts=p.split('/'),b=object(await body(req,1024),['decision','confirmation']);
+        requireValue(['accept','decline'].includes(b.decision),'invalid_decision');
+        result=engine.decideDevice(parts[3],parts[5],b.decision,b.confirmation);
+      }
       else {
         const match = /^\/v1\/sessions\/([a-f0-9-]{36})(?:\/(turns|stop))?$/.exec(p);
         requireValue(match, 'not_found', 404);

@@ -1,3 +1,4 @@
+import { approvalDescriptor, APPROVAL_NOTICES } from './approval-ui.js';
 import { boundedHistory } from './history.js';
 export function validConfig(c) {
   if (!c || typeof c.origin !== 'string' || typeof c.token !== 'string') throw new Error('connection_not_configured');
@@ -12,7 +13,7 @@ export function createTransport(wx, config) {
   const c = validConfig(config), tasks = new Set();
   return {
     request(method, route, data, audio = false) {
-      if (!/^\/v1\/(health|stt|diagnostics|sessions(?:\/[a-f0-9-]{36}(?:\/(turns|stop))?)?)$/.test(route)) return Promise.reject(new Error('invalid_route'));
+      if (!/^\/v1\/(health|stt|diagnostics|sessions(?:\/[a-f0-9-]{36}(?:\/(turns|stop|approvals\/[a-f0-9-]{36}))?)?)$/.test(route)) return Promise.reject(new Error('invalid_route'));
       return new Promise((resolve, reject) => {
         let task; const startedAt = Date.now();
         task = wx.request({ url: c.origin + route, method, data,
@@ -34,6 +35,7 @@ export function createTransport(wx, config) {
         tasks.add(task);
       });
     },
+    decisionOnExit(route, data) { return createTransport(wx,c).request('POST',route,data); },
     close() { for (const task of tasks) { try { task.abort(); } catch {} } tasks.clear(); }
   };
 }
@@ -98,22 +100,47 @@ export class Conversation {
   }
   async refresh(g = this.generation, restoring = false) {
     const s = await this.transport.request('GET', '/v1/sessions/' + this.saved.sessionId);
-    this.assertLive(g); this.validateSnapshot(s); this.last = s;
+    this.assertLive(g); this.validateSnapshot(s);
+    if(this.last?.id===s.id&&Number.isFinite(s.revision)&&Number.isFinite(this.last.revision)&&s.revision<this.last.revision)return this.last;
+    this.last = s;
     this.acceptHistory(s); this.persist();
     this.busy = s.status === 'Working' || s.status === 'Thinking' || s.uncertain === true;
     this.retryMs = 1000;
-    const phase = s.status === 'Thinking' ? 'THINKING' : s.status === 'Working' ? 'WORKING' : s.status === 'Done' ? 'DONE' : 'ERROR';
+    const approval=approvalDescriptor(s.approval,s.turnId);
+    if(s.pendingApproval&&!approval)throw new Error('approval_unavailable');
+    const phase = approval ? 'APPROVAL' : s.status === 'Thinking' ? 'THINKING' : s.status === 'Working' ? 'WORKING' : s.status === 'Done' ? 'DONE' : 'ERROR';
     const idleRestore = restoring && !this.busy;
     if (this.diagnostics?.sample?.requestId && this.diagnostics.sample.requestId === s.timing?.requestId) {
       this.diagnostics.correlate({sessionId:s.id,threadId:s.threadId,turnId:s.turnId}); this.diagnostics.server(s);
       if (s.status === 'Done' && !idleRestore) this.diagnostics.mark('T9');
     }
     this.emit({ state: idleRestore ? 'READY' : (s.error === 'turn_interrupted' ? 'READY' : phase),
-      detail: idleRestore ? '' : s.pendingApproval ? 'Ожидает подтверждения на Mac' : (s.error || ''),
+      detail: idleRestore ? '' : (s.error || ''),
       ready: !this.busy, text: idleRestore ? '' : (s.text || ''), project: s.project, threadId: s.threadId, turnId: s.turnId,
-      pendingApproval: s.pendingApproval === true });
+      pendingApproval: s.pendingApproval === true, approval, restoring, approvalMessage: Object.hasOwn(APPROVAL_NOTICES,s.approvalNotice)?APPROVAL_NOTICES[s.approvalNotice]:'' });
     if (this.busy) this.poll = this.schedule(() => { this.refresh(g).catch(e => this.failure(e, g)); }, 1000);
     return s;
+  }
+  async decideApproval(id,decision,confirmation,exiting=false) {
+    const a=this.last?.approval;
+    if(!a||a.id!==id||!this.saved.sessionId)throw new Error('approval_not_current');
+    const route='/v1/sessions/'+this.saved.sessionId+'/approvals/'+id;
+    const body={decision,...(confirmation!==undefined?{confirmation}:{})};
+    // Never save/replay an accept as a pending mutation. On ambiguous ACK refresh only.
+    if(exiting)return this.transport.decisionOnExit ? this.transport.decisionOnExit(route,body) : this.transport.request('POST',route,body);
+    const g=this.generation;this.clearPoll();
+    try {
+      const result=await this.transport.request('POST',route,body);this.assertLive(g);
+      if(result.requiresConfirmation){
+        if(typeof result.confirmation!=='string'||!/^[a-f0-9-]{36}$/.test(result.confirmation))throw new Error('invalid_response');
+        this.poll=this.schedule(()=>{this.refresh(g).catch(e=>this.failure(e,g))},1000);
+        return result;
+      }
+      await this.refresh(g);return result;
+    } catch(e) {
+      if(this.active&&g===this.generation){try{await this.refresh(g)}catch(error){this.failure(error,g)}}
+      throw e;
+    }
   }
   async submit(text) {
     if (!this.active || this.operation || this.busy || this.saved.pending) return;

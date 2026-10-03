@@ -37,6 +37,23 @@ function requestedPermissions(params) {
   return Object.keys(out).length ? out : null;
 }
 const commands = new Set(['item/commandExecution/requestApproval','item/fileChange/requestApproval']);
+// Only this native shape has a real omitted-persist lifetime proof (ALE-465).
+// Treat provider message/display metadata as untrusted; return fixed product strings.
+export function deviceApproval(method, params) {
+  if (!supportedApproval(method, params) || method !== 'mcpServer/elicitation/request') return null;
+  const m = params._meta;
+  if (params.serverName !== 'cua_repl' || m.tool_name !== 'get_app_state' ||
+      !only(m.tool_params, ['app']) || m.tool_params.app !== 'com.apple.calculator' ||
+      !['low','medium','high'].includes(m.riskLevel) ||
+      !Array.isArray(m.persist) || m.persist.length !== 2 ||
+      new Set(m.persist).size !== 2 || !m.persist.every(v => ['session','always'].includes(v))) return null;
+  return {kind:'computer-use',title:'Calculator',description:'Прочитать окно Calculator один раз',risk:m.riskLevel,allowOnGlasses:true};
+}
+export const APPROVAL_NOTICES = Object.freeze({
+  unsupported:'Для этого действия требуется подтверждение на Mac. Через очки его подтвердить нельзя. Действие не выполнено.',
+  declined:'Разрешение отклонено. Действие не выполнено.',
+  timeout:'Подтверждение не получено. Действие отменено.'
+});
 // Native 0.157.1 MCP tool confirmation observed in a real model turn. Input/auth forms
 // need a separate local UI, not fabricated values or a blanket affirmative response.
 export function supportedApproval(method, params) {

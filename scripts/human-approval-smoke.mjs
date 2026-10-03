@@ -38,9 +38,11 @@ try{
   }
   if(!['Working','Thinking'].includes(engine.get(session.id).status))break;await delay(100);
  }
- assert.equal(humanRequests,1,'native human RPC not observed');
+ assert.equal(humanRequests,0,'unsupported risky simulator must fail fast');
+ assert.ok(approvalKinds.includes('mcp_tool_call'),'native human RPC not observed');
+ assert.equal(engine.get(session.id).approvalNotice,'unsupported');
  assert.ok(engine.toolEvents.some(e=>e.tool==='request_risky_confirmation'&&e.status==='failed'));
- results.push({case:'native-human-risk-probe',humanRequests,pendingDelayMs,decision:'decline',destructiveExecutionImplemented:false});
+ results.push({case:'native-human-risk-probe-fail-fast',humanRequests,pendingDelayMs,decision:'decline',destructiveExecutionImplemented:false});
  console.log(JSON.stringify({pass:true,results,approvalKinds,toolEvents:engine.toolEvents},null,2));
 }finally{
  engine.close();await codex.close();child.kill('SIGTERM');

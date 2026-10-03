@@ -6,6 +6,7 @@
 }
 </script>
 <script setup>
+import { ApprovalCard } from '../../lib/approval-ui.js';
 import config from '../../config.js';
 import { Latency } from '../../lib/latency.js';
 import { OneShotAudioSession, PcmVoiceActivityDetector, VOICE_ACTIVITY_LIMITS } from '../../lib/one-shot-audio.js';
@@ -14,9 +15,10 @@ import { Conversation, createTransport } from '../../lib/gateway.js';
 import { TempleControls, StatusPulse, ACTIVE_STATES, LABELS, BUSY_STATES, briefAnswer, errorView } from '../../lib/voice-ui.js';
 
 export default {
-  data: { phase: 'THINKING', label: 'Подключаюсь', statusActive: false, statusOpacity: 1, history: [], errorText: '', hint: '', scroll: 0, scrollTarget: '' },
+  data: { approval:null, approvalAllow:false, approvalSecond:false, approvalSubmitting:false, phase: 'THINKING', label: 'Подключаюсь', statusActive: false, statusOpacity: 1, history: [], errorText: '', hint: '', scroll: 0, scrollTarget: '' },
   onLoad() {
     this.pageEpoch = 0; this.visible = false; this.spokenTurn = null; this.awaitingStop = false; this.trace = [];
+    this.approvalCard = new ApprovalCard({decide:(...args)=>this.client.decideApproval(...args),render:(value,done)=>typeof done==='function'?this.setData(value,done):this.setData(value),speak:text=>this.speak(text)});
     this.audio = new OneShotAudioSession({
       limits: { sampleRate: 16000, channels: 1, bytesPerSample: 2, maxDurationMs: 30000, maxBytes: 960000 },
       voiceDetector: new PcmVoiceActivityDetector({ limits: { ...VOICE_ACTIVITY_LIMITS, automaticStopOnSilence: false } })
@@ -32,8 +34,8 @@ export default {
   },
   onShow() {
     this.visible = true;
-    this.controls = new TempleControls({ tap: () => this.tap(), exit: () => this.cleanup(),
-      scroll: direction => { if (this.data.history.length) this.setData({ scrollTarget: '', scroll: Math.max(0, (this.scrollPosition || 0) + direction * 110) }); },
+    this.controls = new TempleControls({ tap: () => this.tap(), exit: () => { this.approvalCard?.exit(); this.cleanup(); },
+      scroll: direction => { if(this.data.phase==='APPROVAL'){this.approvalCard.move(direction);return;} if (this.data.history.length) this.setData({ scrollTarget: '', scroll: Math.max(0, (this.scrollPosition || 0) + direction * 110) }); },
       trace: entry => {
         // Only key codes/state, never speech, prompts, credentials or answers.
         this.trace.push({ ...entry, phase: this.data.phase, at: Date.now() });
@@ -65,15 +67,17 @@ export default {
     const changed = revision !== this.historyRevision;
     this.historyRevision = revision;
     const update = { history, ...(changed && latest ? { scrollTarget: 'exchange-' + latest.requestId } : {}) };
-    if (value.state === 'ERROR') { this.setData(update); this.showError(value.detail); return; }
+    if (value.state === 'ERROR') { this.approvalCard.clear(); this.setData(update); this.showError(value.detail); if(value.approvalMessage)this.setData({errorText:value.approvalMessage+' '+this.data.errorText}); return; }
     const phase = value.state;
-    this.setPhaseData({ ...update, phase, label: LABELS[phase] || LABELS.ERROR, errorText: '',
+    if(phase!=='APPROVAL'&&this.approvalCard.current)this.approvalCard.clear();
+    this.setPhaseData({ ...update, phase, label: LABELS[phase] || LABELS.ERROR, errorText: phase==='READY'?(value.approvalMessage||''):'',
       hint: phase === 'READY' ? 'Нажмите на дужку и говорите' :
         phase === 'DONE' ? 'Нажмите для следующей реплики' :
-        value.pendingApproval ? 'Ожидает подтверждения на Mac' :
+        phase === 'APPROVAL' ? 'Свайп — выбор · Нажатие — подтвердить' :
         BUSY_STATES.includes(phase) ? (value.detail === 'Останавливаю…' ? value.detail : 'Нажатие — отмена') : '' }, () => {
         if (phase === 'DONE' && this.latency?.sample?.turnId === value.turnId && this.latency.sample.T9 && !this.latency.sample.T10) { this.latency.mark('T10'); this.latency.finish(); }
       });
+    if(phase==='APPROVAL'&&value.approval)this.approvalCard.show(value.approval);
     const ttsText = phase === 'DONE' && latest?.completed && latest.turnId === value.turnId ? briefAnswer(latest.assistant) : '';
     if (ttsText && value.turnId && this.spokenTurn !== value.turnId) {
       this.spokenTurn = value.turnId;
@@ -121,6 +125,7 @@ export default {
   },
   tap() {
     if (!this.visible || !this.client) return;
+    if (this.data.phase === 'APPROVAL') { this.approvalCard.tap(); return; }
     if (this.data.phase === 'LISTENING') { this.audio.finishRecording(); return; }
     if (BUSY_STATES.includes(this.data.phase)) {
       if (this.sendTimer || this.audio.phase === 'stopping') { clearTimeout(this.sendTimer); this.sendTimer = null; this.audio.cancel('cancelled', { stopRecorder: false }); this.renderState({state:'READY'}); }
@@ -150,7 +155,7 @@ export default {
       if (!this.visible || epoch !== this.pageEpoch) { task.abort(); return; }
       this.speechTask = task; this.player = new SpeechAudioPlayer(task); this.player.play();
       if (this.latency?.sample?.turnId === this.spokenTurn) { this.latency.mark('T11'); this.latency.finish(); }
-    } catch (_) { if (this.visible && epoch === this.pageEpoch) this.setData({ hint: 'TTS недоступен · Нажмите для следующей реплики' }); }
+    } catch (_) { if (this.visible && epoch === this.pageEpoch) this.setData({ hint: this.data.phase==='APPROVAL'?'Свайп — выбор · Нажатие — подтвердить':'TTS недоступен · Нажмите для следующей реплики' }); }
   },
   stopSpeech() {
     this.pageEpoch++;
@@ -160,6 +165,7 @@ export default {
   onKeyDown(event) { this.controls?.handle('down', event); },
   onKeyUp(event) { this.controls?.handle('up', event); },
   cleanup() {
+    this.approvalCard?.exit();
     this.visible = false; this.controls?.dispose();
     if (this.sendTimer) clearTimeout(this.sendTimer); this.sendTimer = null;
     this.audio?.cancel('hidden'); this.stopSpeech(); this.client?.close();
@@ -178,6 +184,13 @@ export default {
       <text class="state">{{label}}</text>
     </view>
     <text ink:if="{{errorText}}" class="error">{{errorText}}</text>
+    <view ink:if="{{approval}}" class="approval-card">
+      <text class="speaker">{{approvalSecond ? 'ПОДТВЕРДИТЬ ДЕЙСТВИЕ?' : approval.title}}</text>
+      <text class="body">{{approval.description}}</text>
+      <text class="approval-choice">{{approvalAllow ? '  ' : '› '}}{{approvalSecond ? 'НЕТ' : 'ОТКЛОНИТЬ'}}</text>
+      <text class="approval-choice">{{approvalAllow ? '› ' : '  '}}{{approvalSecond ? 'ДА, ВЫПОЛНИТЬ' : 'РАЗРЕШИТЬ ОДИН РАЗ'}}</text>
+      <text ink:if="{{approvalSubmitting}}" class="hint">Отправляю решение…</text>
+    </view>
     <scroll-view class="answer" scroll-y="true" scroll-top="{{scroll}}" scroll-into-view="{{scrollTarget}}" bindscroll="handleScroll">
       <view class="content">
         <view ink:for="{{history}}" ink:key="requestId" id="exchange-{{item.requestId}}" class="exchange">
@@ -205,5 +218,7 @@ export default {
 .error, .body { width:100%; font-size:19px; font-weight:400; line-height:1.35; }
 .body { margin-bottom:8px; }
 .speaker { font-family:monospace; font-size:23px; font-weight:700; line-height:1.1; color:var(--primary); }
+.approval-card { display:flex; flex-direction:column; gap:6px; border-top:1px solid var(--divider); padding-top:8px; }
+.approval-choice { font-size:21px; font-weight:700; }
 .hint { font-size: 16px; color: var(--secondary); }
 </style>

@@ -11,8 +11,10 @@ starts a different conversation/project. Uncertain delivery MUST NOT silently cr
 ### II. Enforce the network and approval boundaries
 
 Codex app-server and admin API MUST remain loopback-only. Device access MUST authenticate through
-the gateway; clients cannot grant execution approvals. Dangerous actions require an explicit local
-human decision. Project routing MUST use the allowlist; no documentation may claim it provides
+the gateway. ALE-465 permits a narrow authenticated device decision only after an explicit physical
+review card for a proven one-action native request. Default decline, bounded expiry, current session/turn
+binding and a second high-risk confirmation are mandatory. Unknown or broad grants fail closed; devices
+never receive admin credentials. Dangerous actions require a separate explicit human decision. Project routing MUST use the allowlist; no documentation may claim it provides
 complete filesystem or tenant isolation. The selected native profile is workspace-write/on-request/auto_review: eligible safe escalations are reviewed by Codex, while gateway must never manufacture an approval or treat voice text as a human decision.
 
 ### III. Keep private data outside published source
@@ -61,4 +63,7 @@ scope and risk justification, not silent weakening. User and environment instruc
 Preserve adoption/amendment dates on unchanged reruns. Do not regenerate templates or product specs
 merely to update this document.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-01 | **Last Amended**: 2026-10-02
+**Version**: 2.0.0 | **Ratified**: 2026-10-01 | **Last Amended**: 2026-10-03
+
+Amendment2.0.0 (ALE-465): owner explicitly authorized replacing local-only human decisions with bounded
+physical device review. Other security/privacy/ownership principles are unchanged; no session grants.
