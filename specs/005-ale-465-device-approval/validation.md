@@ -30,7 +30,7 @@ permission policy edits, no commit/push or cloud deployment yet. Spec/plan/tasks
 
 ## Implementation candidate — 2026-10-03
 
-- Root35/35 and AIUI44/44 passed, AIUI syntax/manifest check and private0.5.0 AIX packaging passed.
+- Root35/35 and AIUI45/45 passed, AIUI syntax/manifest check and private0.5.0 AIX packaging passed.
 - Native exact Calculator accept and subsequent decline through the new HTTPS device endpoint passed;
   controls returned only after accept, same ephemeral thread, each decision current/one-use. Strict native
   turnId correlation passed. Diagnostic threads unsubscribed and owned processes terminated.
@@ -43,3 +43,7 @@ permission policy edits, no commit/push or cloud deployment yet. Spec/plan/tasks
   Native completion grace10s then interrupt;5s without terminal proof gives uncertain error.
 - Private config/admin boundary/Camera preserved. Full physical Calculator/screenshot/draft NOT RUN.
   Later native tool approvals outside the verified subset may fail closed and must be reported.
+
+Cloud metadata reports layout480×168. Approval uses compact typography/spacing, hides the redundant
+brand/history while the card is present and restores the same history projection afterwards. This is
+layout preparation, not a claim of physical readability; wearer acceptance remains required.

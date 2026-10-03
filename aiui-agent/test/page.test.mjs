@@ -102,7 +102,7 @@ test('temple touch and every arrow cannot start or stop recording; Enter release
 });
 test('Jarvis hierarchy uses one message block and supported lightweight transition motion',()=>{
  const page=fs.readFileSync(path.join(root,'pages/index/index.ink'),'utf8');
- assert.ok(page.includes('<text class="brand">Jarvis</text>'));
+ assert.ok(page.includes('class="brand">Jarvis</text>'));
  assert.ok(page.includes('class="speaker">ВЫ</text>'));assert.ok(page.includes('class="speaker">JARVIS</text>'));
  assert.ok(page.includes('font-size:23px; font-weight:700'));assert.ok(page.includes('font-size:19px; font-weight:400'));
  assert.ok(page.includes('border-top:1px solid'));assert.ok(page.includes('transition-property:opacity'));
@@ -140,5 +140,13 @@ test('HUD approval replaces busy controls, defaults decline and announces only o
  assert.equal(h.page.data.phase,'APPROVAL');assert.equal(h.page.data.approvalAllow,false);assert.equal(h.spoken.filter(s=>s==='Требуется подтверждение.').length,1);
  h.page.onKeyUp({code:'ArrowDown',preventDefault(){}});assert.equal(h.page.data.approvalAllow,true);h.tap();h.back();await pause(700);
  assert.equal(decisions.length,1);assert.equal(decisions[0][1],'decline');assert.equal(h.order.filter(s=>s==='record').length,0);
+ }finally{h.page.cleanup()}
+});
+
+test('approval keeps choices in compact HUD and restores history projection afterwards',async()=>{
+ const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');const history=[{requestId:randomUUID(),turnId:'previous',user:'Question',assistant:'Answer',completed:true}];
+ h.page.renderState({state:'APPROVAL',history,approval:{id:randomUUID(),title:'Calculator',description:'Прочитать окно Calculator один раз',risk:'low'}});
+ assert.deepEqual(h.page.data.history,history);h.page.renderState({state:'WORKING',history});assert.equal(h.page.data.approval,null);assert.deepEqual(h.page.data.history,history);
+ const markup=fs.readFileSync(path.join(root,'pages/index/index.ink'),'utf8');assert.ok(markup.includes('<scroll-view ink:if="{{!approval}}"'));assert.ok(markup.includes('.approval-screen { padding:8px; gap:4px; }'));
  }finally{h.page.cleanup()}
 });

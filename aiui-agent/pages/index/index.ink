@@ -177,21 +177,21 @@ export default {
 };
 </script>
 <page>
-  <view class="screen">
-    <text class="brand">Jarvis</text>
+  <view class="screen {{approval ? 'approval-screen' : ''}}">
+    <text ink:if="{{!approval}}" class="brand">Jarvis</text>
     <view class="status-line">
       <view class="status-point {{statusActive ? 'status-moving' : ''}}" style="opacity:{{statusOpacity}}"></view>
       <text class="state">{{label}}</text>
     </view>
     <text ink:if="{{errorText}}" class="error">{{errorText}}</text>
     <view ink:if="{{approval}}" class="approval-card">
-      <text class="speaker">{{approvalSecond ? 'ПОДТВЕРДИТЬ ДЕЙСТВИЕ?' : approval.title}}</text>
+      <text ink:if="{{approvalSecond}}" class="approval-confirm">ПОДТВЕРДИТЬ ДЕЙСТВИЕ?</text>
       <text class="body">{{approval.description}}</text>
       <text class="approval-choice">{{approvalAllow ? '  ' : '› '}}{{approvalSecond ? 'НЕТ' : 'ОТКЛОНИТЬ'}}</text>
       <text class="approval-choice">{{approvalAllow ? '› ' : '  '}}{{approvalSecond ? 'ДА, ВЫПОЛНИТЬ' : 'РАЗРЕШИТЬ ОДИН РАЗ'}}</text>
       <text ink:if="{{approvalSubmitting}}" class="hint">Отправляю решение…</text>
     </view>
-    <scroll-view class="answer" scroll-y="true" scroll-top="{{scroll}}" scroll-into-view="{{scrollTarget}}" bindscroll="handleScroll">
+    <scroll-view ink:if="{{!approval}}" class="answer" scroll-y="true" scroll-top="{{scroll}}" scroll-into-view="{{scrollTarget}}" bindscroll="handleScroll">
       <view class="content">
         <view ink:for="{{history}}" ink:key="requestId" id="exchange-{{item.requestId}}" class="exchange">
           <text class="speaker">ВЫ</text>
@@ -219,6 +219,11 @@ export default {
 .body { margin-bottom:8px; }
 .speaker { font-family:monospace; font-size:23px; font-weight:700; line-height:1.1; color:var(--primary); }
 .approval-card { display:flex; flex-direction:column; gap:6px; border-top:1px solid var(--divider); padding-top:8px; }
-.approval-choice { font-size:21px; font-weight:700; }
+.approval-choice { font-size:19px; font-weight:700; line-height:1.1; }
+.approval-screen { padding:8px; gap:4px; }
+.approval-screen .approval-card { gap:2px; padding-top:2px; }
+.approval-screen .body { font-size:16px; line-height:1.1; margin-bottom:0px; }
+.approval-screen .hint { font-size:12px; }
+.approval-confirm { font-size:16px; font-weight:700; line-height:1.1; }
 .hint { font-size: 16px; color: var(--secondary); }
 </style>
