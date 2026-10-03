@@ -35,9 +35,9 @@ Local development: filesystem → shell/CLI → npm/aix-cli/Gradle → git/GitHu
 
 До meaningful work открой существующую Linear issue, проверь description/status и обнови фактический статус; не создавай дубликаты. В конце оставь краткие результат/проверки и актуальный статус по [workflow](docs/development-workflow.md#linear-task-lifecycle).
 
-До изменения проверь `pwd`, `git rev-parse --show-toplevel`, `git status`, `git diff` и staged diff; прочитай применимые AGENTS, требования/spec, релевантный код и тесты. Не читай весь repository без причины. Определи observable result, границы, acceptance criteria и проверку. Существенную продуктовую неоднозначность уточни, обратимое техническое допущение обозначь.
+До изменения проверь `pwd`, `git rev-parse --show-toplevel`, `git status`, `git diff` и staged diff; прочитай применимые AGENTS, требования/spec, релевантный код и тесты. Читай только материал, нужный задаче; предпочитай поиск и диапазоны большим dumps. Не перечитывай неизменённые evidence без причины. Определи observable result, границы, acceptance criteria и проверку. Существенную продуктовую неоднозначность уточни, обратимое техническое допущение обозначь.
 
-Нетривиальная задача: plan → implement → verify → diff review. Исправляй внесённые регрессии; посторонние дефекты сообщай отдельно. При одинаковом failure без новых данных смени гипотезу/способ проверки. Блокер описывай через проверенное и недостающее; продолжай независимую работу. Предпочитай корректность, проверяемость и поддерживаемость скорости.
+Выбери режим FAST / STANDARD / DEEP по риску и неопределённости ([workflow](docs/development-workflow.md#choose-the-process)); режим не отменяет обязательные проверки или authorization. Нетривиальная задача: plan → implement → verify → diff review. Исправляй внесённые регрессии; посторонние дефекты сообщай отдельно. До диагностики задай question → expected evidence → timeout → stop condition. После двух эквивалентных failures без новых evidence смени гипотезу/способ проверки или сообщи blocker. Блокер описывай через проверенное и недостающее; продолжай независимую работу. Предпочитай корректность, проверяемость и поддерживаемость скорости.
 
 ## 4. Изменения
 
@@ -49,13 +49,19 @@ Local development: filesystem → shell/CLI → npm/aix-cli/Gradle → git/GitHu
 
 Выполняй применимые обязательные проверки по изменённому слою: gateway — root/integration tests и real smoke при изменении Codex contract; AIUI — tests/check и AIX packaging validation; Android — соответствующие unit/build/lint. Подробности и команды — [workflow](docs/development-workflow.md#verification-and-review). Для чистых docs достаточно ссылок, фактов, secrets и diff; не запускай inference/physical tests без причины.
 
+В edit loop выполняй targeted checks; полную применимую matrix — один раз на stable candidate. Повторяй полную matrix только когда последующее изменение/failure обосновывает повтор; после правки повторяй затронутые проверки. Скорость не оправдывает пропуск обязательной проверки.
+
 Для бага воспроизведи сбой и добавь полезную regression-проверку на безопасных данных; невозможность воспроизведения отметь. Не ослабляй проверки ради зелёного результата. Привязывай результаты к ревизии/значимому uncommitted state, повторяй затронутые проверки после новых изменений. Различай **PASS / implementation failure / environment failure / not run или unavailable**. Не выдумывай команды или результаты; при отсутствии инфраструктуры укажи пределы доступной проверки.
 
-Cloud «Synced» не доказывает deployment. После private package скачай именно **active cloud AIX**, проверь identity/version, нужные runtime files, endpoint и соответствие auth приватной конфигурации в памяти, без вывода token. Physical RV101 acceptance — отдельный этап: unit/build/cloud artifacts не дают права заявлять «работает на очках».
+До package/deploy объяви candidate SHA и artifact identity (включая значимые uncommitted changes, если есть). Package/readback — один раз на фактический physical candidate; повтор только после изменения artifact или доказанного cloud failure. Cloud «Synced» не доказывает deployment. После private package скачай именно **active cloud AIX**, проверь identity/version, нужные runtime files, endpoint и соответствие auth приватной конфигурации в памяти, без вывода token. Physical RV101 acceptance — отдельный этап: unit/build/cloud artifacts не дают права заявлять «работает на очках».
 
 ## 6. Готовность и отчёт
 
 Complete: acceptance выполнена, применимые проверки пройдены, diff включая новые файлы просмотрен, регрессии исправлены, затронутые docs обновлены, непроверенные части названы. Финал кратко: **Result / Checks / Remaining**, со ссылками на доказательства. Самоотчёт/успешный exit code не доказывает непроверенное поведение. Для длительной feature используй один task artifact (issue/spec/plan), сверяя его с файлами и Git при продолжении.
+
+Каждый будущий task prompt/report включает SESSION / MODEL / EFFORT / WHY. Выбирай SESSION: CONTINUE / COMPACT THEN CONTINUE / NEW SESSION; major checkpoint, physical feedback, phase change, repeated compaction или новая Linear issue обычно требуют NEW SESSION с compact handoff. 150k / 250k context tokens / ~30 model responses — **PROVISIONAL эвристики**, не hard limits; детали и шаблон метрик — [workflow](docs/development-workflow.md#session-policy-and-reporting).
+
+Model routing: Luna — narrow/mechanical; Terra, когда доступна, — routine established work; GPT-6.1 Sol — default для substantial normal development; Astra — ambiguous security/protocol/architecture/hard debugging. Maximum model/effort не default; выбирай достаточные доступные model/effort. В checkpoint/final указывай actual model/effort, wall time, context used/max/utilization, compactions, input/cached/output/reasoning tokens, model responses, tool calls, git checkpoint state и рекомендацию CONTINUE / COMPACT / NEW SESSION. Недоступное — UNAVAILABLE; exact counters не выводи предположением.
 
 ## 7. Безопасность
 
