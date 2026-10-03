@@ -272,3 +272,7 @@ Pre-push secrets review: gitleaks8.30.1 index export and all reachable history e
 curl-auth-user at test/approval-router.test.mjs:55 (history checkpoint7b8c182), manually verified
 synthetic user:pw regression fixture. Scanner exits1; automated clean PASS is not claimed. No real
 credential finding. Origin/main fetched and equals base d3ce24c; reviewed staged files only.
+Final index scan also flagged the public scanner name/version in the preceding paragraph as
+`generic-api-key`; manually verified documentation false positive. The commit command continued
+past the scan-classification assertion failure; push was withheld pending final history review.
+Both scanner findings are public/synthetic strings, not credentials. No scanner rules suppressed.
