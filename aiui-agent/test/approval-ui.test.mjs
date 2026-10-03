@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {ApprovalCard,approvalDescriptor} from '../lib/approval-ui.js';
-const a={id:'a'.repeat(36),turnId:'turn',kind:'computer-use',title:'Calculator',description:'Прочитать окно Calculator один раз',risk:'low',allowOnGlasses:true,expiresAt:100000};
+const a={id:'a'.repeat(36),turnId:'turn',kind:'computer-use',title:'Computer Use',action:'Просмотр окна / снимок',target:'com.apple.calculator',scope:'once',risk:'low',allowOnGlasses:true,expiresAt:100000};
 function harness(decide=async()=>({ok:true})){let tick;const calls=[],views=[],speech=[];const card=new ApprovalCard({decide:async(...args)=>{calls.push(args);return decide(...args)},render:(s,done)=>{views.push(s);done?.()},speak:s=>speech.push(s),schedule:f=>{tick=f;return 1},unschedule:()=>{tick=null}});return{card,calls,views,speech,flush:async()=>{const f=tick;tick=null;await f?.()}}}
 test('descriptor drops arbitrary payloads; unknown shape denied',()=>{assert.equal(approvalDescriptor({...a,token:'secret'},a.turnId).token,undefined);assert.equal(approvalDescriptor({...a,title:'secret'},a.turnId),null);assert.equal(approvalDescriptor(a,'foreign'),null)});
 test('default decline, no speech decision, same card TTS once, swipe cancels pending tap',async()=>{

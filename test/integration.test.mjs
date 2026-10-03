@@ -37,17 +37,17 @@ test('HTTPS → gateway → actual mock WebSocket: continuity, safety, dedupe, r
   assert.equal(mock.calls.filter(m => m.method === 'turn/start').length, 1);
   assert.equal((await call(route + '/turns', { requestId: id, text: 'different' })).status, 409);
   assert.equal((await call(route + '/turns', { requestId: randomUUID(), text: 'concurrent' })).status, 409);
-  mock.send({ id: 900, method: 'item/permissions/requestApproval', params: { threadId: s.threadId, permissions: { network: { enabled: true } } } });
+  mock.send({ id: 900, method: 'item/permissions/requestApproval', params: { threadId: 'foreign-thread', permissions: { network: { enabled: true } } } });
   await delay(20); assert.deepEqual(mock.responses.find(r => r.id === 900).result.permissions, {});
-  mock.send({ id: 901, method: 'mcpServer/elicitation/request', params: calculatorApproval(engine.get(s.id)) });
-  await delay(10); assert.equal((await call(route)).body.pendingApproval, true);
-  assert.equal(mock.responses.some(r => r.id === 901), false);
-  await delay(90); assert.equal(mock.responses.find(r => r.id === 901).result.action, 'decline');
   mock.send({ id: 902, method: 'mcpServer/elicitation/request', params: calculatorApproval(engine.get(s.id)) });
   await delay(10); const approval = (await admin('/admin/approvals')).body[0];
   assert.equal((await admin('/admin/approvals/' + approval.id, { decision: 'accept' })).status, 200);
   await delay(10); assert.equal(mock.responses.find(r => r.id === 902).result.action, 'accept');
   assert.equal((await admin('/admin/approvals/' + approval.id, { decision: 'accept' })).status, 404);
+  mock.send({ id: 901, method: 'mcpServer/elicitation/request', params: calculatorApproval(engine.get(s.id)) });
+  await delay(10); assert.equal((await call(route)).body.pendingApproval, true);
+  assert.equal(mock.responses.some(r => r.id === 901), false);
+  await delay(90); assert.equal(mock.responses.find(r => r.id === 901).result.action, 'decline');
   mock.finish(s.threadId); await delay(20);
   assert.ok((await call(route)).body.text.endsWith('final answer'));
   await call(route + '/turns', { requestId: randomUUID(), text: 'Now find TODO' });
@@ -136,7 +136,8 @@ test('MCP confirmations require one local decision and never expose params to de
  assert.deepEqual(mock.responses.find(r=>r.id===202).result,{action:'decline',content:null});
  mock.send({id:203,method:'mcpServer/elicitation/request',params:{...params,mode:'url',url:'https://example.invalid/auth'}});await delay(10);
  assert.deepEqual(mock.responses.find(r=>r.id===203).result,{action:'decline',content:null});
- mock.send({id:204,method:'mcpServer/elicitation/request',params});await delay(10);const late=engine.listApprovals()[0];
+ mock.finish(s.threadId,'declined task complete');await delay(10);await engine.turn(s.id,{requestId:randomUUID(),text:'fresh task'});
+ mock.send({id:204,method:'mcpServer/elicitation/request',params:{...params,turnId:engine.get(s.id).turnId}});await delay(10);const late=engine.listApprovals()[0];
  mock.finish(s.threadId);await delay(10);assert.throws(()=>engine.decide(late.id,true),/approval_not_found/);
 });
 
@@ -148,7 +149,14 @@ test('native review notifications do not create/accept human approvals; genuine 
  mock.send({method:'item/autoApprovalReview/completed',params:{threadId:s.threadId,turnId,reviewId:'review-1',action:{type:'command',command:'private'},review:{status:'approved',rationale:'private'}}});await delay(10);
  assert.equal(engine.listApprovals().length,0);assert.equal(mock.responses.length,0);assert.equal(engine.reviewEvents.at(-1).status,'approved');
  mock.send({id:300,method:'mcpServer/elicitation/request',params:calculatorApproval(engine.get(s.id))});await delay(10);
- const a=engine.listApprovals()[0];assert.equal(a.expiresAt-a.receivedAt,30000);assert.equal(engine.snapshot(engine.get(s.id)).pendingApproval,true);
+ const a=engine.listApprovals()[0];assert.equal(a.expiresAt-a.shownAt,30000);assert.equal(engine.snapshot(engine.get(s.id)).pendingApproval,true);
  const event=engine.reviewEvents.at(-1);assert.ok(event.at-event.receivedAt<100);
  engine.decide(a.id,false);await delay(10);assert.equal(mock.responses.find(r=>r.id===300).result.action,'decline');
+});
+
+test('imported owner threads retain developer instructions when artifact hints update managed sessions',async t=>{
+ const f=fixture(),mock=await mockCodex(),codex=new Codex({port:mock.port,attach:true}),engine=new Engine(f.config,codex);t.after(async()=>{engine.close();await codex.close();await mock.close();f.cleanup()});await codex.start();await engine.recover();
+ const {thread}=await codex.request('thread/start',{cwd:f.config.projects.demo,approvalPolicy:'on-request',approvalsReviewer:'auto_review',developerInstructions:'Owner instructions'});
+ const s=await engine.importThread({project:'demo',threadId:thread.id});assert.equal(engine.get(s.id).imported,true);await engine.recover();
+ assert.ok(mock.calls.filter(m=>m.method==='thread/resume').every(m=>m.params.developerInstructions===undefined));
 });

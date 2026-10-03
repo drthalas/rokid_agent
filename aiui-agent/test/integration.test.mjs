@@ -35,4 +35,13 @@ test('AIUI wx adapter → unchanged HTTPS gateway → mock app-server, three tur
   assert.ok(client.last.timing.T5);assert.ok(client.last.timing.T6);assert.ok(client.last.timing.T7);assert.ok(client.last.timing.T8);
   assert.equal(client.saved.sessionId,id);assert.equal(client.last.text,'Third answer');assert.equal(client.last.threadId,first);
   const starts=mock.calls.filter(x=>x.method==='turn/start');assert.equal(starts.length,3);assert.equal(starts[0].params.threadId,starts[1].params.threadId);
+  // Real wx/HTTPS pipeline for the physical silent-result regression.
+  const views=[];client.render=v=>views.push(v);await client.submit('Unsupported diagnostic');
+  const turnId=engine.get(id).turnId;
+  mock.send({id:501,method:'mcpServer/elicitation/request',params:{threadId:first,turnId,serverName:'unknown',mode:'url',url:'https://example.invalid/auth'}});
+  await delay(10);await client.refresh();assert.equal(views.at(-1).state,'STOPPING');assert.ok(views.at(-1).approvalMessage.includes('не выполнено'));
+  mock.finish(first,'','interrupted');await delay(10);await client.refresh();
+  assert.equal(views.at(-1).state,'CANCELLED');const failed=client.history.exchanges.at(-1);assert.equal(failed.completed,false);assert.equal(failed.outcome,'interrupted');assert.ok(failed.assistant.includes('Действие не выполнено'));
+  client.close();client=build();await client.open();assert.ok(client.history.exchanges.at(-1).assistant.includes('Действие не выполнено'));
+
 });

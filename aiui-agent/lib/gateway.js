@@ -58,7 +58,7 @@ export class Conversation {
   assertLive(g) { if (!this.active || g !== this.generation) throw new Error('page_closed'); }
   async open() {
     if (this.operation) return;
-    this.clearPoll(); this.active = true; const g = ++this.generation; this.operation = true;
+    this.clearPoll(); this.active = true; const g = ++this.generation; this.operation = true; this.last=null;
     this.emit({ state: 'THINKING', detail: '', ready: false });
     try {
       const health = await this.transport.request('GET', '/v1/health'); this.assertLive(g); this.diagnostics?.clock(health);
@@ -104,20 +104,23 @@ export class Conversation {
     if(this.last?.id===s.id&&Number.isFinite(s.revision)&&Number.isFinite(this.last.revision)&&s.revision<this.last.revision)return this.last;
     this.last = s;
     this.acceptHistory(s); this.persist();
-    this.busy = s.status === 'Working' || s.status === 'Thinking' || s.uncertain === true;
+    const active=s.status==='Working'||s.status==='Thinking';
+    this.busy=active||s.uncertain===true;
     this.retryMs = 1000;
     const approval=approvalDescriptor(s.approval,s.turnId);
     if(s.pendingApproval&&!approval)throw new Error('approval_unavailable');
-    const phase = approval ? 'APPROVAL' : s.status === 'Thinking' ? 'THINKING' : s.status === 'Working' ? 'WORKING' : s.status === 'Done' ? 'DONE' : 'ERROR';
+    const current=this.history.exchanges.find(e=>e.turnId===s.turnId);
+    const denied=!!(s.approvalNotice||current?.approvalNotice);
+    const phase = approval ? 'APPROVAL' : denied&&active&&s.approvalStopping!==false?'STOPPING':s.uncertain?'ERROR':denied&&!active?'CANCELLED':current?.outcome==='no_answer'?'ERROR':s.status === 'Thinking' ? 'THINKING' : s.status === 'Working' ? 'WORKING' : s.status === 'Done' ? 'DONE' : 'ERROR';
     const idleRestore = restoring && !this.busy;
     if (this.diagnostics?.sample?.requestId && this.diagnostics.sample.requestId === s.timing?.requestId) {
       this.diagnostics.correlate({sessionId:s.id,threadId:s.threadId,turnId:s.turnId}); this.diagnostics.server(s);
       if (s.status === 'Done' && !idleRestore) this.diagnostics.mark('T9');
     }
-    this.emit({ state: idleRestore ? 'READY' : (s.error === 'turn_interrupted' ? 'READY' : phase),
-      detail: idleRestore ? '' : (s.error || ''),
+    this.emit({ state: idleRestore ? 'READY' : (s.error === 'turn_interrupted'&&!denied ? 'READY' : phase),
+      detail: idleRestore ? '' : (current?.outcome==='no_answer'?'no_final_answer':s.error || ''),
       ready: !this.busy, text: idleRestore ? '' : (s.text || ''), project: s.project, threadId: s.threadId, turnId: s.turnId,
-      pendingApproval: s.pendingApproval === true, approval, restoring, approvalMessage: Object.hasOwn(APPROVAL_NOTICES,s.approvalNotice)?APPROVAL_NOTICES[s.approvalNotice]:'' });
+      pendingApproval: s.pendingApproval === true, approval, restoring, busy:active, outcome:current?.outcome, approvalReason:s.approvalNotice, approvalMessage: Object.hasOwn(APPROVAL_NOTICES,s.approvalNotice)?APPROVAL_NOTICES[s.approvalNotice]:'' });
     if (this.busy) this.poll = this.schedule(() => { this.refresh(g).catch(e => this.failure(e, g)); }, 1000);
     return s;
   }

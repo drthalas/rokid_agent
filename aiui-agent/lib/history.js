@@ -14,6 +14,8 @@ export function boundedHistory(value, sessionId, token) {
     if (!e || typeof e.requestId !== 'string' || e.requestId.length > 100 || !/^[a-z0-9-]+$/i.test(e.requestId) || seen.has(e.requestId)) return false;
     seen.add(e.requestId); return true;
   }).map(e => ({ requestId: e.requestId, turnId: typeof e.turnId === 'string' ? e.turnId.slice(0, 100) : '',
-    user: safeText(e.user, token, 8000), assistant: safeText(e.assistant, token, 16000), completed: e.completed === true }));
+    user: safeText(e.user, token, 8000), assistant: safeText(e.assistant, token, 16000), completed: e.completed === true,
+    outcome:['pending','completed','failed','interrupted','uncertain','no_answer'].includes(e.outcome)?e.outcome:(e.completed?'completed':'pending'),
+    approvalNotice:['unsupported','declined','timeout'].includes(e.approvalNotice)?e.approvalNotice:null }));
   return { sessionId, threadId: value.threadId.slice(0, 100), exchanges };
 }

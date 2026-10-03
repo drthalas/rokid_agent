@@ -15,3 +15,22 @@ available; expiry invalidates challenge. Never acceptForSession, native persiste
 Auto-review notification is not a human request. Unknown command/file/permission/complex MCP forms
 fail closed unless their entire concrete action and grant lifetime are safely representable. Neither
 risk metadata nor a Calculator substring is sufficient evidence. Secret-free fixed descriptions only.
+
+## Current generic descriptor / outcome contract (source0.6.0)
+
+Descriptor fields: id,turnId,kind,title,action,target,risk,scope,allowOnGlasses,expiresAt. Kinds:
+computer-use/command/file-change/permissions/mcp-tool. Scope once except validated permissions=turn;
+never session. Action≤72 and target≤96 characters, no hidden truncation. Complete small patch preview
+includes hunk locations/changed lines; app IDs are targets, not allowlist policy. Unsupported/opaque
+sensitive payloads remain fail-closed. Four pending native requests may queue; only the FIFO head is
+decidable and has a30s clock. Negative decision/overflow/unsupported cancels remaining queued requests
+and bounded continuation cannot be restarted by further approvals.
+
+Snapshot adds approvalStopping and per-exchange outcome/approvalNotice. completed remains the native
+completion flag; assistant is readable for failed/interrupted/uncertain/no-answer outcomes too. Reasons
+survive next turn/reopen/hydration. Immediate STOPPING does not release the busy/uncertain lock.
+
+Private generated image data has no device route. A successful CUA image can produce bounded temporary
+JPEG/PNG plus public turn/steer metadata tied to exact expectedTurnId. It is marked untrusted data and
+never approves an action; canonical user text stays the original gateway prompt. Normal cleanup and
+TTL run while healthy; crash/persistent filesystem failures may leave private temp residues.

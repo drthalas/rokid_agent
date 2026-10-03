@@ -36,3 +36,19 @@ Independent test: native safe review remains automatic; existing session/history
 Dependencies: T001 before implementation; T003 before T005; tests before implementation; server contract
 before client integration. T009 can be prepared separately from backend tests. Implement smallest safe
 subset, fail closed for unknown shapes; do not broaden native permission profile for acceptance.
+
+## Revision after physical failure
+- [x] T021 Research current native class/schema/scope matrix and real action shapes in research.md.
+- [x] T022 [US2] Reproduce silent outcome loss in test/history.test.mjs and approval-device tests.
+- [x] T023 [US2] Persist per-exchange outcome/approval reason and recovery merge in src/history.mjs and src/engine.mjs.
+- [x] T024 [US1] Add shape-based generic descriptor router/context validation in src/approvals.mjs and engine; security regression tests.
+- [x] T025 [US1] Consume action/target/scope descriptor in aiui-agent/lib/approval-ui.js and page without app-name policy.
+- [x] T026 [US2] Add immediate denial feedback, canonical failure HUD/TTS and restore/idempotency tests in AIUI client/page.
+- [x] T027 [US3] Prove actual isolated Calculator interaction, screen capture and Gmail attachment or record exact boundary in validation.md.
+- [ ] T028 Run affected tests/check/pack/native smoke; review/update docs/security/Spec Kit artifacts.
+- [ ] T029 Scan index/history, commit/push, update idle gateway/private AIX, verify ACTIVE runtime/config.
+- [ ] T030 Update Linear Needs Test with actual class coverage and physical handoff; no physical PASS claim.
+- [x] T031 [US3] Test and implement bounded native-image temporary artifact handoff in src/image-artifacts.mjs and engine; no new capture/provider client or authority.
+- [x] T032 [US3] Re-run full SAME-turn Calculator→native screenshot→attached draft with exact image-byte proof; record actual native boundary if unsuccessful.
+
+Checkpoint paused by owner2026-10-03: implementation/targeted tests saved; T028–T030 remain release/deploy/physical handoff work. No new native or cloud cycle during checkpoint.

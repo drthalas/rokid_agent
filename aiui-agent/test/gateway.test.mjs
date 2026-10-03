@@ -129,10 +129,15 @@ test('old gateway without authoritative history fails visibly instead of silentl
 
 test('device approval lost ACK refreshes only and never persists/replays accept',async()=>{
  const f=fixture(),c=f.make();await c.open();const id=randomUUID(),turnId='approval-turn';
- const approval={id,turnId,kind:'computer-use',title:'Calculator',description:'Прочитать окно Calculator один раз',risk:'low',allowOnGlasses:true,expiresAt:Date.now()+30000};
+ const approval={id,turnId,kind:'computer-use',title:'Computer Use',action:'Просмотр окна / снимок',target:'com.apple.calculator',scope:'once',risk:'low',allowOnGlasses:true,expiresAt:Date.now()+30000};
  const original=f.transport.request;let pending=true,posts=0;
  f.transport.request=async(m,r,b)=>{if(r.includes('/approvals/')){posts++;pending=false;throw Error('network_or_tls_error')};const s=await original(m,r,b);return{...s,turnId,status:'Working',pendingApproval:pending,approval:pending?approval:null}};
  await c.refresh();assert.equal(f.views.at(-1).state,'APPROVAL');
  await assert.rejects(c.decideApproval(id,'accept'),/network/);assert.equal(posts,1);assert.equal(c.saved.pending,null);assert.equal(f.views.at(-1).state,'WORKING');
  c.close();await c.open();assert.equal(posts,1);c.close();
+});
+
+test('reopen clears stale in-flight snapshot ordering without replacing the saved session',async()=>{
+ const f=fixture(),c=f.make();await c.open();const id=c.saved.sessionId;c.last={...c.last,revision:999};const original=f.transport.request;
+ f.transport.request=async(...args)=>({...await original(...args),revision:1});await c.open();assert.equal(c.saved.sessionId,id);assert.equal(c.last.revision,1);assert.equal(f.views.at(-1).state,'READY');c.close();
 });

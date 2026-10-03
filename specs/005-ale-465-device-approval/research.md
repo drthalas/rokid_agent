@@ -64,3 +64,37 @@ control. High-risk metadata (if presented on that otherwise identical bounded sh
 Other command/file/permissions/MCP forms remain unsupported because no complete safe display/scope parser
 has been proved. Native auto_review operations are unaffected. Main physical workflow may encounter an
 unsupported later tool request; report that boundary, never broaden grants silently.
+
+## Generic class revision — 2026-10-03
+
+Installed CLI rechecked0.157.1; public and experimental schemas freshly regenerated locally. Native
+command accept/decline is per callback; availableDecisions respected, no policy/session amendment.
+File acceptance needs matching item/turn changes and complete bounded changed-line/hunk preview;
+grantRoot is unsupported. Permission acceptance returns validated literal subset with explicit turn
+scope; glob/special roots/sensitive paths remain unsupported. MCP empty forms need concrete tool/
+primitive parameters and no persistence; auth/input/opaque payloads cannot be summarized honestly.
+
+Computer Use is an app-access class, not a Calculator product rule. Real get_app_state/type_text/click/
+press_key requests used the same native empty form with params={app}, each asked again after omitted-
+persist acceptance. Calculator20+30=50 was verified in actual UI output. Screenshot window capture
+returned real JPEG. Screenshot utility access requested app=com.apple.screenshot.launcher and reached
+the generic device decision endpoint; after accept its native CUA call still failed. Do not conflate
+approval routing with that utility's host execution availability. Direct app-window capture succeeded.
+
+Independent native Gmail create_draft: self-recipient verified against get_profile; exact generated
+JPEG bytes matched input attachment; read_email confirmed DRAFT/filename/MIME, no send. It needed no
+human request under the unchanged native policy. Unknown nested MIME confirmations remain unsupported
+if native policy ever requires a human and no complete safe descriptor is available.
+
+Full SAME-turn proof initially exposed image handoff: CUA byte variables are not shared with Node REPL,
+and native Code Mode reported nested Gmail but no nested CUA. A bounded temporary native-image adapter
+and public expectedTurnId-bound steer metadata solve this without a provider client or policy change.
+A diagnostic's earlier in-memory-only wording was overly restrictive for file attachment and caused
+a native review denial; corrected test explicitly allowed the planned private temporary artifact.
+Final PUBLIC API proof: result50, actual image, steer ACK, exactly one self-draft with identical image
+bytes, DRAFT attachment readback, same turn, original voice history, temporary cleanup, no send.
+Experimental APIs remain disabled in the production adapter.
+
+Read-only security review corrections: preserve patch hunk lines beginning+++ or--- rather than
+mistaking them for headers; abbreviate only actual home; malformed params fail closed; failed unlink
+retains ownership for bounded retry. Crash retention is explicitly not guaranteed by an in-process TTL.

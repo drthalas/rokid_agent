@@ -67,21 +67,25 @@ export default {
     const changed = revision !== this.historyRevision;
     this.historyRevision = revision;
     const update = { history, ...(changed && latest ? { scrollTarget: 'exchange-' + latest.requestId } : {}) };
-    if (value.state === 'ERROR') { this.approvalCard.clear(); this.setData(update); this.showError(value.detail); if(value.approvalMessage)this.setData({errorText:value.approvalMessage+' '+this.data.errorText}); return; }
+    if (value.state === 'ERROR') { this.approvalCard.clear(); this.setData(update); this.showError(value.detail); if(!value.busy&&latest?.turnId===value.turnId&&latest.assistant)this.setData({errorText:''}); this.speakOutcome(value,latest); return; }
     const phase = value.state;
     if(phase!=='APPROVAL'&&this.approvalCard.current)this.approvalCard.clear();
-    this.setPhaseData({ ...update, phase, label: LABELS[phase] || LABELS.ERROR, errorText: phase==='READY'?(value.approvalMessage||''):'',
+    this.setPhaseData({ ...update, phase, label: LABELS[phase] || LABELS.ERROR, errorText: phase==='STOPPING'?(value.approvalReason==='unsupported'?'Подтверждение недоступно. Останавливаю…':value.approvalReason==='timeout'?'Время подтверждения истекло. Останавливаю…':'Действие отклонено. Останавливаю…'):'',
       hint: phase === 'READY' ? 'Нажмите на дужку и говорите' :
-        phase === 'DONE' ? 'Нажмите для следующей реплики' :
+        ['DONE','CANCELLED'].includes(phase) ? 'Нажмите для следующей реплики' :
         phase === 'APPROVAL' ? 'Свайп — выбор · Нажатие — подтвердить' :
         BUSY_STATES.includes(phase) ? (value.detail === 'Останавливаю…' ? value.detail : 'Нажатие — отмена') : '' }, () => {
         if (phase === 'DONE' && this.latency?.sample?.turnId === value.turnId && this.latency.sample.T9 && !this.latency.sample.T10) { this.latency.mark('T10'); this.latency.finish(); }
       });
     if(phase==='APPROVAL'&&value.approval)this.approvalCard.show(value.approval);
-    const ttsText = phase === 'DONE' && latest?.completed && latest.turnId === value.turnId ? briefAnswer(latest.assistant) : '';
-    if (ttsText && value.turnId && this.spokenTurn !== value.turnId) {
-      this.spokenTurn = value.turnId;
-      this.speak(ttsText);
+    this.speakOutcome(value,latest);
+  },
+  speakOutcome(value,latest) {
+    if(value.restoring||!value.turnId)return;
+    const terminal=!value.busy&&['DONE','ERROR','CANCELLED'].includes(value.state);
+    const spokenKey=value.turnId+':'+latest?.outcome+':'+latest?.assistant;
+    if(terminal&&latest?.turnId===value.turnId&&latest.assistant&&this.spokenOutcomeKey!==spokenKey){
+      this.spokenOutcomeKey=spokenKey;this.spokenTurn=value.turnId;this.speak(briefAnswer(latest.assistant));
     }
   },
   handleScroll(event) {
@@ -133,7 +137,7 @@ export default {
       return;
     }
     if (this.data.phase === 'ERROR') { this.client.open(); return; }
-    if (!['READY', 'DONE'].includes(this.data.phase) || this.awaitingStop || this.client.operation) return;
+    if (!['READY', 'DONE','CANCELLED'].includes(this.data.phase) || this.awaitingStop || this.client.operation) return;
     if (!this.recorder) { this.showError('microphone_unavailable'); return; }
     this.stopSpeech(); this.latency.sample = null; this.audio.reset(); this.awaitingStop = true;
     this.audio.begin({ requestId: crypto.randomUUID(), stopRecorder: () => {
@@ -186,9 +190,11 @@ export default {
     <text ink:if="{{errorText}}" class="error">{{errorText}}</text>
     <view ink:if="{{approval}}" class="approval-card">
       <text ink:if="{{approvalSecond}}" class="approval-confirm">ПОДТВЕРДИТЬ ДЕЙСТВИЕ?</text>
-      <text class="body">{{approval.description}}</text>
+      <text ink:if="{{!approvalSecond}}" class="approval-action">{{approval.title}} · {{approval.action}}</text>
+      <text class="body">{{approval.target}}</text>
+      <text class="approval-scope">{{approval.risk === 'high' ? 'Повышенный риск · ' : ''}}{{approval.scope === 'turn' ? 'Доступ до конца текущего запроса' : 'Только это действие'}}</text>
       <text class="approval-choice">{{approvalAllow ? '  ' : '› '}}{{approvalSecond ? 'НЕТ' : 'ОТКЛОНИТЬ'}}</text>
-      <text class="approval-choice">{{approvalAllow ? '› ' : '  '}}{{approvalSecond ? 'ДА, ВЫПОЛНИТЬ' : 'РАЗРЕШИТЬ ОДИН РАЗ'}}</text>
+      <text class="approval-choice">{{approvalAllow ? '› ' : '  '}}{{approvalSecond ? 'ДА, ВЫПОЛНИТЬ' : approval.scope === 'turn' ? 'РАЗРЕШИТЬ НА ЭТОТ ЗАПРОС' : 'РАЗРЕШИТЬ ОДИН РАЗ'}}</text>
       <text ink:if="{{approvalSubmitting}}" class="hint">Отправляю решение…</text>
     </view>
     <scroll-view ink:if="{{!approval}}" class="answer" scroll-y="true" scroll-top="{{scroll}}" scroll-into-view="{{scrollTarget}}" bindscroll="handleScroll">
@@ -196,8 +202,8 @@ export default {
         <view ink:for="{{history}}" ink:key="requestId" id="exchange-{{item.requestId}}" class="exchange">
           <text class="speaker">ВЫ</text>
           <text class="body">{{item.user}}</text>
-          <text ink:if="{{item.completed}}" class="speaker">JARVIS</text>
-          <text ink:if="{{item.completed}}" class="body">{{item.assistant}}</text>
+          <text ink:if="{{item.assistant}}" class="speaker">JARVIS</text>
+          <text ink:if="{{item.assistant}}" class="body">{{item.assistant}}</text>
         </view>
       </view>
     </scroll-view>
@@ -219,11 +225,14 @@ export default {
 .body { margin-bottom:8px; }
 .speaker { font-family:monospace; font-size:23px; font-weight:700; line-height:1.1; color:var(--primary); }
 .approval-card { display:flex; flex-direction:column; gap:6px; border-top:1px solid var(--divider); padding-top:8px; }
-.approval-choice { font-size:19px; font-weight:700; line-height:1.1; }
-.approval-screen { padding:8px; gap:4px; }
-.approval-screen .approval-card { gap:2px; padding-top:2px; }
-.approval-screen .body { font-size:16px; line-height:1.1; margin-bottom:0px; }
-.approval-screen .hint { font-size:12px; }
-.approval-confirm { font-size:16px; font-weight:700; line-height:1.1; }
+.approval-choice { font-size:17px; font-weight:700; line-height:1.05; }
+.approval-screen { padding:6px; gap:2px; }
+.approval-screen .state { font-size:18px; line-height:1.1; }
+.approval-screen .approval-card { gap:1px; padding-top:1px; }
+.approval-screen .body { font-family:monospace; font-size:14px; line-height:1.05; margin-bottom:0px; }
+.approval-screen .hint { font-size:10px; line-height:1.05; }
+.approval-action { font-size:13px; line-height:1.05; }
+.approval-scope { font-size:11px; line-height:1.05; }
+.approval-confirm { font-size:13px; font-weight:700; line-height:1.05; }
 .hint { font-size: 16px; color: var(--secondary); }
 </style>

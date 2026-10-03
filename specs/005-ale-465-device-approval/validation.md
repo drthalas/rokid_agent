@@ -66,3 +66,69 @@ Root35/35, AIUI45/45, check/private packaging, real native Calculator device API
 unsupported native fail-fast, restart continuity and source/index/reachable-history secret scans PASS.
 Physical RV101 approval/card/TTS/full Calculator→screenshot→draft acceptance: NOT RUN. Candidate ready
 for wearer update; Linear Needs Test. Later unsupported native action types remain a deliberate limit.
+
+## Owner-requested checkpoint — 2026-10-03
+
+Work paused at owner request before release verification/deployment. Base main b1adb3402a704b549bdf4902f6dd4af10137fa25.
+Implemented locally: generic bounded native approval classes, FIFO/current-turn decision binding;
+per-exchange failed/interrupted/uncertain/no-answer outcomes and immediate denial feedback; generic
+HUD scope/action/target and terminal TTS; private bounded native-image file handoff through public
+expectedTurnId-bound steer. Imported owner threads retain existing developer instructions.
+
+Latest checkpoint-targeted checks:35 gateway/core tests and33 AIUI tests PASS. Earlier full suites
+reached48 root/47 AIUI PASS, before subsequent security hardening; do not present those older full-suite
+results as final release verification of this checkpoint. AIUI syntax/manifest check passed earlier.
+
+Native evidence: Calculator actual50 and JPEG; self-draft attachment/readback with exact bytes; final
+PUBLIC API same-turn workflow passed with normal profile, no send, clean voice history and temporary
+cleanup. These probes preceded the last parser/cleanup/format hardening; no new native probe was run
+for checkpoint. The Screenshot utility's app-access request reached and was accepted by the generic
+device endpoint, but its subsequent native CUA execution failed. Direct Calculator-window capture passed.
+
+No cloud/package/deploy in this revision. Production remains old backend02feece / AIX1.1.3; source
+package version0.6.0 is not yet packaged/deployed/read back. Physical approval-card selection was accepted
+on1.1.3, but generalized classes/new outcome handling/full revised workflow still need physical testing.
+
+Remaining: bounded final release checks, private local package, matching gateway/AIX deployment and
+ACTIVE readback, then physical acceptance. Known separate surface limit: Screenshot utility execution
+after approval (not the approval router); do not claim arbitrary desktop-capture support from window proof.
+No further research/probes/cloud work is authorized by this checkpoint instruction.
+
+Checkpoint file inventory (including new files):
+
+```text
+.specify/memory/constitution.md
+AGENTS.md
+AIUI_SETUP.md
+ARCHITECTURE.md
+RUNBOOK.md
+aiui-agent/AGENTS.md
+aiui-agent/lib/approval-ui.js
+aiui-agent/lib/gateway.js
+aiui-agent/lib/history.js
+aiui-agent/lib/voice-ui.js
+aiui-agent/package-lock.json
+aiui-agent/package.json
+aiui-agent/pages/index/index.ink
+aiui-agent/test/approval-ui.test.mjs
+aiui-agent/test/gateway.test.mjs
+aiui-agent/test/integration.test.mjs
+aiui-agent/test/page.test.mjs
+scripts/device-approval-smoke.mjs
+specs/005-ale-465-device-approval/contracts/approvals.md
+specs/005-ale-465-device-approval/data-model.md
+specs/005-ale-465-device-approval/plan.md
+specs/005-ale-465-device-approval/research.md
+specs/005-ale-465-device-approval/spec.md
+specs/005-ale-465-device-approval/tasks.md
+specs/005-ale-465-device-approval/validation.md
+src/approvals.mjs
+src/engine.mjs
+src/history.mjs
+src/image-artifacts.mjs
+test/approval-device.test.mjs
+test/approval-router.test.mjs
+test/history.test.mjs
+test/image-artifacts.test.mjs
+test/integration.test.mjs
+```

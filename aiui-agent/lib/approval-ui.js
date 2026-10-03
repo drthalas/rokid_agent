@@ -4,11 +4,13 @@ export const APPROVAL_NOTICES={
   timeout:'Подтверждение не получено. Действие отменено.'
 };
 // Device-only deliberate choices; no voice path can invoke these decisions.
+const TITLES={'computer-use':'Computer Use',command:'Команда','file-change':'Файлы',permissions:'Разрешения','mcp-tool':'Интеграция'};
+const bounded=(v,n)=>typeof v==='string'&&v.length>0&&v.length<=n&&!/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/u.test(v)&&!/bearer|password|authorization|cookie|credential|secret|api[_ -]?key|token/i.test(v);
 export function approvalDescriptor(a,turnId) {
-  if (!a || typeof a!=='object' || !/^[a-f0-9-]{36}$/.test(a.id) || a.turnId!==turnId ||
-      a.kind!=='computer-use' || a.title!=='Calculator' || a.description!=='Прочитать окно Calculator один раз' ||
-      !['low','medium','high'].includes(a.risk) || a.allowOnGlasses!==true || !Number.isFinite(a.expiresAt)) return null;
-  return {id:a.id,turnId:a.turnId,kind:a.kind,title:a.title,description:a.description,risk:a.risk,expiresAt:a.expiresAt};
+  if(!a||typeof a!=='object'||!/^[a-f0-9-]{36}$/.test(a.id)||a.turnId!==turnId||!Object.hasOwn(TITLES,a.kind)||
+    a.title!==TITLES[a.kind]||!bounded(a.action,72)||!bounded(a.target,96)||!['low','medium','high'].includes(a.risk)||
+    !['once','turn'].includes(a.scope)||(a.kind==='permissions')!==(a.scope==='turn')||a.allowOnGlasses!==true||!Number.isFinite(a.expiresAt))return null;
+  return {id:a.id,turnId:a.turnId,kind:a.kind,title:a.title,action:a.action,target:a.target,risk:a.risk,scope:a.scope,expiresAt:a.expiresAt};
 }
 export class ApprovalCard {
   constructor({decide,render,speak,schedule=setTimeout,unschedule=clearTimeout}) {

@@ -71,7 +71,7 @@ The gateway initializes JSON-RPC, calls thread/start for a new session and turn/
 See [ADR-002](docs/adr/ADR-002-loopback-boundary.md) and [ADR-003](docs/adr/ADR-003-private-deployment.md).
 
 - Codex is hard-coded to IPv4 loopback; normal startup owns its child and refuses an occupied port. Device HTTPS and admin loopback HTTP have distinct random bearer tokens. Glasses have only the narrow current-request approval route below and never receive admin or Codex credentials.
-- Every new/resumed thread selects native workspace-write/on-request/auto_review. Turns inherit native thread roots/network rather than forcing read-only. Eligible approvals are handled by Codex auto-review, not by gateway acceptance. Actual human requests go through the ALE-465 sanitizer. Proven Calculator window-read requests show a physical default-decline card with a maximum30s expiry; unsupported command/file/permissions/auth/input forms immediately decline. No native persistence metadata is returned. High-risk requests require a second challenge-bound decision.
+- Every new/resumed thread selects native workspace-write/on-request/auto_review. Turns inherit native thread roots/network rather than forcing read-only. Eligible approvals are handled by Codex auto-review, not by gateway acceptance. Actual human requests go through the ALE-465 sanitizer. Verified bounded native request classes show a physical default-decline card with a maximum30s active-card expiry; unknown/opaque/auth/persistent forms immediately decline. No native persistence metadata is returned. High-risk requests require a second challenge-bound decision.
 - Realpath allowlist constrains selected cwd, **not all readable files**. This is a single-owner MVP. Native MCP/apps/plugins/skills/hook trust and app/MCP approval modes/reviewers are inherited unchanged; user-disabled capabilities stay disabled. No blanket MCP prompt or per-app reviewer override. The existing child environment allowlist remains; credentials are not copied. Host tool/browser networking is separate from the shell sandbox, whose observed native default is restricted. Trusted startup/hooks retain native trust semantics.
 - AIUI verifies public CA/hostname TLS. Android uses out-of-band leaf certificate pinning. The authorized smoke-only `--no-tls-verify` exception is restricted to cloudflared → HTTPS gateway on the same Mac; no client-side TLS bypass and no router port forwarding. Cloudflare terminates TLS and is a trusted transport processor able to observe requests; it is not end-to-end encryption directly to Mac.
 - Private `config.js`, configured AIX, cloud downloads, tokens, keys, logs and browser/Rokid sessions stay ignored. AIX JavaScript is readable: private cloud distribution is a credential-bearing trust boundary, not encrypted secret storage.
@@ -194,17 +194,39 @@ Resolved-profile comparison also found a Desktop UI-injected project `.aws` read
 
 ## ALE-465 device human decisions
 
-Snapshot retains pendingApproval boolean and adds sanitized approval `{id,turnId,kind,title,description,
-risk,allowOnGlasses,expiresAt}` plus a fixed outcome enum. POST /v1/sessions/:sessionId/approvals/:id
-accepts decision accept/decline and optional high-risk confirmation challenge. Existing device bearer,
-Origin rejection and loopback admin remain. No raw params, command, arbitrary reason or provider payload
-is displayed. Current supported shape is native cua_repl get_app_state for Calculator only; real
-omitted-persist tests re-prompted on the next read with/without runtime reset and in fresh threads.
-This is one window read, not arbitrary code execution or a conversation-wide app permission.
+Snapshot retains pendingApproval and adds `{id,turnId,kind,title,action,target,risk,scope,allowOnGlasses,
+expiresAt}`. Native class/schema determines routing; app names do not select support. POST decision
+route retains bearer/current session-turn/one-use binding, default decline and high-risk second challenge.
+Up to4 requests in one turn queue FIFO; only the visible head has a30s timer. Decline/timeout/unsupported
+cancels queued decisions and begins bounded native conclusion; later requests cannot restart that wait.
 
-The UI enters APPROVAL; arrows select, Enter confirms after650ms host Backspace classification guard,
-back/hide declines best-effort through a request independent of page polling cleanup. Server expiry is
-authoritative on disconnect. Both confirmation screens default decline, and only a second deliberate
-choice can supply the high-risk challenge. Accept is never stored/replayed after ambiguous delivery.
-Native auto_review notifications do not create a card. Fixed cancellation notices are appended once to
-the final exchange; an uncertain native stop remains visibly uncertain. See [spec](specs/005-ale-465-device-approval/spec.md).
+| Class | Representable subset / actual scope |
+|---|---|
+| Computer Use | Verified native app-access form, exact app field, known native operation; omitted persist proved per-operation; any valid app ID |
+| Command | Full bounded simple argv, actual cwd and additional permission summary; no hidden shell program/stdin/remote environment; single native accept |
+| File change | Same-turn/item correlated small patch with complete changed lines/hunk preview, exact targets; no grantRoot/session expansion |
+| Permissions | Validated literal file read/write and network boolean; explicit **current-turn** scope, high-risk confirmation |
+| MCP tool | Verified empty confirmation form with bounded complete primitive action/targets and no persistence; opaque payload/code/auth forms rejected |
+
+Native auto_review remains automatic. No app/credential/permission-policy overrides; admin stays local.
+Unsupported/declined/timeout reasons attach to the canonical exchange immediately and survive native
+failed/interrupted completion and hydration. completed still denotes native successful completion;
+outcome and approvalNotice describe failed/uncertain/no-answer results. HUD renders any canonical
+assistant result, not just completed=true; current results speak once and restore silently. STOPPING
+shows immediate denial feedback; CANCELLED is not a success label. Empty final answers get an explicit
+no-answer fallback. Matching late native completion reconciles uncertainty without a new turn.
+
+### Native image handoff
+
+CUA and Node REPL do not share memory, and native Code Mode has no nested CUA in this installation.
+The gateway therefore copies already-emitted successful CUA JPEG/PNG blocks to private temporary files
+(dir0700/file0600). It performs no new capture and has no Gmail client or media device endpoint. Limits:
+8MiB/image,2 per turn/8 total, duplicate-image suppression; normal completion/disconnect/shutdown cleanup
+and10-minute healthy-process TTL. Failed unlink is retained for bounded retry. Abrupt process termination
+or persistent filesystem failure may leave private system-temp residues needing local cleanup, as with
+existing STT temporary files; this is not a crash-proof retention guarantee or media archive.
+
+Public turn/steer with exact expectedTurnId supplies a fixed, explicitly untrusted artifact-data marker;
+this is neither a new task nor approval. Original gateway voice history takes precedence over internal
+steering text. Existing native tools read the file and call the normal connector MIME API. No experimental
+API enablement or permission-profile weakening is needed. [Spec/evidence](specs/005-ale-465-device-approval/validation.md).

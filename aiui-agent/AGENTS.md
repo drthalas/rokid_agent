@@ -1,5 +1,5 @@
 # Agent: Jarvis
-- **Version**: 0.5.0
+- **Version**: 0.6.0
 - **Description**: Open a voice terminal for the user's existing Codex agent on their Mac. Continue the same local project conversation and show task status and answers on the glasses.
 
 ## System Prompts
@@ -25,4 +25,4 @@ GlobalHook is observation only and never starts/stops voice. Enter onKeyUp contr
 ## Human approval
 APPROVAL defaults to ОТКЛОНИТЬ. Arrows select, Enter confirms, back declines. High-risk uses a second
 default-NO screen. Maximum30s to decide; unsupported requests fail closed. Generic TTS announces once.
-The current supported native shape is one Calculator window read, not a session-wide app grant.
+Cards use verified native classes (Computer Use app access, bounded commands/patches, literal turn permissions and bounded MCP confirmations), never an app-name allowlist. The actual action, target and scope must be visible. Unknown/opaque/auth/persistent grants fail closed. Failed/interrupted outcomes remain in history and are spoken once; unsupported denial immediately shows stopping feedback.

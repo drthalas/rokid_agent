@@ -70,9 +70,9 @@ test('fresh opening does not display or speak a completed historical response',a
 
 test('HUD renders each assistant once, retains full long answer and scroll position',async()=>{
  const markup=fs.readFileSync(path.join(root,'pages/index/index.ink'),'utf8').match(/<page>([\s\S]*?)<\/page>/)[1];
- assert.equal((markup.match(/{{item.assistant}}/g)||[]).length,1);
+ assert.equal((markup.match(/>{{item.assistant}}<\/text>/g)||[]).length,1);
  assert.ok(!/summary|fullText|Полный ответ/.test(markup));
- assert.ok(markup.includes('ink:for="{{history}}"'));assert.ok(markup.includes('ink:if="{{item.completed}}"'));assert.ok(!/wx:(for|if|key)/.test(markup));
+ assert.ok(markup.includes('ink:for="{{history}}"'));assert.ok(markup.includes('ink:if="{{item.assistant}}"'));assert.ok(!/wx:(for|if|key)/.test(markup));
  assert.ok(markup.includes('{{item.user}}'));
  const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');
  const answer='Длинный ответ. '.repeat(100),requestId=randomUUID();
@@ -134,7 +134,7 @@ for(const fault of ['missing-intervals','pulse-construction','status-render']) {
 
 test('HUD approval replaces busy controls, defaults decline and announces only once',async()=>{
  const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');
- const approval={id:randomUUID(),turnId:'active',kind:'computer-use',title:'Calculator',description:'Прочитать окно Calculator один раз',risk:'low',expiresAt:Date.now()+30000};
+ const approval={id:randomUUID(),turnId:'active',kind:'computer-use',title:'Computer Use',action:'Просмотр окна / снимок',target:'com.apple.calculator',scope:'once',risk:'low',expiresAt:Date.now()+30000};
  const decisions=[];h.page.client.decideApproval=async(...args)=>{decisions.push(args);return{ok:true}};
  const value={state:'APPROVAL',pendingApproval:true,approval,turnId:'active'};h.page.renderState(value);h.page.renderState(value);
  assert.equal(h.page.data.phase,'APPROVAL');assert.equal(h.page.data.approvalAllow,false);assert.equal(h.spoken.filter(s=>s==='Требуется подтверждение.').length,1);
@@ -145,8 +145,18 @@ test('HUD approval replaces busy controls, defaults decline and announces only o
 
 test('approval keeps choices in compact HUD and restores history projection afterwards',async()=>{
  const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');const history=[{requestId:randomUUID(),turnId:'previous',user:'Question',assistant:'Answer',completed:true}];
- h.page.renderState({state:'APPROVAL',history,approval:{id:randomUUID(),title:'Calculator',description:'Прочитать окно Calculator один раз',risk:'low'}});
+ h.page.renderState({state:'APPROVAL',history,approval:{id:randomUUID(),title:'Computer Use',action:'Просмотр окна / снимок',target:'com.apple.calculator',scope:'once',risk:'low'}});
  assert.deepEqual(h.page.data.history,history);h.page.renderState({state:'WORKING',history});assert.equal(h.page.data.approval,null);assert.deepEqual(h.page.data.history,history);
- const markup=fs.readFileSync(path.join(root,'pages/index/index.ink'),'utf8');assert.ok(markup.includes('<scroll-view ink:if="{{!approval}}"'));assert.ok(markup.includes('.approval-screen { padding:8px; gap:4px; }'));
+ const markup=fs.readFileSync(path.join(root,'pages/index/index.ink'),'utf8');assert.ok(markup.includes('<scroll-view ink:if="{{!approval}}"'));assert.ok(markup.includes('.approval-screen { padding:6px; gap:2px; }'));
+ }finally{h.page.cleanup()}
+});
+
+test('unsupported feedback is immediate and unsuccessful canonical result renders/speaks once',async()=>{
+ const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');const turnId='failed-turn',requestId=randomUUID(),reason='Для этого действия требуется подтверждение на Mac. Через очки его подтвердить нельзя. Действие не выполнено.';
+ const history=[{requestId,turnId,user:'Capture',assistant:'',completed:false,outcome:'pending'}];
+ h.page.renderState({state:'STOPPING',turnId,busy:true,history,approvalReason:'unsupported',approvalMessage:reason});assert.ok(h.page.data.errorText.includes('Останавливаю'));assert.equal(h.spoken.length,0);
+ history[0]={...history[0],assistant:reason,outcome:'interrupted',approvalNotice:'unsupported'};const terminal={state:'CANCELLED',turnId,busy:false,history,approvalMessage:reason};
+ h.page.renderState(terminal);h.page.renderState(terminal);assert.equal(h.page.data.phase,'CANCELLED');assert.equal(h.page.data.history[0].completed,false);assert.equal(h.spoken.length,1);assert.ok(h.spoken[0].includes('Действие не выполнено'));
+ h.page.renderState({...terminal,state:'READY',restoring:true});assert.equal(h.spoken.length,1);
  }finally{h.page.cleanup()}
 });

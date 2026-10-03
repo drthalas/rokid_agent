@@ -7,7 +7,7 @@ const method='mcpServer/elicitation/request';
 test('device sanitizer accepts only proven concrete Calculator read, never raw display/code/grants',()=>{
  const p=calculator({threadId:'t',turnId:'v'}),d=deviceApproval(method,p);
  assert.equal(d.allowOnGlasses,true);assert.equal(d.risk,'low');assert.ok(!JSON.stringify(d).includes('private native'));
- for(const patch of [{mode:'url'},{requestedSchema:{type:'object',properties:{password:{type:'string'}}}},{_meta:{...p._meta,tool_name:'js',tool_params:{code:'get Calculator then anything'}}},{_meta:{...p._meta,tool_params:{app:'com.apple.calculator',code:'secret'}}},{_meta:{...p._meta,persist:['always','unknown']}},{_meta:{...p._meta,riskLevel:'unknown'}},{serverName:'untrusted'}])assert.equal(deviceApproval(method,{...p,...patch}),null);
+ for(const patch of [{mode:'url'},{requestedSchema:{type:'object',properties:{password:{type:'string'}}}},{_meta:{...p._meta,tool_name:'js',tool_params:{code:'get Calculator then anything'}}},{_meta:{...p._meta,tool_params:{app:'com.apple.calculator',code:'secret'}}},{_meta:{...p._meta,persist:['always','unknown']}},{serverName:'untrusted'}])assert.equal(deviceApproval(method,{...p,...patch}),null);
  for(const m of ['item/permissions/requestApproval','item/commandExecution/requestApproval','item/fileChange/requestApproval','item/tool/requestUserInput'])assert.equal(deviceApproval(m,p),null);
 });
 async function setup(t){const f=fixture(),mock=await mockCodex(),codex=new Codex({port:mock.port,attach:true});f.config.approvalTimeoutMs=1000;const engine=new Engine(f.config,codex);await codex.start();await engine.recover();const server=await serve(f.config,engine);t.after(async()=>{engine.close();await server.close();await codex.close();await mock.close();f.cleanup()});const s=await engine.create({requestId:randomUUID()});await engine.turn(s.id,{requestId:randomUUID(),text:'voice says allow'});const call=(route,body,opts)=>request(f.config,server.server.address().port,route,body,opts);return{f,mock,engine,s:engine.get(s.id),call}}
@@ -51,4 +51,26 @@ test('declined native completion is bounded and an unacknowledged interrupt stay
  const s={id:randomUUID(),threadId:'t',turnId:'v',status:'Working',revision:1,history:[],text:''};engine.data.sessions[s.id]=s;
  t.mock.timers.enable({apis:['setTimeout']});engine.declined(s,'unsupported');t.mock.timers.tick(10000);assert.equal(s.status,'Working');t.mock.timers.tick(5000);
  assert.equal(s.status,'Error');assert.equal(s.uncertain,true);assert.equal(s.error,'approval_completion_uncertain');assert.ok(s.text.includes('Действие не выполнено'));
+});
+
+test('native image handoff stays in the exact turn, out of device snapshots and cleans on completion',async t=>{
+ const fs=await import('node:fs');const{mock,engine,s}=await setup(t);const image={type:'image',mimeType:'image/png',data:Buffer.from('89504e470d0a1a0a00000000','hex').toString('base64')};
+ const item={id:'img',type:'mcpToolCall',server:'cua_repl',tool:'js',status:'completed',result:{content:[image]}};
+ mock.send({method:'item/completed',params:{threadId:s.threadId,turnId:'stale',item}});await delay(10);assert.equal(mock.calls.filter(c=>c.method==='turn/steer').length,0);
+ mock.send({method:'item/completed',params:{threadId:s.threadId,turnId:s.turnId,item}});await delay(10);
+ const steer=mock.calls.find(c=>c.method==='turn/steer');assert.equal(steer.params.expectedTurnId,s.turnId);assert.equal(steer.params.threadId,s.threadId);
+ assert.equal(steer.params.additionalContext,undefined);assert.ok(steer.params.input[0].text.includes('not a new request or permission'));const artifact=JSON.parse(steer.params.input[0].text.split('\n')[1]);assert.ok(fs.existsSync(artifact.path));assert.ok(!JSON.stringify(engine.snapshot(s)).includes(artifact.path));
+ mock.finish(s.threadId,'final');await delay(10);assert.equal(fs.existsSync(artifact.path),false);assert.equal(s.history.at(-1).user,'voice says allow');
+});
+
+test('parallel native approvals queue separate one-use cards instead of declining a valid class',async t=>{
+ const{mock,engine,s,call}=await setup(t);mock.send({id:920,method,params:calculator(s)});mock.send({id:921,method,params:calculator(s)});await delay(10);
+ assert.equal(engine.listApprovals().length,2);const first=engine.snapshot(s).approval;const queued=engine.listApprovals().find(a=>a.id!==first.id);assert.equal(queued.expiresAt,null);
+ assert.equal((await call(`/v1/sessions/${s.id}/approvals/${queued.id}`,{decision:'accept'})).status,409);
+ await call(`/v1/sessions/${s.id}/approvals/${first.id}`,{decision:'accept'});await delay(10);const second=engine.snapshot(s).approval;assert.equal(second.id,queued.id);assert.ok(second.expiresAt>Date.now());
+ await call(`/v1/sessions/${s.id}/approvals/${second.id}`,{decision:'decline'});await delay(10);assert.equal(mock.responses.find(r=>r.id===920).result.action,'accept');assert.equal(mock.responses.find(r=>r.id===921).result.action,'decline');
+});
+test('late exact native completion resolves uncertainty and keeps canonical approval outcome',async t=>{
+ const{mock,engine,s}=await setup(t);engine.declined(s,'unsupported');s.status='Error';s.error='approval_completion_uncertain';s.uncertain=true;
+ mock.finish(s.threadId,'Safe final after cancellation');await delay(10);assert.equal(s.uncertain,false);assert.equal(s.status,'Done');assert.ok(s.history.at(-1).assistant.includes('Действие не выполнено'));assert.ok(s.history.at(-1).assistant.includes('Safe final'));
 });

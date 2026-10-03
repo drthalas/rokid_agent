@@ -2,7 +2,7 @@
 
 **Feature Branch**: `main`
 **Created**: 2026-10-02
-**Status**: Specification
+**Status**: Revision after physical1.1.3 failure (2026-10-03)
 **Input**: [ALE-465](https://linear.app/drthalas/issue/ALE-465), owner request and comments.
 
 ## User Scenarios & Testing
@@ -75,3 +75,31 @@ Single trusted owner/device credential; app-server remains the authority for too
 native shapes must be proven from installed schemas/real requests before enabling them. Unknown shapes
 remain unsupported, even if this limits the main physical scenario. ALE-462/463/464, tunnel and VPN are
 out of scope. Existing stuck production approval is declined/reconciled before implementation.
+
+## Revision: generic native classes and truthful terminal outcomes
+
+Owner physical evidence: Calculator card/swipe/tap PASS; interaction20+30 and screenshot/draft workflow
+FAIL; unsupported denial was not visible until a follow-up question. The Calculator-only prototype is
+not general approval support. This revision supersedes any implementation-specific app allowlist.
+
+- FR-011: Route by verified native request class/schema, not app/provider product names. Inventory
+  command, patch, permissions, MCP and Computer Use request/response/scope and display completeness.
+- FR-012: Describe action, target, risk and actual scope. Never label a turn-wide native grant “once”;
+  session/persistent grants remain forbidden. Unknown/opaque shapes fail closed rather than hiding risk.
+- FR-013: Unsupported request immediately shows its safe reason while native continuation is still busy.
+- FR-014: Every declined/unsupported/timeout exchange retains readable canonical assistant text and
+  a separate truthful outcome even for interrupted/failed/uncertain completion. Recovery and next turn
+  must not erase it. Empty completed native answers get an explicit no-answer result, never silent Done.
+- FR-015: Current terminal outcome appears in HUD and TTS once; historical restore is silent. Preserve
+  successful completion separately from a renderable outcome; do not turn cancellation into success.
+- FR-016: Real ephemeral diagnostics cover Calculator interaction, screenshot access/capture and Gmail
+  draft attachment. No send, no production thread test, no fake equivalence inferred from tool names.
+
+Additional tests: empty native completed/failed/interrupted, commentary-only completion, notice plus
+useful final text, restart/hydration, uncertain interruption, multi-request/turn isolation, generic
+app-target validation, scope display and unsupported auth/opaque code. Physical main scenario must
+actually reach50 + screenshot + attached draft + HUD/TTS/history; build/mock is not acceptance.
+
+- FR-017: The already-requested native screenshot must be transferable to the existing draft tool in
+  the same turn. Any necessary temporary copy is private, bounded and automatically deleted; it never
+  creates new capture/approval, changes the original voice history or becomes a public device endpoint.

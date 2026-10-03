@@ -338,9 +338,20 @@ THINKING/WORKING пульсируют через opacity/transition с одни�
 After deploying matching gateway and private AIX, verify ACTIVE cloud readback includes lib/approval-ui.js
 and current private config. Update resources through Hi Rokid. The card defaults ОТКЛОНИТЬ; swipe chooses,
 tap confirms, back declines. High-risk uses second default НЕТ. No decision for30s means decline. The
-currently supported approval is one Calculator window read; other grants/forms may fail closed.
+supported classes are validated Computer Use, command/patch, turn-permission and bounded MCP confirmations; unrepresentable grants/forms fail closed.
 
 Main wearer scenario: Calculator20+30, screenshot, Gmail draft to self with attachment, never send. A
 later unsupported native request is a recorded acceptance boundary, not permission to broaden scope.
 Unit/cloud packaging does not establish physical acceptance. Roll back matching gateway/AIX together
 using retained private artifacts/source; preserve tokens, endpoint, session/thread and Camera permission.
+
+### ALE-465 generic approval / terminal-result revision
+
+Source0.6.0 shows action, target and actual scope. No app-name allowlist. Current-turn permissions use
+a different scope label from one-call approval; both screens default decline. Failed/interrupted results
+remain readable in history and speak once; historical reopening is silent. Unknown approval immediately
+shows stopping feedback, then a canonical failure explanation. No empty Done.
+
+Keep the matched gateway/AIX pair: this revision changes descriptor and history outcome fields. Native
+Computer Use screenshot bytes can be attached by existing Gmail tools through a private ephemeral local
+artifact; neither image bytes nor admin token enter the AIX. Full physical acceptance remains separate.

@@ -17,3 +17,11 @@ armedAfterRender, pendingEnter timer. New ID or reopened card resets default. Se
 stored as replayable mutation. Repeated poll does not reset choice or repeat TTS. Closed page declines
 best-effort and server expiry is authoritative if network cannot deliver. High-risk first accept yields
 server challenge; second deliberate selection/tap includes challenge. Neither screen defaults to accept.
+
+## Revision additions
+
+Exchange outcome: pending/completed/failed/interrupted/uncertain/no_answer; approvalNotice is a fixed
+enum persisted on that exchange. Its assistant projection exists independently of completed=true.
+FIFO approval handles preserve separate IDs/current turn; only head has shownAt/expiresAt, queued
+handles cannot be accepted. Screenshot artifacts are separate memory-owned temporary paths, never
+persisted in conversation/device snapshots. Fixed untrusted steering metadata is not voice history.

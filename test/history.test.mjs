@@ -45,3 +45,23 @@ test('legacy gateway state backfills three Codex turns without starting new ones
  assert.equal(h.exchanges.length,3);assert.equal(h.exchanges[2].user,'old question 3');assert.equal(h.exchanges[2].assistant,'old answer 3');assert.equal(h.threadId,s.threadId);
  assert.equal(mock.calls.filter(c=>c.method==='turn/start').length,0);
 });
+
+test('approval outcomes survive failed/interrupted completion, next turn and hydration',async()=>{
+ const {startExchange,updateExchange}=await import('../src/history.mjs');
+ for(const status of ['failed','interrupted']){
+  const s={history:[],status:'Working',turnId:'turn-1',text:'',approvalNotice:'unsupported',error:null};startExchange(s,'request-1','request',[]);updateExchange(s,[]);
+  s.status='Error';s.error='turn_'+status;updateExchange(s,[]);
+  assert.equal(s.history[0].completed,false);assert.ok(s.history[0].assistant.includes('Действие не выполнено'));assert.equal(s.history[0].approvalNotice,'unsupported');
+  s.approvalNotice=null;startExchange(s,'request-2','next',[]);
+  hydrateHistory(s,[{id:'turn-1',status,items:[]}],[]);
+  assert.ok(s.history.find(e=>e.turnId==='turn-1').assistant.includes('Действие не выполнено'));
+ }
+});
+test('denial plus final response survives hydration without duplicate; empty Done is never blank',async()=>{
+ const {startExchange,updateExchange}=await import('../src/history.mjs');
+ const s={history:[],status:'Working',turnId:'turn-1',text:'',approvalNotice:'declined'};startExchange(s,'request-1','request',[]);updateExchange(s,[]);s.status='Done';s.text='Safe final';updateExchange(s,[]);
+ hydrateHistory(s,[{id:'turn-1',status:'completed',items:[{type:'agentMessage',phase:'final_answer',text:'Safe final'}]}],[]);
+ assert.ok(s.history[0].assistant.includes('Разрешение отклонено'));assert.equal(s.history[0].assistant.match(/Safe final/g).length,1);
+ const empty={history:[],status:'Working',turnId:'empty',text:''};startExchange(empty,'request-empty','question',[]);updateExchange(empty,[]);empty.status='Done';updateExchange(empty,[]);
+ assert.ok(empty.history[0].assistant.length>0);assert.equal(empty.history[0].outcome,'no_answer');
+});

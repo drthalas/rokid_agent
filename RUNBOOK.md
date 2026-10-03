@@ -236,8 +236,8 @@ npm run ctl -- decline APPROVAL_ID
 ```
 
 `accept` выполняется только после отдельного решения владельца, не на основании голосового prompt.
-ALE-465 поддерживает только проверенную пустую native form Calculator get_app_state;
-остальные command/file/grant/MCP/auth/input формы немедленно отклоняются. На HUD появляется APPROVAL. Просматривайте параметры только локально; не копируйте approval details в логи/Linear.
+ALE-465 поддерживает проверенные native классы с ограниченным полным action/target/scope;
+непредставимые command/file/grant/MCP и auth/input формы немедленно отклоняются. На HUD появляется APPROVAL. Просматривайте параметры только локально; не копируйте approval details в логи/Linear.
 Tool events содержат только bounded identifiers/status, не пользовательские данные. Не вызывайте
 `mcpServer/tool/call` напрямую для write acceptance: это диагностический API, не нормальный model turn.
 
@@ -252,8 +252,9 @@ Endpoint/token/private AIX менять не требуется. Проверя�
 
 ## ALE-465 wearer approval verification
 
-Supported: Calculator get_app_state exact one-read shape. Unknown shell/file/permission grants, other
-MCP tools and auth/input forms fail closed. No session/always grants; no changes to native auto_review.
+Supported classes/subsets are in ARCHITECTURE.md and the ALE-465 contract. Routing is by native schema,
+not Calculator or another app name. Opaque commands, large/unbound patches, unknown grants and auth/input
+forms fail closed with a canonical visible/spoken result. No session/always grants; no changes to native auto_review.
 APPROVAL defaults DECLINE; swipe selects, tap confirms, back declines. High-risk requires a second
 default-NO card. Timeout30s declines; native completion grace10s, then interrupt and uncertain error
 after5s if no terminal event. Do not interpret that error as confirmed cancellation of the entire turn.
@@ -265,3 +266,8 @@ continuity; `node scripts/tool-parity-smoke.mjs` verifies automatic safe MCP rev
 
 Physical candidate must update both gateway and private cloud AIX, then ACTIVE readback per AIUI_SETUP.
 Test allowed/declined/timeout/back, same session/thread and TTS/history separately. No email send.
+
+Current same-turn screenshot attachments use a bounded private temporary copy of the native image and
+public turn/steer data. The generated reference does not grant authority or create a user turn. Do not
+copy image/base64/provider payloads to diagnostics. Files are cleaned normally on completion/disconnect/
+shutdown and after10min while running; filesystem failure/crash residues may need local cleanup.
