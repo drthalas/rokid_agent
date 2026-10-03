@@ -276,3 +276,108 @@ Final index scan also flagged the public scanner name/version in the preceding p
 `generic-api-key`; manually verified documentation false positive. The commit command continued
 past the scan-classification assertion failure; push was withheld pending final history review.
 Both scanner findings are public/synthetic strings, not credentials. No scanner rules suppressed.
+
+## Verified private physical-test candidate — 2026-10-03
+
+SESSION: NEW SESSION. Actual agent MODEL/EFFORT: UNAVAILABLE. WHY: STANDARD bounded release/deployment.
+Candidate main342b05b93710c9ccb7b993d7d820b1b14d020c3b (includes d97834c), clean index/worktree at gates.
+Runtime model explicitly gpt-6-astra; model compatibility/approval research not reopened.
+
+Release matrix ONCE: root59/59 PASS; AIUI47/47 PASS; AIUI check PASS; real smoke PASS (two turns,
+same-thread gateway/app-server recovery and explicit resumed-model equality). Known loopback sandbox
+workaround used at first execution; no failed/full reruns. Index and all reachable history scans have
+only the previously classified synthetic curl fixture and public scanner-name documentation false
+positives; scanner exits1, no automated clean claim, no real credential finding. Protected files untracked.
+
+Local private source0.6.0 AIX packed once: VERSION9f71f0fd-0c63-47a9-8ee3-7294b64bf256,
+SHA25621439865449c05a7eec7d97c55d36a7b759b3139f7b27122b09cc81e98757e97; required files,
+dev-file exclusion, exact semantic private config equality and mode0600 PASS.
+
+Production gateway guarded restart: PID32407 from candidate; all3 session/thread mappings and history
+counts/statuses preserved; config/token/cert/key/frontend config/endpoint hashes unchanged. Local and
+public authenticated health200, unauthenticated401; codex/loggedIn/stt true. All3 native profiles remain
+workspaceWrite/on-request/auto_review. Tunnel/VPN untouched. Private state backup and safe reports in
+ignored .local/ale465-physical-release/. No production task/inference or physical RV101 action performed.
+
+Existing private Jarvis agent6eb5a07566d645d5a1994807fb63cd1e: isolated staging folder import,
+source Upload, ONE Repackage, ONE Save Details. Persisted active version1.1.6, draft; Network/Camera/
+Microphone/Speaker unchanged after reload; no Submit for Review/publication. Cloud AIX VERSION
+c58fd650-13ff-47a1-8288-3bf1545b649b, MD593167c018a7cbab557c3ea33dbc45f8b,
+SHA2565bcdc874609aa66fe264d1cc8428f3776b780e4faaf6a5e43819f9b909ed849a.
+ACTIVE published-version download control points to the same candidate filename. Direct CLI download
+verified MD5/version,13 runtime/metadata/license files (source byte equality or JSON structural equality),
+working private config equality in memory, approval UI/runtime presence and dev-file exclusion.
+
+Environment fallbacks: API cookie extraction rejected by native auto-review; no session credentials
+extracted or rejection bypassed. Normal Studio controls used. Background folder chooser timeout
+resolved by native foreground picker. Browser download reported a Downloads path, but macOS denied
+CLI access even with sandbox escalation; subsequent ordinary download navigation exposed artifact URL,
+and direct credential-free CLI fetch to private staging completed readback. No extra package/deploy.
+A local config parser exception accidentally emitted the device token into tool output; corrected checker
+returns booleans only. No token copied into repository/evidence; credential rotation was not performed.
+This disclosure remains a security limitation for owner review.
+
+Physical acceptance NOT RUN. Known separate Screenshot utility limitation unchanged. Wearer must
+update resources, invoke Hi Rokid/Jarvis, test Calculator20+30 -> screenshot -> Gmail draft attachment
+(no send), deliberate approve/decline/back/timeout, default-NO second high-risk card using safe simulator,
+automatic safe actions, same-thread/history/TTS/reopen. High-risk simulator currently has safe-shape/mock
+proof; no real destructive action should be used. Unsupported/opaque approval forms fail closed.
+
+ALE-467: start13:50:42UTC; full root1, full AIUI1, check1, smoke1, local package1, cloud Repackage1,
+private deployment1, verified active readback1. Downloads tooling failed before artifact inspection;
+readback retries were environment-driven, not new candidates. Compactions0 observed. Wall time and
+final counters in task report; exact tokens/responses/tool calls/context counters UNAVAILABLE.
+
+## Device credential rotation checkpoint — 2026-10-03
+
+SESSION: NEW SESSION. Actual agent MODEL/EFFORT: UNAVAILABLE. WHY: STANDARD bounded security hygiene,
+with no executable source, approval behavior, model policy or network configuration changes.
+Source candidate remains main `342b05b93710c9ccb7b993d7d820b1b14d020c3b`; pre-existing validation evidence
+above preserved. This checkpoint supersedes the exposed-device-token limitation above.
+
+Device token rotated = YES using existing randomBytes(32)/base64url pattern, mode0600. Private gateway
+source, working AIUI config and isolated private staging agree in memory. Admin token unchanged.
+Guarded idle gateway/app-server restart: PID41603. Local and public new-token health200; old-token401;
+unauthenticated401. Health codex/loggedIn/stt true. All3 session/thread mappings and bounded history
+preserved; all3 native profiles workspaceWrite/on-request/auto_review; explicit gpt-6-astra retained.
+Gateway config, admin token, certificate/key, origin/config pointer hashes unchanged. Tunnel/VPN untouched.
+No production inference or physical action performed. Old-token invalidation is verified, not inferred.
+
+Local private validation pack ONCE: VERSION `01e173c9-3632-41c3-82d8-487934acd3a8`, SHA256
+`a16f2f167b2216255870581892ddb40344001b2b6f2b28d908bd3337e4b8634c`.
+New token equality, old/admin absence, endpoint equality, required runtime/dev exclusion and settings PASS.
+Existing Jarvis `6eb5a07566d645d5a1994807fb63cd1e`: existing-agent folder import, ONE source Upload,
+ONE cloud Package AIX, ONE Save Details. No duplicate agent created; no Submit for Review/publication.
+Persisted active private Draft version1.1.9 after reload, Network/Camera/Microphone/Speaker unchanged.
+Version advances during the normal source/package/save workflow; no repeated deploy/package attempt.
+
+ACTIVE Download Published Version selected the new filename; downloaded cloud artifact identity:
+VERSION `702d83f5-10e4-486c-997c-982103009e4d`, MD5 `d744ff2906519100942e013d05ec5976`, SHA256
+`dedcb4230f37b6085a70d59d6704a4aa4cf93e52488102c832a4beca9aa04566`.
+Readback PASS for13 runtime/metadata/license files, exact semantic private config equality, new device
+credential equality in memory, old/admin credential absence across package contents, unchanged endpoint,
+project/session/TTS settings, approval runtime presence and dev-file exclusion. Cloud UUID differs from
+local validation pack because Studio packages source itself; cloud files match the prepared source.
+Safe reports/private backups retained in ignored private staging. No secret value printed this session.
+
+Environment handling: parser recognized config's leading comment before evaluation; failures were
+sanitized. Initial loopback sandbox limitation used native escalation. Transient public530 resolved on
+bounded alternative curl/direct check without changing network. Browser chooser timeout used native
+foreground picker; duplicate-import dialog canceled and existing-agent import used. Save remained in
+its dialog; subsequent metadata and reload verified persistence without repeating Save. Downloads read
+failed EPERM even with escalation. Internal browser downloads URL was blocked and was not circumvented.
+Supported Studio CDP events supplied only the active artifact URL; credential-free HTTPS fetch to private
+staging enabled readback. No cookies/session credentials extracted. Screenshot utility not investigated.
+
+ALE-467 metrics: full product test runs0 (executable source unchanged), local validation pack1,
+cloud package1, private deploy1, active browser download1 plus1 credential-free readback fetch after
+Downloads access failure. Active artifact validation1; no repeated release matrix. Repeated reads were
+bounded parser/environment/status diagnostics; exact count UNAVAILABLE. Wall time and usage in final
+report; compactions0 observed, exact model/effort/context/token-breakdown counters UNAVAILABLE.
+Physical acceptance NOT RUN; ALE-465 remains Needs Test after this security checkpoint.
+Next: update glasses resources, invoke Hi Rokid/Jarvis, run the documented ALE-465 physical scenarios.
+
+Pre-push index/all-reachable-history secret scans returned only the same two reviewed synthetic fixture /
+public scanner-name false positives (scanner exits1); no real credential finding. Exact old/new/admin
+values absent from index; protected private files untracked. Diff whitespace checks PASS, origin/main
+matches candidate. Archive buffer overflow changed to file-backed export; no scan rules suppressed.
