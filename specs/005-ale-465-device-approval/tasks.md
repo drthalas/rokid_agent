@@ -29,9 +29,9 @@ Independent test: native safe review remains automatic; existing session/history
 - [x] T015 [US3] Adapt and run native safe request/decline proof in scripts/device-approval-smoke.mjs.
 - [x] T016 [US3] Run root/AIUI/check/packaging and real continuity/auto-review smoke; record validation.md.
 - [x] T017 Update AIUI_SETUP.md/RUNBOOK.md/context-map/setup-status with bounded approval workflow.
-- [ ] T018 Review diff and scan candidate/index/history; commit/push main referencing ALE-465.
-- [ ] T019 Restart idle gateway preserving config/session/thread, private Upload/Repackage/download active AIX; verify exact runtime/private config.
-- [ ] T020 Record Git/runtime/cloud evidence in validation.md and Linear Needs Test; physical acceptance separately.
+- [x] T018 Review diff and scan candidate/index/history; commit/push main referencing ALE-465.
+- [x] T019 Restart idle gateway preserving config/session/thread, private Upload/Repackage/download active AIX; verify exact runtime/private config.
+- [x] T020 Record Git/runtime/cloud evidence in validation.md and Linear Needs Test; physical acceptance separately.
 
 Dependencies: T001 before implementation; T003 before T005; tests before implementation; server contract
 before client integration. T009 can be prepared separately from backend tests. Implement smallest safe

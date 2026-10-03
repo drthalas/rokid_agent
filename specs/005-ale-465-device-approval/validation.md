@@ -47,3 +47,22 @@ permission policy edits, no commit/push or cloud deployment yet. Spec/plan/tasks
 Cloud metadata reports layout480×168. Approval uses compact typography/spacing, hides the redundant
 brand/history while the card is present and restores the same history projection afterwards. This is
 layout preparation, not a claim of physical readability; wearer acceptance remains required.
+
+## Deployment / physical handoff — 2026-10-03
+
+Implementation02feecefa0e6d5bf4d4d1a0d7413571a38fcbd8e pushed main; compact frontend3a8facb pushed.
+Production gatewayPID64563 started from02feece; src/ tree unchanged by compact frontend commit.
+All3 session/thread mappings retained, private config/token/endpoint hashes unchanged, pending0, native
+workspaceWrite/on-request/auto_review profiles intact. Public health authenticated200 / unauthenticated401.
+No Cloudflare/VPN/account/permission change. Previous interrupted turn remains terminal and certain.
+
+Private cloud Upload/Repackage/Save completed for existing Jarvis draft. ACTIVE version1.1.3 downloaded
+and MD5 verified01828f6e57470b3df4379eec3feb5855; AIX VERSIONfa6defdc-f4a9-41ff-a783-dcef5d1c1851.
+Runtime files including approval-ui.js and compact Ink page match current source byte-for-byte; manifests
+match structurally; private config matches staging and working config in memory. Network/Camera/
+Microphone/Speaker retained. No Submit for Review/publication. Private download remains ignored.
+
+Root35/35, AIUI45/45, check/private packaging, real native Calculator device API, safe auto_review,
+unsupported native fail-fast, restart continuity and source/index/reachable-history secret scans PASS.
+Physical RV101 approval/card/TTS/full Calculator→screenshot→draft acceptance: NOT RUN. Candidate ready
+for wearer update; Linear Needs Test. Later unsupported native action types remain a deliberate limit.
