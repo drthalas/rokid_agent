@@ -41,8 +41,12 @@ test('HTTPS → gateway → actual mock WebSocket: continuity, safety, dedupe, r
   await delay(20); assert.deepEqual(mock.responses.find(r => r.id === 900).result.permissions, {});
   mock.send({ id: 902, method: 'mcpServer/elicitation/request', params: calculatorApproval(engine.get(s.id)) });
   await delay(10); const approval = (await admin('/admin/approvals')).body[0];
-  assert.equal((await admin('/admin/approvals/' + approval.id, { decision: 'accept' })).status, 200);
-  await delay(10); assert.equal(mock.responses.find(r => r.id === 902).result.action, 'accept');
+  assert.equal((await admin('/admin/approvals/' + approval.id, { decision: 'accept' })).status, 409);
+  const decisionRoute=route+'/approvals/'+approval.id;
+  const challenge=await call(decisionRoute,{decision:'accept'});assert.equal(challenge.body.requiresConfirmation,true);
+  assert.equal(mock.responses.some(r=>r.id===902),false);
+  assert.equal((await call(decisionRoute,{decision:'accept',confirmation:challenge.body.confirmation})).status,200);
+  await delay(10); assert.deepEqual(mock.responses.find(r => r.id === 902).result,{action:'accept',content:{},_meta:{persist:'always'}});
   assert.equal((await admin('/admin/approvals/' + approval.id, { decision: 'accept' })).status, 404);
   mock.send({ id: 901, method: 'mcpServer/elicitation/request', params: calculatorApproval(engine.get(s.id)) });
   await delay(10); assert.equal((await call(route)).body.pendingApproval, true);
@@ -112,7 +116,7 @@ test('socket reconnect resumes active turn, invalidates approval and consumes la
   assert.equal(mock.calls.filter(m => m.method === 'turn/start').length, 1);
 });
 
-test('MCP confirmations require one local decision and never expose params to device',async t=>{
+test('persistent MCP app consent requires two device decisions and never exposes params',async t=>{
  const f=fixture(),mock=await mockCodex(),codex=new Codex({port:mock.port,attach:true});
  f.config.approvalTimeoutMs=80;const engine=new Engine(f.config,codex);
  t.after(async()=>{engine.close();await codex.close();await mock.close();f.cleanup()});
@@ -127,8 +131,10 @@ test('MCP confirmations require one local decision and never expose params to de
  mock.send({method:'item/completed',params:{threadId:s.threadId,turnId:params.turnId,item:{type:'mcpToolCall',id:'evidence-1',server:'codex_apps',tool:'gmail.create_draft',status:'failed',arguments:{secret:'provider-secret'},result:{text:'private'}}}});await delay(10);
  assert.equal(engine.toolEvents.length,1);assert.ok(!JSON.stringify(engine.toolEvents).includes('provider-secret'));
  assert.ok(!('toolEvents' in engine.snapshot(engine.get(s.id))));
- engine.decide(a.id,true);await delay(10);
- assert.deepEqual(mock.responses.find(r=>r.id===200).result,{action:'accept',content:{}});
+ assert.throws(()=>engine.decide(a.id,true),/persistent_confirmation_required/);
+ const challenge=engine.decideDevice(s.id,a.id,'accept');assert.equal(challenge.requiresConfirmation,true);assert.equal(mock.responses.some(r=>r.id===200),false);
+ engine.decideDevice(s.id,a.id,'accept',challenge.confirmation);await delay(10);
+ assert.deepEqual(mock.responses.find(r=>r.id===200).result,{action:'accept',content:{},_meta:{persist:'always'}});
  assert.throws(()=>engine.decide(a.id,true),/approval_not_found/);
  mock.send({id:201,method:'mcpServer/elicitation/request',params});await delay(110);
  assert.deepEqual(mock.responses.find(r=>r.id===201).result,{action:'decline',content:null});
