@@ -38,3 +38,16 @@ scrolling and canonical history remain unchanged. `hudHistory` is only a display
 reopen rebuilds it from gateway history. Normal prose is not split into sentences. The bounded
 TTS preview removes list markers separately. Real Ink WASM reproduction and the pending
 physical acceptance are recorded in [ALE-470 evidence](../specs/008-ale-470-stt-hud/evidence.md).
+
+### Older Studio runtime compatibility
+
+Request/capture IDs use `lib/request-id.js`: native `crypto.randomUUID()` stays the
+preferred path; Ink 0.16/0.17 without `crypto` uses a logical-time/counter UUID-shaped
+fallback with a random tail. These are non-secret correlation/idempotency IDs, never
+credentials or approval challenges. No global crypto polyfill is installed. Pending
+requests still persist and replay the original ID through the unchanged client.
+
+Recorder-free preview hosts can use their simple `speechSynthesis.speak(..., 'immediate')`
+bridge. Recorder-capable devices keep the existing cancellable synthesize/player path.
+Studio does not provide this app's raw PCM recorder; controlled text-input controller
+preflight must not be reported as RV101 microphone/STT or audible-device acceptance.

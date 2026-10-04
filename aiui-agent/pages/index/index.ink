@@ -8,6 +8,7 @@
 <script setup>
 import { ApprovalCard } from '../../lib/approval-ui.js';
 import { answerLines } from '../../lib/answer-lines.js';
+import { requestId } from '../../lib/request-id.js';
 import config from '../../config.js';
 import { Latency } from '../../lib/latency.js';
 import { OneShotAudioSession, PcmVoiceActivityDetector, VOICE_ACTIVITY_LIMITS } from '../../lib/one-shot-audio.js';
@@ -25,10 +26,10 @@ export default {
       voiceDetector: new PcmVoiceActivityDetector({ limits: { ...VOICE_ACTIVITY_LIMITS, automaticStopOnSilence: false } })
     });
     try {
-      this.latency = new Latency({storage:{set:(k,v)=>wx.setStorageSync(k,v)},transport:createTransport(wx,config),id:()=>crypto.randomUUID()});
+      this.latency = new Latency({storage:{set:(k,v)=>wx.setStorageSync(k,v)},transport:createTransport(wx,config),id:requestId});
       this.client = new Conversation({ diagnostics: this.latency, config, transport: createTransport(wx, config),
         storage: { get: key => wx.getStorageSync(key), set: (key, value) => wx.setStorageSync(key, value) },
-        id: () => crypto.randomUUID(), render: value => this.renderState(value) });
+        id: requestId, render: value => this.renderState(value) });
       this.recorder = wx.media.getRecorderManager();
       if (this.recorder) this.bindRecorder();
     } catch (_) { this.showError('connection_not_configured'); }
@@ -141,7 +142,7 @@ export default {
     if (!['READY', 'DONE','CANCELLED'].includes(this.data.phase) || this.awaitingStop || this.client.operation) return;
     if (!this.recorder) { this.showError('microphone_unavailable'); return; }
     this.stopSpeech(); this.latency.sample = null; this.audio.reset(); this.awaitingStop = true;
-    this.audio.begin({ requestId: crypto.randomUUID(), stopRecorder: () => {
+    this.audio.begin({ requestId: requestId(), stopRecorder: () => {
       if (this.visible) this.setPhaseData({ phase: 'TRANSCRIBING', label: LABELS.TRANSCRIBING, errorText: '', hint: 'Нажатие — отмена' });
       this.recorder.stop().catch(() => { this.awaitingStop = false; this.recordingError('recording_failed'); });
     }});
@@ -154,16 +155,24 @@ export default {
     if (!config.tts) return;
     this.stopSpeech(); const epoch = this.pageEpoch;
     try {
-      if (typeof speechSynthesis === 'undefined' || typeof speechSynthesis.synthesize !== 'function' || typeof SpeechAudioPlayer === 'undefined') throw new Error('unsupported');
-      const task = await speechSynthesis.synthesize(new SpeechSynthesisUtterance(text));
-      task.finished.catch(() => {});
-      if (!this.visible || epoch !== this.pageEpoch) { task.abort(); return; }
-      this.speechTask = task; this.player = new SpeechAudioPlayer(task); this.player.play();
+      if (typeof speechSynthesis === 'undefined' || typeof SpeechSynthesisUtterance === 'undefined') throw new Error('unsupported');
+      const utterance = new SpeechSynthesisUtterance(text);
+      if (typeof speechSynthesis.synthesize === 'function' && typeof SpeechAudioPlayer !== 'undefined') {
+        const task = await speechSynthesis.synthesize(utterance);
+        task.finished.catch(() => {});
+        if (!this.visible || epoch !== this.pageEpoch) { task.abort(); return; }
+        this.speechTask = task; this.player = new SpeechAudioPlayer(task); this.player.play();
+      } else if (!this.recorder && typeof speechSynthesis.speak === 'function') {
+        // Old preview hosts have no recorder or cancellable audio player. Immediate
+        // speech replaces queued output; recorder-capable devices keep the stream path.
+        speechSynthesis.speak(utterance, 'immediate'); this.simpleSpeech = true;
+      } else throw new Error('unsupported');
       if (this.latency?.sample?.turnId === this.spokenTurn) { this.latency.mark('T11'); this.latency.finish(); }
     } catch (_) { if (this.visible && epoch === this.pageEpoch) this.setData({ hint: this.data.phase==='APPROVAL'?'Свайп — выбор · Нажатие — подтвердить':'TTS недоступен · Нажмите для следующей реплики' }); }
   },
   stopSpeech() {
     this.pageEpoch++;
+    this.simpleSpeech = false;
     if (this.player) { try { this.player.destroy(); } catch (_) {} this.player = null; }
     if (this.speechTask) { try { this.speechTask.abort(); } catch (_) {} this.speechTask = null; }
   },

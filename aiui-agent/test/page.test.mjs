@@ -183,3 +183,24 @@ test('ERROR always keeps a visible current-turn explanation above long history a
  assert.equal(h.page.data.errorText,'Нет связи с Mac');
  }finally{h.page.cleanup()}
 });
+
+test('without crypto, page opens and completes two voice turns with distinct persisted request IDs',async()=>{
+ const descriptor=Object.getOwnPropertyDescriptor(globalThis,'crypto');
+ Object.defineProperty(globalThis,'crypto',{value:undefined,configurable:true});
+ const h=harness();try{
+  await waitFor(()=>h.page.data.phase==='READY');
+  for(let i=0;i<2;i++){h.tap();h.voice();h.tap();await waitFor(()=>h.page.data.phase==='DONE');}
+  const turns=h.calls.filter(c=>c.url.endsWith('/turns'));
+  assert.equal(turns.length,2);assert.equal(new Set(turns.map(c=>c.data.requestId)).size,2);
+  assert.ok(turns.every(c=>/^[a-f0-9]{8}-[a-f0-9]{4}-7[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(c.data.requestId)));
+  assert.equal(h.spoken.length,2);assert.equal(globalThis.crypto,undefined);
+ }finally{h.page.cleanup();if(descriptor)Object.defineProperty(globalThis,'crypto',descriptor);else delete globalThis.crypto;}
+});
+test('recorder-free older preview uses immediate TTS without changing native stream behavior',async()=>{
+ const spoken=[];
+ const h=harness({beforeLoad(){globalThis.wx.media.getRecorderManager=()=>null;globalThis.SpeechAudioPlayer=undefined;globalThis.speechSynthesis={speak:(u,mode)=>spoken.push({text:u.text,mode})}}});
+ try{await waitFor(()=>h.page.data.phase==='READY');await h.page.speak('Первый');await h.page.speak('Второй');
+  assert.deepEqual(spoken,[{text:'Первый',mode:'immediate'},{text:'Второй',mode:'immediate'}]);
+  assert.equal(h.page.simpleSpeech,true);assert.ok(!h.page.data.hint.includes('TTS недоступен'));
+ }finally{h.page.cleanup()}
+});
