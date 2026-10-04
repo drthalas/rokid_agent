@@ -14,7 +14,7 @@ function fixture() {
     calls.push({method,route,data});
     if (route === '/v1/health') return {codex:true,loggedIn:true};
     if (method === 'POST' && route === '/v1/sessions') {
-      current ||= {id:randomUUID(), threadId:'thread-one',status:'Done',text:'',project:'demo'}; return snapshot();
+      current ||= {id:randomUUID(), threadId:'thread-one',status:'Done',uncertain:false,text:'',project:'demo'}; return snapshot();
     }
     if (route.endsWith('/turns')) {
       if (!seen.has(data.requestId)) { turns++; seen.add(data.requestId); exchanges.push({requestId:data.requestId,turnId:'turn-'+turns,user:data.text,assistant:'answer '+turns,completed:true}); }
@@ -50,7 +50,7 @@ test('persist failure happens before sending prompt', async()=>{
 test('configured existing session is used without creating a thread', async()=>{
   const id=randomUUID(), calls=[];
   const c=new Conversation({config:{...config,sessionId:id},id:randomUUID,storage:{get:()=>null,set:()=>{}},render:()=>{},
-    transport:{close(){},async request(m,r){calls.push(r);return r==='/v1/health'?{codex:true,loggedIn:true}:{id,threadId:'existing',status:'Done',history:{sessionId:id,threadId:'existing',exchanges:[]}};}}});
+    transport:{close(){},async request(m,r){calls.push(r);return r==='/v1/health'?{codex:true,loggedIn:true}:{id,threadId:'existing',status:'Done',uncertain:false,history:{sessionId:id,threadId:'existing',exchanges:[]}};}}});
   await c.open();assert.deepEqual(calls,['/v1/health','/v1/sessions/'+id]);
 });
 test('wx request selects parsed JSON explicitly and no token enters URL', async()=>{
@@ -110,7 +110,7 @@ test('history bounds/redaction and thread mismatch are enforced without creating
  assert.ok(!JSON.stringify(h).includes(config.token));assert.ok(!JSON.stringify(h).includes('abcsecret'));
  assert.equal(h.exchanges[0].assistant.length,16000);
  const f=fixture(),c=f.make();await c.open();
- assert.throws(()=>c.validateSnapshot({id:c.saved.sessionId,threadId:'different',status:'Done'}),/thread_mismatch/);
+ assert.throws(()=>c.validateSnapshot({id:c.saved.sessionId,threadId:'different',status:'Done',uncertain:false}),/thread_mismatch/);
  assert.equal(f.calls.filter(x=>x.route==='/v1/sessions').length,1);
 });
 
@@ -147,4 +147,82 @@ test('approval countdown uses server clock despite device skew and cannot exceed
  const original=f.transport.request.bind(f.transport);let duration=25000;
  f.transport.request=async(m,r,d)=>{const s=await original(m,r,d);if(r==='/v1/sessions/'+sid)return{...s,status:'Working',turnId:'approval-turn',pendingApproval:true,clock:{sent:100000},approval:{id:randomUUID(),turnId:'approval-turn',kind:'computer-use',title:'Computer Use',action:'Нажатие элемента',target:'com.apple.calculator',risk:'low',scope:'app',allowOnGlasses:true,expiresAt:100000+duration}};return s};
  await c.refresh();assert.equal(f.views.at(-1).approval.remainingMs,25000);duration=90000;await c.refresh();assert.equal(f.views.at(-1).approval.remainingMs,30000);c.close();
+});
+
+
+test('terminal ERROR tap returns READY without rereading or replaying; next turn keeps history and identity',async()=>{
+ const f=fixture(),c=f.make();await c.open();await c.submit('failed request');const sid=c.saved.sessionId,thread=c.saved.threadId;
+ const original=f.transport.request;let failed=true;
+ f.transport.request=async(...args)=>{const s=await original(...args);if(!s.id||!failed)return s;return{...s,status:'Error',uncertain:false,error:'turn_failed',history:{...s.history,exchanges:s.history.exchanges.map(e=>({...e,completed:false,outcome:'failed',assistant:'Useful failure explanation'}))}}};
+ await c.refresh();assert.equal(c.phase,'ERROR');assert.equal(f.views.at(-1).recovery,'continue');
+ const count=f.calls.length;await c.recover();assert.equal(c.phase,'READY');assert.equal(f.calls.length,count);
+ assert.equal(f.views.at(-1).previousError,'turn_failed');assert.equal(c.history.exchanges[0].assistant,'Useful failure explanation');
+ failed=false;await c.submit('next request');assert.equal(f.turns(),2);assert.equal(c.saved.sessionId,sid);assert.equal(c.saved.threadId,thread);
+ assert.equal(f.calls.filter(x=>x.route==='/v1/sessions').length,1);c.close();
+});
+test('uncertain interruption stays ERROR and cannot submit even after repeated recovery',async()=>{
+ const f=fixture(),c=f.make();await c.open();const original=f.transport.request;
+ f.transport.request=async(...args)=>{const s=await original(...args);return s.id?{...s,status:'Error',uncertain:true,error:'turn_interrupted'}:s};
+ await c.refresh();assert.equal(c.phase,'ERROR');assert.equal(f.views.at(-1).ready,false);
+ for(let i=0;i<2;i++){await c.recover();await c.submit('must not run');assert.equal(c.phase,'ERROR');}
+ assert.equal(f.turns(),0);c.close();
+});
+test('malformed read invalidates old idle state; recovery waits for a valid same-session snapshot',async()=>{
+ const f=fixture(),c=f.make();await c.open();const original=f.transport.request;let broken=true;
+ f.transport.request=async(...args)=>{const s=await original(...args);return s.id&&broken?{...s,status:'invalid'}:s};
+ await c.open();assert.equal(c.phase,'ERROR');await c.submit('must not run');assert.equal(f.turns(),0);
+ await c.recover();assert.equal(c.phase,'ERROR');broken=false;await c.recover();assert.equal(c.phase,'READY');
+ assert.equal(f.calls.filter(x=>x.route==='/v1/sessions').length,1);c.close();
+});
+test('malformed turn ACK retains its UUID across recovery and never duplicates the mutation',async()=>{
+ const f=fixture(),c=f.make();await c.open();const original=f.transport.request;let broken=true;
+ f.transport.request=async(m,r,d)=>{const s=await original(m,r,d);return r.endsWith('/turns')&&broken?{...s,history:null}:s};
+ await c.submit('only once');const pending=structuredClone(c.saved.pending);assert.ok(pending);
+ await c.recover();await c.submit('blocked');assert.deepEqual(c.saved.pending,pending);assert.equal(f.turns(),1);
+ broken=false;await c.recover();assert.equal(c.saved.pending,null);assert.equal(f.turns(),1);
+ assert.ok(f.calls.filter(x=>x.route.endsWith('/turns')).every(x=>x.data.requestId===pending.body.requestId));c.close();
+});
+
+
+test('failed poll revokes cached readiness; no STT or turn can be sent until reconciliation',async()=>{
+ const f=fixture(),c=f.make();await c.open();const original=f.transport.request;
+ f.transport.request=async()=>{throw Error('network_or_tls_error')};
+ await assert.rejects(c.refresh(),/network/);await c.audio(pcmToWav(new Uint8Array(6400)));await c.submit('blocked');
+ assert.equal(f.turns(),0);assert.equal(f.calls.filter(x=>x.route==='/v1/stt').length,0);
+ f.transport.request=original;await c.recover();assert.equal(c.phase,'READY');c.close();
+});
+test('snapshot and history diagnostics identify the failing field and never allow continuation',async()=>{
+ const cases=[['snapshot_id',s=>({...s,id:undefined})],['snapshot_thread',s=>({...s,threadId:null})],
+  ['snapshot_status',s=>({...s,status:'Broken'})],['snapshot_uncertain',s=>({...s,uncertain:undefined})],
+  ['history_object',s=>({...s,history:null})],['history_identity',s=>({...s,history:{...s.history,threadId:'other'}})],
+  ['history_exchanges',s=>({...s,history:{...s.history,exchanges:{}}})]];
+ for(const [check,damage]of cases){const f=fixture(),c=f.make();await c.open();const original=f.transport.request;
+  f.transport.request=async(...args)=>{const s=await original(...args);return s.id?damage(s):s};
+  await c.open();assert.equal(c.phase,'ERROR',check);assert.equal(f.views.at(-1).diagnostic.check,check);assert.equal(f.views.at(-1).diagnostic.stage,'refresh');
+  await c.submit('blocked');assert.equal(f.turns(),0);c.close();
+ }
+});
+test('transport distinguishes malformed JSON from non-object responses without retaining content',async()=>{
+ for(const [data,check]of [['sensitive invalid JSON','response_json'],['null','response_object'],[[], 'response_object'],[new ArrayBuffer(4),'response_object'],[new Uint8Array(4),'response_object']]){
+  const wx={request(o){queueMicrotask(()=>{o.success({statusCode:200,data});o.complete()});return{abort(){}}}};
+  const transport=createTransport(wx,config);
+  await assert.rejects(transport.request('POST','/v1/sessions/'+randomUUID()+'/turns',{requestId:randomUUID(),text:'private'}),e=>{
+   assert.equal(e.message,'invalid_response');assert.equal(e.check,check);assert.equal(e.stage,'turn_ack');
+   assert.ok(!JSON.stringify(e).includes('sensitive'));assert.ok(!JSON.stringify(e).includes('private'));return true;
+  });
+ }
+});
+test('lost ACK correlation keeps request ID before validation and reconnection never starts a replacement session',async()=>{
+ const f=fixture(),c=f.make(),correlations=[];c.diagnostics={correlate:v=>correlations.push(v),server(){},clock(){}};
+ await c.open();f.lose();await c.submit('only once');const pending=structuredClone(c.saved.pending);
+ assert.equal(correlations.at(-1).requestId,pending.body.requestId);assert.equal(f.views.at(-1).diagnostic.requestId,pending.body.requestId);
+ c.close();const reopened=f.make();await reopened.open();assert.equal(f.turns(),1);assert.equal(reopened.saved.pending,null);
+ assert.equal(f.calls.filter(x=>x.route==='/v1/sessions').length,1);reopened.close();
+});
+test('uncertainty can only be released by a later certain snapshot; no-answer can be acknowledged',async()=>{
+ const f=fixture(),c=f.make();await c.open();await c.submit('question');const original=f.transport.request;let uncertain=true;
+ f.transport.request=async(...args)=>{const s=await original(...args);return s.id?{...s,status:'Error',uncertain,error:uncertain?'turn_delivery_uncertain':null,history:{...s.history,exchanges:s.history.exchanges.map(e=>({...e,outcome:uncertain?'uncertain':'no_answer',completed:false,assistant:'No final answer'}))}}:s};
+ await c.refresh();assert.equal(c.phase,'ERROR');await c.recover();assert.equal(c.phase,'ERROR');assert.equal(c.canSubmit(),false);
+ uncertain=false;await c.refresh();assert.equal(c.phase,'ERROR');assert.equal(f.views.at(-1).detail,'no_final_answer');
+ await c.recover();assert.equal(c.phase,'READY');assert.equal(f.views.at(-1).previousError,'no_final_answer');assert.equal(f.turns(),1);c.close();
 });

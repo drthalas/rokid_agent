@@ -67,10 +67,10 @@ export default {
     const changed = revision !== this.historyRevision;
     this.historyRevision = revision;
     const update = { history, ...(changed && latest ? { scrollTarget: 'exchange-' + latest.requestId } : {}) };
-    if (value.state === 'ERROR') { this.approvalCard.clear(); this.setData(update); this.showError(value.detail); if(!value.busy&&latest?.turnId===value.turnId&&latest.assistant)this.setData({errorText:briefAnswer(latest.assistant)}); this.speakOutcome(value,latest); return; }
+    if (value.state === 'ERROR') { this.approvalCard.clear(); this.setData(update); this.showError(value.detail,value.diagnostic,value.recovery); if(!value.busy&&latest?.turnId===value.turnId&&latest.assistant)this.setData({errorText:briefAnswer(latest.assistant)}); this.speakOutcome(value,latest); return; }
     const phase = value.state;
     if(phase!=='APPROVAL'&&this.approvalCard.current)this.approvalCard.clear();
-    this.setPhaseData({ ...update, phase, label: LABELS[phase] || LABELS.ERROR, errorText: phase==='CANCELLED'?(value.approvalMessage||briefAnswer(latest?.assistant)):phase==='STOPPING'?(value.approvalReason==='unsupported'?'Подтверждение недоступно. Останавливаю…':value.approvalReason==='timeout'?'Время подтверждения истекло. Останавливаю…':'Действие отклонено. Останавливаю…'):'',
+    this.setPhaseData({ ...update, phase, label: LABELS[phase] || LABELS.ERROR, errorText: phase==='READY'&&value.previousError?(latest?.turnId===value.turnId&&latest.assistant?briefAnswer(latest.assistant):errorView(value.previousError).title):phase==='CANCELLED'?(value.approvalMessage||briefAnswer(latest?.assistant)):phase==='STOPPING'?(value.approvalReason==='unsupported'?'Подтверждение недоступно. Останавливаю…':value.approvalReason==='timeout'?'Время подтверждения истекло. Останавливаю…':'Действие отклонено. Останавливаю…'):'',
       hint: phase === 'READY' ? 'Нажмите на дужку и говорите' :
         ['DONE','CANCELLED'].includes(phase) ? 'Нажмите для следующей реплики' :
         phase === 'APPROVAL' ? 'Свайп — выбор · Нажатие — подтвердить' :
@@ -92,12 +92,11 @@ export default {
     const top = event.detail?.scrollTop;
     if (Number.isFinite(top)) this.scrollPosition = Math.max(0, top);
   },
-  showError(reason) {
+  showError(reason, diagnostic, recovery = 'reconnect') {
     const error = errorView(reason);
-    this.safeError = error.code; this.latency?.finish(error.code);
-    try { wx.setStorageSync('mac-codex-last-error', {code:error.code,at:Date.now()}); } catch (_) {}
+    this.safeError = error.code; this.latency?.error(error.code,diagnostic);
     this.setPhaseData({ phase: 'ERROR', label: LABELS.ERROR, errorText: error.title,
-      hint: 'Нажмите, чтобы подключиться' });
+      hint: recovery==='continue'?'Нажмите, чтобы продолжить':recovery==='reconcile'?'Проверьте задачу на Mac · Нажатие — проверить статус':'Нажмите, чтобы подключиться' });
   },
   bindRecorder() {
     this.recorder.onFrameRecorded(payload => {
@@ -136,8 +135,8 @@ export default {
       else this.client.stop();
       return;
     }
-    if (this.data.phase === 'ERROR') { this.client.open(); return; }
-    if (!['READY', 'DONE','CANCELLED'].includes(this.data.phase) || this.awaitingStop || this.client.operation) return;
+    if (this.data.phase === 'ERROR') { this.client.recover(); return; }
+    if (!['READY', 'DONE','CANCELLED'].includes(this.data.phase) || this.awaitingStop || !this.client.canSubmit()) return;
     if (!this.recorder) { this.showError('microphone_unavailable'); return; }
     this.stopSpeech(); this.latency.sample = null; this.audio.reset(); this.awaitingStop = true;
     this.audio.begin({ requestId: crypto.randomUUID(), stopRecorder: () => {

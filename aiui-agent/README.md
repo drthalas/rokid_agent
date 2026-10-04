@@ -18,6 +18,17 @@ Reuse: the MIT `OneShotAudioSession` / PCM VAD module from ksuzukigh/rokid-perso
 
 Local storage retains the gateway session and pending mutation UUID. The same session resumes after hide/reopen; a retry never mints a new UUID for an uncertain request. A configured sessionId can attach an existing gateway session. Stop is explicit. Back/hide stops capture, TTS and polling but preserves the server task/thread.
 
+After a validated terminal ERROR, tap once to return to READY with the error explanation still
+visible; tap again to dictate a follow-up in the same session/thread. Response/schema or connection
+failures must recover a valid snapshot first. An uncertain outcome stays blocked for reconciliation
+on Mac; tapping only rechecks/retries the retained request UUID. No automatic session reset.
+
+`mac-codex-last-error` stores only a safe error code, timestamp, fixed `stage`/`check` values
+and validated correlation UUIDs, even if no voice capture started. Response JSON/object failures,
+snapshot fields and history envelope failures are distinguishable. No response body, speech,
+credentials or URL is stored. Detailed checks remain device-local; existing timing uploads retain
+their prior schema. See [ALE-469 evidence and remaining physical checks](../specs/006-ale-469-error-recovery/brief.md).
+
 TTS uses native `speechSynthesis.synthesize` / `SpeechAudioPlayer` automatically once per completed turn if present. These APIs allow playback to be stopped before microphone capture. Older firmware without these APIs remains text-only. Russian TTS availability is device/service dependent.
 
 ## Source evidence

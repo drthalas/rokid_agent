@@ -1,5 +1,17 @@
 import { approvalDescriptor, APPROVAL_NOTICES } from './approval-ui.js';
 import { boundedHistory } from './history.js';
+function contractError(code, check, stage) {
+  return Object.assign(new Error(code), { check, stage });
+}
+function requestStage(method, route) {
+  if (route === '/v1/health') return 'health';
+  if (route === '/v1/stt') return 'stt';
+  if (route.endsWith('/turns')) return 'turn_ack';
+  if (route.endsWith('/sessions')) return 'session_ack';
+  if (route.includes('/approvals/')) return 'approval_ack';
+  if (route.endsWith('/stop')) return 'stop_ack';
+  return method === 'GET' ? 'refresh' : 'diagnostics';
+}
 export function validConfig(c) {
   if (!c || typeof c.origin !== 'string' || typeof c.token !== 'string') throw new Error('connection_not_configured');
   const u = new URL(c.origin);
@@ -22,14 +34,15 @@ export function createTransport(wx, config) {
           responseType: 'text', dataType: 'json', timeout: audio ? 100000 : 35000,
           success(res) {
             let body = res.data;
-            if (typeof body === 'string') { try { body = JSON.parse(body); } catch { reject(new Error('invalid_response')); return; } }
-            if (!body || typeof body !== 'object' || Array.isArray(body)) { reject(new Error('invalid_response')); return; }
+            const invalid = check => reject(contractError('invalid_response', check, requestStage(method, route)));
+            if (typeof body === 'string') { try { body = JSON.parse(body); } catch { invalid('response_json'); return; } }
+            if (!body || typeof body !== 'object' || Array.isArray(body) || body instanceof ArrayBuffer || ArrayBuffer.isView(body)) { invalid('response_object'); return; }
             if (res.statusCode !== 200) {
               const error = new Error(typeof body.error === 'string' && /^[a-z_]+$/.test(body.error) ? body.error : 'gateway_error');
-              error.status = res.statusCode; reject(error);
+              error.status = res.statusCode; error.stage = requestStage(method, route); reject(error);
             } else { Object.defineProperties(body, { _startedAt: {value:startedAt}, _receivedAt: {value:Date.now()} }); resolve(body); }
           },
-          fail() { reject(new Error('network_or_tls_error')); },
+          fail() { reject(Object.assign(new Error('network_or_tls_error'), {stage:requestStage(method, route)})); },
           complete() { tasks.delete(task); }
         });
         tasks.add(task);
@@ -51,14 +64,25 @@ export class Conversation {
     }
     // Local cached text from older builds is not authoritative and is never sent to the gateway.
     delete this.saved.history; this.history = {sessionId:this.saved.sessionId,threadId:this.saved.threadId || '',exchanges:[]};
-    this.active = false; this.generation = 0; this.poll = null; this.busy = false; this.retryMs = 1000; this.operation = false; this.phase = 'READY'; this.cancelRequested = false;
+    this.active = false; this.generation = 0; this.poll = null; this.busy = false; this.retryMs = 1000; this.operation = false; this.phase = 'READY'; this.cancelRequested = false; this.readySnapshot = null;
   }
   emit(value) { this.phase = value.state; this.render({ ...value, sessionId: this.saved.sessionId, history: this.history.exchanges.map(e => ({ ...e })) }); }
   persist() { this.storage.set(this.key, this.saved); }
   assertLive(g) { if (!this.active || g !== this.generation) throw new Error('page_closed'); }
+  canSubmit() { return this.active && !this.operation && !this.busy && !this.saved.pending && !!this.readySnapshot; }
+  async recover() {
+    if (!this.active || this.operation) return;
+    if (!this.canSubmit()) return this.open();
+    // Only a fully validated, explicitly certain terminal snapshot allows local dismissal.
+    // This tap acknowledges the error; it neither records nor submits a task.
+    this.clearPoll();
+    const s = this.readySnapshot, current = this.history.exchanges.find(e => e.turnId === s.turnId);
+    this.emit({state:'READY', ready:true, busy:false, restoring:true, turnId:s.turnId,
+      previousError:current?.outcome==='no_answer'?'no_final_answer':s.error || (s.status==='Error'?'turn_failed':'')});
+  }
   async open() {
     if (this.operation) return;
-    this.clearPoll(); this.active = true; const g = ++this.generation; this.operation = true; this.last=null;
+    this.clearPoll(); this.active = true; const g = ++this.generation; this.operation = true; this.last=null; this.readySnapshot=null;
     this.emit({ state: 'THINKING', detail: '', ready: false });
     try {
       const health = await this.transport.request('GET', '/v1/health'); this.assertLive(g); this.diagnostics?.clock(health);
@@ -73,7 +97,9 @@ export class Conversation {
     finally { if (g === this.generation) this.operation = false; }
   }
   async mutate(route, body, g) {
+    this.readySnapshot = null;
     this.saved.pending = { route, body }; this.persist(); // write before any network send
+    if (route.endsWith('/turns')) this.diagnostics?.correlate({sessionId:this.saved.sessionId,threadId:this.saved.threadId,requestId:body.requestId});
     if (route.endsWith('/turns')) this.emit({state:'THINKING', ready:false});
     return this.replay(g);
   }
@@ -81,49 +107,64 @@ export class Conversation {
     const p = this.saved.pending;
     const result = await this.transport.request('POST', p.route, p.body);
     // Persist ACK even if hidden; reopen must not replace a successfully created session.
-    this.validateSnapshot(result);
+    const stage = requestStage('POST', p.route);
+    this.validateSnapshot(result, stage);
+    this.acceptHistory(result, stage);
     this.saved.sessionId = result.id;
-    this.acceptHistory(result);
     this.saved.pending = null; this.persist();
     if (p.route.endsWith('/turns')) { this.diagnostics?.correlate({sessionId:result.id,threadId:result.threadId,turnId:result.turnId,requestId:p.body.requestId}); this.diagnostics?.server(result); }
     this.assertLive(g); return result;
   }
-  validateSnapshot(s) {
-    if (!s || !/^[a-f0-9-]{36}$/.test(s.id) || typeof s.threadId !== 'string' || !['Thinking', 'Working', 'Done', 'Error'].includes(s.status)) throw new Error('invalid_snapshot');
+  validateSnapshot(s, stage = 'refresh') {
+    if (!s || typeof s !== 'object' || Array.isArray(s)) throw contractError('invalid_snapshot', 'snapshot_object', stage);
+    if (typeof s.id !== 'string' || !/^[a-f0-9-]{36}$/.test(s.id)) throw contractError('invalid_snapshot', 'snapshot_id', stage);
+    if (typeof s.threadId !== 'string' || !s.threadId) throw contractError('invalid_snapshot', 'snapshot_thread', stage);
+    if (!['Thinking', 'Working', 'Done', 'Error'].includes(s.status)) throw contractError('invalid_snapshot', 'snapshot_status', stage);
+    if (typeof s.uncertain !== 'boolean') throw contractError('invalid_snapshot', 'snapshot_uncertain', stage);
     if (this.history.threadId && s.id === this.history.sessionId && s.threadId !== this.history.threadId) throw new Error('thread_mismatch');
     if (this.saved.sessionId && s.id !== this.saved.sessionId && !this.saved.pending?.route?.endsWith('/sessions')) throw new Error('session_mismatch');
   }
-  acceptHistory(s) {
-    if (!s.history || s.history.sessionId !== s.id || s.history.threadId !== s.threadId || !Array.isArray(s.history.exchanges)) throw new Error('gateway_history_unavailable');
+  acceptHistory(s, stage = 'refresh') {
+    if (!s.history || typeof s.history !== 'object' || Array.isArray(s.history)) throw contractError('gateway_history_unavailable', 'history_object', stage);
+    if (s.history.sessionId !== s.id || s.history.threadId !== s.threadId) throw contractError('gateway_history_unavailable', 'history_identity', stage);
+    if (!Array.isArray(s.history.exchanges)) throw contractError('gateway_history_unavailable', 'history_exchanges', stage);
     this.history = boundedHistory(s.history, s.id, this.config.token);
     this.saved.threadId = s.threadId;
   }
   async refresh(g = this.generation, restoring = false) {
-    const s = await this.transport.request('GET', '/v1/sessions/' + this.saved.sessionId);
-    this.assertLive(g); this.validateSnapshot(s);
-    if(this.last?.id===s.id&&Number.isFinite(s.revision)&&Number.isFinite(this.last.revision)&&s.revision<this.last.revision)return this.last;
-    this.last = s;
-    this.acceptHistory(s); this.persist();
-    const active=s.status==='Working'||s.status==='Thinking';
-    this.busy=active||s.uncertain===true;
-    this.retryMs = 1000;
-    const approval=approvalDescriptor(s.approval,s.turnId);
-    if(approval)approval.remainingMs=Math.max(0,Math.min(30000,approval.expiresAt-(Number.isFinite(s.clock?.sent)?s.clock.sent:Date.now())));
-    if(s.pendingApproval&&!approval)throw new Error('approval_unavailable');
-    const current=this.history.exchanges.find(e=>e.turnId===s.turnId);
-    const denied=!!(s.approvalNotice||current?.approvalNotice);
-    const phase = approval ? 'APPROVAL' : denied&&active&&s.approvalStopping!==false?'STOPPING':s.uncertain?'ERROR':denied&&!active?'CANCELLED':current?.outcome==='no_answer'?'ERROR':s.status === 'Thinking' ? 'THINKING' : s.status === 'Working' ? 'WORKING' : s.status === 'Done' ? 'DONE' : 'ERROR';
-    const idleRestore = restoring && !this.busy;
-    if (this.diagnostics?.sample?.requestId && this.diagnostics.sample.requestId === s.timing?.requestId) {
-      this.diagnostics.correlate({sessionId:s.id,threadId:s.threadId,turnId:s.turnId}); this.diagnostics.server(s);
-      if (s.status === 'Done' && !idleRestore) this.diagnostics.mark('T9');
+    try {
+      const s = await this.transport.request('GET', '/v1/sessions/' + this.saved.sessionId);
+      this.assertLive(g); this.validateSnapshot(s);
+      if(this.last?.id===s.id&&Number.isFinite(s.revision)&&Number.isFinite(this.last.revision)&&s.revision<this.last.revision)return this.last;
+      this.acceptHistory(s); this.persist();
+      const active=s.status==='Working'||s.status==='Thinking';
+      this.busy=active||s.uncertain===true;
+      this.retryMs = 1000;
+      const approval=approvalDescriptor(s.approval,s.turnId);
+      if(approval)approval.remainingMs=Math.max(0,Math.min(30000,approval.expiresAt-(Number.isFinite(s.clock?.sent)?s.clock.sent:Date.now())));
+      if(s.pendingApproval&&!approval)throw new Error('approval_unavailable');
+      this.last = s;
+      this.readySnapshot = !this.busy && !this.saved.pending && !approval && !s.pendingApproval ? s : null;
+      const current=this.history.exchanges.find(e=>e.turnId===s.turnId);
+      const denied=!!(s.approvalNotice||current?.approvalNotice);
+      const phase = approval ? 'APPROVAL' : denied&&active&&s.approvalStopping!==false?'STOPPING':s.uncertain?'ERROR':denied&&!active?'CANCELLED':current?.outcome==='no_answer'?'ERROR':s.status === 'Thinking' ? 'THINKING' : s.status === 'Working' ? 'WORKING' : s.status === 'Done' ? 'DONE' : 'ERROR';
+      const idleRestore = restoring && !!this.readySnapshot;
+      if (this.diagnostics?.sample?.requestId && this.diagnostics.sample.requestId === s.timing?.requestId) {
+        this.diagnostics.correlate({sessionId:s.id,threadId:s.threadId,turnId:s.turnId}); this.diagnostics.server(s);
+        if (s.status === 'Done' && !idleRestore) this.diagnostics.mark('T9');
+      }
+      this.emit({ state: idleRestore ? 'READY' : (s.error === 'turn_interrupted'&&!denied&&!this.busy ? 'READY' : phase),
+        detail: idleRestore ? '' : (current?.outcome==='no_answer'?'no_final_answer':s.error || ''),
+        ready: !!this.readySnapshot, recovery:this.readySnapshot?'continue':s.uncertain?'reconcile':'reconnect',
+        previousError:idleRestore?(current?.outcome==='no_answer'?'no_final_answer':s.error || (s.status==='Error'?'turn_failed':'')):'',
+        text: idleRestore ? '' : (s.text || ''), project: s.project, threadId: s.threadId, turnId: s.turnId,
+        pendingApproval: s.pendingApproval === true, approval, restoring, busy:active, outcome:current?.outcome, approvalReason:s.approvalNotice, approvalMessage: Object.hasOwn(APPROVAL_NOTICES,s.approvalNotice)?APPROVAL_NOTICES[s.approvalNotice]:'' });
+      if (this.busy) this.poll = this.schedule(() => { this.refresh(g).catch(e => this.failure(e, g)); }, 1000);
+      return s;
+    } catch (error) {
+      if (g === this.generation) this.readySnapshot = null;
+      throw error;
     }
-    this.emit({ state: idleRestore ? 'READY' : (s.error === 'turn_interrupted'&&!denied ? 'READY' : phase),
-      detail: idleRestore ? '' : (current?.outcome==='no_answer'?'no_final_answer':s.error || ''),
-      ready: !this.busy, text: idleRestore ? '' : (s.text || ''), project: s.project, threadId: s.threadId, turnId: s.turnId,
-      pendingApproval: s.pendingApproval === true, approval, restoring, busy:active, outcome:current?.outcome, approvalReason:s.approvalNotice, approvalMessage: Object.hasOwn(APPROVAL_NOTICES,s.approvalNotice)?APPROVAL_NOTICES[s.approvalNotice]:'' });
-    if (this.busy) this.poll = this.schedule(() => { this.refresh(g).catch(e => this.failure(e, g)); }, 1000);
-    return s;
   }
   async decideApproval(id,decision,confirmation,exiting=false) {
     const a=this.last?.approval;
@@ -147,7 +188,7 @@ export class Conversation {
     }
   }
   async submit(text) {
-    if (!this.active || this.operation || this.busy || this.saved.pending) return;
+    if (!this.canSubmit()) return;
     if (typeof text !== 'string' || !text.trim() || text.length > 8000) throw new Error('invalid_prompt');
     this.clearPoll(); this.operation = true; const g = this.generation;
     this.cancelRequested = false;
@@ -163,7 +204,7 @@ export class Conversation {
     finally { if (g === this.generation) this.operation = false; }
   }
   async audio(wav) {
-    if (!this.active || this.operation || this.busy || this.saved.pending) return;
+    if (!this.canSubmit()) return;
     const g = this.generation; this.operation = true;
     this.emit({ state: 'TRANSCRIBING', detail: '', text: '', ready: false });
     let transcript;
@@ -190,7 +231,12 @@ export class Conversation {
   }
   failure(error, g) {
     if (!this.active || g !== this.generation) return;
-    this.emit({ state: 'ERROR', detail: /^[a-z_]+$/.test(error.message) ? error.message : 'client_error', text: '', ready: false });
+    this.readySnapshot = null;
+    const pending = this.saved.pending;
+    this.emit({ state: 'ERROR', detail: /^[a-z_]+$/.test(error.message) ? error.message : 'client_error', text: '', ready: false,
+      recovery:this.last?.uncertain?'reconcile':'reconnect',
+      diagnostic:{stage:error.stage,check:error.check,sessionId:this.saved.sessionId,threadId:this.saved.threadId,
+        turnId:pending?undefined:this.last?.turnId,requestId:pending?.body?.requestId || this.last?.timing?.requestId} });
     this.clearPoll();
     // Only a GET/retained UUID is retried, never mint a new turn id after a lost ACK.
     if (!error.status && error.message === 'network_or_tls_error') {

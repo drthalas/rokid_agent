@@ -93,3 +93,13 @@ physical current-request decision boundary. Real isolated Calculator read lifeti
 auto_review proved; full physical workflow remains separate. Private source0.5.0 candidate includes
 default-decline APPROVAL,30s timeout and high-risk second confirmation. Linear remains authoritative;
 cloud/physical readiness must be read from latest deployment evidence, not this build summary.
+
+
+## ALE-469 isolated client repair — 2026-10-03
+
+Clean managed worktree matched live main `953a790c`; local uncommitted candidate on
+`codex/ale-469-error-recovery`. All 66 AIUI tests passed across the full run and one
+sandbox-approved isolated HTTPS integration retry (initial loopback `EPERM`). Static check
+passed with a temporary example config. No AIX packaging/deployment, production restart,
+shared Computer Use mutation or Local checkout access. Physical failure correlation remains
+unavailable; RV101 acceptance is pending. [Scope, exact candidate and evidence](../specs/006-ale-469-error-recovery/brief.md).

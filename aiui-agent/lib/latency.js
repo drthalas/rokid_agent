@@ -1,5 +1,8 @@
 // Content-free, bounded measurement. Dates from different clocks carry uncertainty.
+import { errorView } from './voice-ui.js';
 const TIMES = [...Array.from({length:12},(_,i)=>'T'+i),'sttPrepareMs','sttProcessMs','sttReadMs','sttLoadMs','sttInternalMs'];
+const ERROR_STAGES = ['health','stt','session_ack','turn_ack','refresh','stop_ack','approval_ack'];
+const ERROR_CHECKS = ['response_json','response_object','snapshot_object','snapshot_id','snapshot_thread','snapshot_status','snapshot_uncertain','history_object','history_identity','history_exchanges'];
 export class Latency {
   constructor({ storage, transport, id, now = Date.now }) { Object.assign(this,{storage,transport,id,now}); this.key='mac-codex-latency-v1'; this.rows=[]; }
   begin() { this.sample={captureId:this.id(),T0:this.now()}; }
@@ -21,6 +24,20 @@ export class Latency {
     if (!this.sample) return;
     this.clock(body);
     for (const key of TIMES) if (key in (body.timing || {}) && Number.isFinite(body.timing[key])) this.sample[key]=body.timing[key];
+  }
+  error(reason, context = {}) {
+    const code = errorView(reason).code;
+    // Never store response bodies, routes or native errors.
+    const record = {code,at:this.now()};
+    if (ERROR_STAGES.includes(context.stage)) record.stage=context.stage;
+    if (ERROR_CHECKS.includes(context.check)) record.check=context.check;
+    for (const key of ['captureId','sessionId','threadId','turnId','requestId']) {
+      const value = Object.hasOwn(context,key) ? context[key] : this.sample?.[key];
+      if (typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value)) record[key]=value;
+    }
+    try { this.storage.set('mac-codex-last-error',record); } catch {}
+    // Rich diagnostics stay local; keep the existing gateway timing contract unchanged.
+    this.finish(['turn_failed','codex_turn_failed','request_outcome_unknown','request_id_conflict'].includes(code)?'client_error':code);
   }
   finish(reason) {
     if (!this.sample) return;

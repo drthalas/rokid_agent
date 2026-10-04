@@ -12,3 +12,18 @@ test('timing collector is bounded/content-free, clock-aware and best-effort',asy
  await Promise.resolve();assert.equal(d.rows.length,12);assert.ok(posts.every(p=>!JSON.stringify(p).includes('secret')));
  assert.ok(posts.every(p=>timingSample(p)));assert.ok(d.sample.clockUncertaintyMs>=0);
 });
+
+
+test('local error diagnostics are precise without a capture and omit payloads and unvalidated fields',async()=>{
+ const writes=new Map(),posts=[],sid=randomUUID(),rid=randomUUID();
+ const d=new Latency({storage:{set:(k,v)=>writes.set(k,structuredClone(v))},transport:{request:async(m,r,v)=>posts.push(v)},id:randomUUID,now:()=>123});
+ d.error('invalid_snapshot',{stage:'refresh',check:'snapshot_status',sessionId:sid,requestId:rid,threadId:'secret',text:'private text',token:'secret'});
+ assert.deepEqual(writes.get('mac-codex-last-error'),{code:'invalid_snapshot',at:123,stage:'refresh',check:'snapshot_status',sessionId:sid,requestId:rid});
+ assert.equal(posts.length,0);
+ d.begin();d.correlate({turnId:randomUUID()});d.error('invalid_response',{stage:'turn_ack',check:'response_json',turnId:undefined,requestId:rid});
+ assert.equal(writes.get('mac-codex-last-error').turnId,undefined);assert.equal(writes.get('mac-codex-last-error').captureId,d.sample.captureId);
+ assert.equal(posts.at(-1).reason,'invalid_response');assert.ok(timingSample(posts.at(-1)));assert.ok(!('check' in posts.at(-1)));
+ d.error('private native exception',{stage:'secret',check:'secret',url:'https://private.invalid'});
+ assert.equal(writes.get('mac-codex-last-error').code,'client_error');assert.ok(!JSON.stringify([...writes]).includes('secret'));
+ d.error('turn_failed');assert.equal(posts.at(-1).reason,'client_error');assert.ok(timingSample(posts.at(-1)));
+});

@@ -11,7 +11,7 @@ import { fixture, mockCodex, delay } from '../../test/helpers.mjs';
 
 test('AIUI wx adapter → unchanged HTTPS gateway → mock app-server, three turns, bounded history and reconnect', async t => {
   const f=fixture(), mock=await mockCodex(), codex=new Codex({port:mock.port,attach:true});
-  const engine=new Engine(f.config,codex);let servers,client;
+  const engine=new Engine(f.config,codex);let servers,client,malformedAck=false;
   t.after(async()=>{client?.close();engine.close();await servers?.close();await codex.close();await mock.close();f.cleanup()});
   await codex.start();await engine.recover();servers=await serve(f.config,engine);
   // This shim trusts the test CA. It does NOT claim AIUI can trust a private CA on RV101.
@@ -19,7 +19,11 @@ test('AIUI wx adapter → unchanged HTTPS gateway → mock app-server, three tur
     const url=new URL(o.url);
     const req=https.request({hostname:'127.0.0.1',port:url.port,path:url.pathname,method:o.method,
       servername:'localhost',ca:fs.readFileSync(f.config.certFile),headers:o.header},res=>{
-      const parts=[];res.on('data',p=>parts.push(p));res.on('end',()=>{o.success({statusCode:res.statusCode,data:JSON.parse(Buffer.concat(parts))});o.complete()});
+      const parts=[];res.on('data',p=>parts.push(p));res.on('end',()=>{
+        let data=JSON.parse(Buffer.concat(parts));
+        if(malformedAck&&url.pathname.endsWith('/turns')){malformedAck=false;data='{';}
+        o.success({statusCode:res.statusCode,data});o.complete();
+      });
     });req.on('error',()=>{o.fail({errMsg:'network'});o.complete()});
     req.end(o.data ? JSON.stringify(o.data):undefined);return{abort:()=>req.destroy()};
   }};
@@ -43,5 +47,18 @@ test('AIUI wx adapter → unchanged HTTPS gateway → mock app-server, three tur
   mock.finish(first,'','interrupted');await delay(10);await client.refresh();
   assert.equal(views.at(-1).state,'CANCELLED');const failed=client.history.exchanges.at(-1);assert.equal(failed.completed,false);assert.equal(failed.outcome,'interrupted');assert.ok(failed.assistant.includes('Действие не выполнено'));
   client.close();client=build();await client.open();assert.ok(client.history.exchanges.at(-1).assistant.includes('Действие не выполнено'));
-
+  // ALE-469: terminal failure -> deliberate acknowledgement -> a new same-thread turn.
+  await client.submit('Fail safely');mock.finish(first,'Useful failure explanation','failed');await delay(10);await client.refresh();
+  assert.equal(client.phase,'ERROR');const failedTurn=client.last.turnId;
+  await client.recover();assert.equal(client.phase,'READY');
+  malformedAck=true;await client.submit('Continue once');assert.equal(client.phase,'ERROR');
+  const pending=structuredClone(client.saved.pending),count=mock.calls.filter(x=>x.method==='turn/start').length;
+  await client.submit('Do not duplicate');assert.deepEqual(client.saved.pending,pending);
+  client.close();client=build();await client.open();assert.equal(client.saved.pending,null);
+  assert.equal(mock.calls.filter(x=>x.method==='turn/start').length,count);
+  mock.finish(first,'Recovered answer');await delay(10);await client.refresh();
+  assert.equal(client.saved.sessionId,id);assert.equal(client.saved.threadId,first);
+  assert.equal(client.history.exchanges.find(e=>e.turnId===failedTurn).assistant,'Useful failure explanation');
+  assert.equal(client.history.exchanges.filter(e=>e.requestId===pending.body.requestId).length,1);
+  assert.equal(client.history.exchanges.at(-1).assistant,'Recovered answer');
 });

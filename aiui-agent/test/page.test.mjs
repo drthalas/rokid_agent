@@ -13,7 +13,7 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
 async function waitFor(check){for(let n=0;n<150;n++){if(check())return;await pause(10);}throw Error('page timeout')}
 function harness({beforeLoad=()=>{},beforeShow=()=>{},rejectStatus=false}={}){
  const db=new Map(),calls=[],states=[],callbacks={},spoken=[],order=[];let time=1000,reads=0;const exchanges=[];
- let session={id:randomUUID(),threadId:randomUUID(),turnId:'old-turn',status:'Done',text:'Old setup advice from an earlier conversation'};
+ let session={id:randomUUID(),threadId:randomUUID(),turnId:'old-turn',status:'Done',uncertain:false,text:'Old setup advice from an earlier conversation'};
  const wx={getStorageSync:k=>db.get(k),setStorageSync:(k,v)=>db.set(k,structuredClone(v)),
   request(o){calls.push({url:o.url,method:o.method,data:o.data});let aborted=false;queueMicrotask(()=>{
    if(aborted){o.fail({});o.complete();return;}const route=new URL(o.url).pathname;let data;
@@ -168,5 +168,28 @@ test('ERROR always keeps a visible current-turn explanation above long history a
  assert.equal(h.page.data.errorText,reason);assert.equal(h.spoken.filter(x=>x===reason).length,1);
  h.page.renderState({state:'ERROR',detail:'network_or_tls_error',turnId:'other-turn',busy:false,history});
  assert.equal(h.page.data.errorText,'Нет связи с Mac');
+ }finally{h.page.cleanup()}
+});
+
+
+test('terminal ERROR tap acknowledges to READY with explanation; next tap records a same-session follow-up',async()=>{
+ const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');
+ const original=h.page.client.transport.request.bind(h.page.client.transport);let failed=true;
+ const turnId=randomUUID(),requestId=randomUUID(),reason='Задача не выполнена. Попробуйте другую команду.';
+ h.page.client.transport.request=async(...args)=>{const s=await original(...args);return failed&&s.id?{...s,status:'Error',uncertain:false,error:'turn_failed',turnId,history:{...s.history,exchanges:[{requestId,turnId,user:'Test failure',assistant:reason,completed:false,outcome:'failed'}]}}:s};
+ await h.page.client.refresh();await pause(0);assert.equal(h.page.data.phase,'ERROR');assert.equal(h.page.data.hint,'Нажмите, чтобы продолжить');
+ const calls=h.calls.length,sid=h.page.client.saved.sessionId;h.tap();assert.equal(h.page.data.phase,'READY');assert.equal(h.calls.length,calls);
+ assert.equal(h.page.data.errorText,reason);assert.equal(h.page.data.history[0].assistant,reason);assert.equal(h.spoken.filter(x=>x===reason).length,1);
+ h.tap();assert.equal(h.page.data.phase,'LISTENING');assert.equal(h.page.data.history[0].assistant,reason);failed=false;h.voice();h.tap();await waitFor(()=>h.page.data.phase==='DONE');
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/turns')).length,1);assert.ok(h.calls.find(c=>c.url.endsWith('/turns')).url.includes(sid));
+ }finally{h.page.cleanup()}
+});
+test('uncertain ERROR tap rechecks status without recording or sending another turn',async()=>{
+ const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');h.page.client.schedule=()=>1;
+ const original=h.page.client.transport.request.bind(h.page.client.transport);
+ h.page.client.transport.request=async(...args)=>{const s=await original(...args);return s.id?{...s,status:'Error',error:'turn_interrupted',uncertain:true}:s};
+ await h.page.client.refresh();assert.equal(h.page.data.phase,'ERROR');assert.ok(h.page.data.hint.includes('Проверьте задачу на Mac'));
+ h.tap();await waitFor(()=>h.page.data.phase==='ERROR');h.tap();await waitFor(()=>h.page.data.phase==='ERROR');
+ assert.equal(h.order.filter(x=>x==='record').length,0);assert.equal(h.calls.filter(c=>c.url.endsWith('/turns')).length,0);
  }finally{h.page.cleanup()}
 });

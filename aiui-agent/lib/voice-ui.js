@@ -21,11 +21,13 @@ const ERROR_MESSAGES = {
   recovery_requires_local_review: 'Нужно проверить задачу на Mac', pending_request_needs_review: 'Нужно проверить задачу на Mac',
   session_mismatch: 'Диалог изменился. Проверьте Mac', thread_mismatch: 'Диалог изменился. Проверьте Mac',
   session_not_found: 'Диалог не найден на Mac', connection_not_configured: 'Подключение к Mac не настроено',
-  invalid_response: 'Не удалось прочитать ответ Mac', invalid_snapshot: 'Не удалось прочитать ответ Mac',
+  invalid_response: 'Не удалось разобрать ответ Mac', invalid_snapshot: 'Некорректное состояние диалога на Mac',
+  turn_failed: 'Задача завершилась с ошибкой', codex_turn_failed: 'Состояние задачи нужно проверить на Mac',
+  request_outcome_unknown: 'Нужно проверить доставку на Mac', request_id_conflict: 'Нужно проверить запрос на Mac',
   no_final_answer:'Codex не вернул итоговый ответ',
   approval_unavailable: 'Это подтверждение недоступно на очках', approval_not_current: 'Подтверждение уже закрыто',
   approval_completion_uncertain: 'Действие отклонено. Состояние задачи нужно проверить на Mac',
-  gateway_history_unavailable: 'Обновите gateway на Mac',
+  gateway_history_unavailable: 'Не удалось прочитать историю Mac',
   client_error: 'Не удалось выполнить запрос', gateway_error: 'Ошибка на Mac', turn_interrupted: 'Задача остановлена'
 };
 export function errorView(reason) {
