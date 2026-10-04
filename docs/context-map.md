@@ -4,6 +4,7 @@ Read the relevant row, not every document on every task.
 
 | Task | Canonical context / implementation |
 |---|---|
+| Current runtime / deployment / physical state | [Derived current-state snapshot](current-state.md), [maintenance rules](development-workflow.md#current-state-snapshot); reconcile with linked canonical evidence |
 | Product/task status | [Linear Rokid_agent](https://linear.app/drthalas/project/rokid-agent-8d46c39dc1d2), [ALE-451 milestone](https://linear.app/drthalas/issue/ALE-451); lifecycle in [workflow](development-workflow.md#linear-task-lifecycle) |
 | Product intent / scope | [Project brief](project-brief.md) |
 | Technical architecture / gaps | [Architecture](../ARCHITECTURE.md), [AIUI ADR](adr/ADR-001-aiui-primary.md), [network ADR](adr/ADR-002-loopback-boundary.md), [private deployment ADR](adr/ADR-003-private-deployment.md) |

@@ -30,6 +30,30 @@ record, with linked repository specifications/evidence where needed.
 
 Stage report: LINEAR → RESULT → CHECKS → GIT → PHYSICAL (PASS / NEEDS TEST / NOT RUN) → NEXT LINEAR ISSUE, with the session header and checkpoint metrics below.
 
+## Current-state snapshot
+
+Codex owns maintenance of [docs/current-state.md](current-state.md). Read it at task start when runtime,
+deployment or physical state matters. It is a concise derived operational snapshot, not another backlog:
+Linear owns task/product status, GitHub main owns code/history, Spec Kit validation carries detailed
+evidence, and setup-status records environment/bootstrap evidence. Resolve conflicts explicitly against
+those sources; a newer owner acceptance in Linear can supersede older repository evidence without
+rewriting its history. Unknown or unverified values stay labelled as such, with last-known date/source.
+
+Refresh only when a major checkpoint materially changes current state: a committed candidate,
+production runtime change, cloud AIX deployment/active readback, physical acceptance, major blocker or
+resolution, or active-focus transition. Do not update after each small edit or make a bookkeeping-only
+commit just to chase HEAD. Before editing, reconcile Git/main, current Linear issues/comments and latest
+validation evidence. Record the main SHA observed at reconciliation; the containing docs checkpoint's
+own SHA is resolved from Git history, never guessed or self-embedded. Recheck remote main before push
+and reconcile intervening changes without modifying other active worktrees.
+
+Keep roughly one to two screens: timestamp, main/runtime/AIX identities, candidate/unreleased state,
+focus, physical acceptance, material blockers/deferred architecture work and one exact next step.
+Replace stale state instead of appending chronology; link detailed evidence. Never infer deployment or
+physical success from commits, tests or cloud badges. Updating this snapshot grants no production access.
+Verify links/Markdown, factual consistency, secrets and full diff; include the update in the relevant
+checkpoint and its Linear report. No runtime/inference/physical tests are needed for snapshot-only edits.
+
 ## Choose the process
 
 | Mode | Risk and uncertainty | Process |

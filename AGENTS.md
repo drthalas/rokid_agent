@@ -39,6 +39,8 @@ Local development: filesystem → shell/CLI → npm/aix-cli/Gradle → git/GitHu
 
 Выбери режим FAST / STANDARD / DEEP по риску и неопределённости ([workflow](docs/development-workflow.md#choose-the-process)); режим не отменяет обязательные проверки или authorization. Нетривиальная задача: plan → implement → verify → diff review. Исправляй внесённые регрессии; посторонние дефекты сообщай отдельно. До диагностики задай question → expected evidence → timeout → stop condition. После двух эквивалентных failures без новых evidence смени гипотезу/способ проверки или сообщи blocker. Блокер описывай через проверенное и недостающее; продолжай независимую работу. Предпочитай корректность, проверяемость и поддерживаемость скорости.
 
+Codex отвечает за [current-state snapshot](docs/current-state.md): читай его в начале задачи, когда важны runtime/deployment/physical state. Обновляй при существенном checkpoint после сверки Git, Linear и latest validation evidence, не после каждой мелкой правки; заменяй устаревшее, не добавляй историю. Границы источников, триггеры и неизвестные значения — в [maintenance rules](docs/development-workflow.md#current-state-snapshot).
+
 ## 4. Изменения
 
 Минимальный связанный diff, принятые паттерны, без побочного refactor/abstraction/dependency. Необходимую зависимость обоснуй и согласуй lockfile. Сохраняй чужие изменения, untracked и staged state; при конкурентных правках перечитай актуальные файлы.
