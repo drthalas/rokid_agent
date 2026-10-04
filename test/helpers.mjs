@@ -58,7 +58,7 @@ export function fixture() {
   execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', path.join(dir, 'key.pem'), '-out', path.join(dir, 'cert.pem'), '-days', '1', '-subj', '/CN=localhost'], { stdio: 'ignore' });
   fs.chmodSync(path.join(dir, 'key.pem'), 0o600);
   const config = { host: '127.0.0.1', port: 0, adminPort: 0, projects: { demo: fs.realpathSync(dir) }, defaultProject: 'demo', stateFile: path.join(dir, 'state.json'),
-    tokenFile: path.join(dir, 'device-token'), adminTokenFile: path.join(dir, 'admin-token'), certFile: path.join(dir, 'cert.pem'), keyFile: path.join(dir, 'key.pem'), approvalTimeoutMs: 60 };
+    tokenFile: path.join(dir, 'device-token'), adminTokenFile: path.join(dir, 'admin-token'), certFile: path.join(dir, 'cert.pem'), keyFile: path.join(dir, 'key.pem'), approvalTimeoutMs: 60, ephemeralThreads: true };
   return { dir, config, cleanup: () => fs.rmSync(dir, { recursive: true, force: true }) };
 }
 export function request(config, port, route, body, { admin = false, token, method } = {}) {

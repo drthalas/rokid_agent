@@ -68,8 +68,10 @@ export class Engine {
     return this.once(body.requestId, ['create', alias], async () => {
       requireValue(Object.keys(this.data.sessions).length < 100, 'session_capacity_reached', 503);
       const started = await this.codex.request('thread/start', { cwd, ...policy, ...(this.config.model ? { model: this.config.model } : {}),
+        ...(this.config.ephemeralThreads === true ? { ephemeral: true } : {}),
         developerInstructions: GATEWAY_INSTRUCTIONS });
       this.codex.recordProfile(started); const {thread}=started;
+      if (this.config.diagnosticThreadName) await this.codex.request('thread/name/set', {threadId:thread.id,name:this.config.diagnosticThreadName});
       await this.codex.verifyCapabilities(thread.id,cwd);
       const s = { id: randomUUID(), project: alias, threadId: thread.id, turnId: null, status: 'Done', text: '', partial: '', error: null, uncertain: false, revision: 1, history: [] };
       this.data.sessions[s.id] = s; return s;

@@ -11,7 +11,7 @@ Read the relevant row, not every document on every task.
 | Local development / process | [Workflow](development-workflow.md), [root instructions](../AGENTS.md), [constitution](../.specify/memory/constitution.md) |
 | AIUI UX / speech / HUD | [Frontend guide](../aiui-agent/README.md), [page](../aiui-agent/pages/index/index.ink), [controls](../aiui-agent/lib/voice-ui.js), [frontend client](../aiui-agent/lib/gateway.js) |
 | Mac gateway / state / auth | [Server](../src/server.mjs), [engine](../src/engine.mjs), [protocol](../src/protocol.mjs), [config](../src/config.mjs) |
-| Codex integration | [Adapter](../src/codex.mjs), [engine](../src/engine.mjs), [real smoke](../scripts/smoke.mjs) |
+| Codex integration | [Adapter](../src/codex.mjs), [engine](../src/engine.mjs), [real smoke](../scripts/smoke.mjs), [diagnostic cleanup plan](ale-464-cleanup-plan.md) |
 | STT / fallback clients | [STT](../src/stt.mjs), [Android sources](../android-plugin/app/src), [runbook](../RUNBOOK.md) |
 | Deployment / operations | [AIUI setup](../AIUI_SETUP.md), [Mac runbook](../RUNBOOK.md), [HTTP deploy prototype](../scripts/rokid-deploy.mjs), [cloud fallback](../scripts/rokid-cloud-repackage.mjs) |
 | Security / private configuration | [Architecture security](../ARCHITECTURE.md#security-and-persistence), [ADR-003](adr/ADR-003-private-deployment.md), [safe AIUI example](../aiui-agent/config.example.js), [ignore rules](../.gitignore) |

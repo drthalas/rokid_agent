@@ -22,6 +22,8 @@ export function loadConfig(file) {
   for (const key of ['port', 'adminPort', 'codexPort']) requireValue(Number.isInteger(c[key]) && c[key] > 0 && c[key] < 65536, 'invalid_port');
   c.host ??= '127.0.0.1'; c.codexBinary ??= 'codex';
   if (Object.hasOwn(c, 'model')) requireValue(typeof c.model === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(c.model), 'invalid_model');
+  if (Object.hasOwn(c, 'ephemeralThreads')) requireValue(typeof c.ephemeralThreads === 'boolean', 'invalid_ephemeral_threads');
+  if (Object.hasOwn(c, 'diagnosticThreadName')) requireValue(typeof c.diagnosticThreadName === 'string' && /^rokid-test [A-Z0-9-]+ [a-z0-9-]{1,48}$/.test(c.diagnosticThreadName), 'invalid_diagnostic_thread_name');
   validateSttConfig(c.stt);
   return c;
 }

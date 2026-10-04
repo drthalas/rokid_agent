@@ -7,22 +7,25 @@ import { policy } from '../src/protocol.mjs';
 import { serve } from '../src/server.mjs';
 import { fixture, request, delay } from '../test/helpers.mjs';
 import { smokeModel } from './smoke-model.mjs';
+import { archiveReleasedDiagnostic } from './diagnostic-thread.mjs';
 const model = smokeModel();
 console.log(`smoke_model=${model}`);
 const f = fixture();
 f.config.model = model;
+f.config.ephemeralThreads = false; // This smoke proves app-server restart continuity.
+f.config.diagnosticThreadName = 'rokid-test ALE-464 root-smoke';
 const marker = 'ROKID_' + randomUUID().slice(0, 8);
 fs.writeFileSync(path.join(f.dir, 'README.md'), `# ${marker}\nInteractive Rokid voice terminal for local Codex on Mac.\n`);
 fs.writeFileSync(path.join(f.dir, 'work.txt'), 'TODO: verify glasses microphone\nTODO: verify reconnect\n');
 let codex = new Codex({ port: Number(process.env.ROKID_SMOKE_PORT ?? 18390) });
-let engine = new Engine(f.config, codex); let servers;
+let engine = new Engine(f.config, codex); let servers, threadId;
 try {
   await codex.start(); await engine.recover(); servers = await serve(f.config, engine);
   const call = (route, body) => request(f.config, servers.server.address().port, route, body);
   const health = await call('/v1/health'); if (!health.body.loggedIn) throw new Error('codex_not_logged_in');
   const start = await call('/v1/sessions', { requestId: randomUUID() });
   if (start.status !== 200) throw new Error(start.body.error);
-  const id = start.body.id, threadId = start.body.threadId;
+  const id = start.body.id; threadId = start.body.threadId;
   const responses = [];
   for (const text of ['Посмотри README текущего проекта и скажи, что это за проект. Назови его точное название.', 'А теперь найди основные TODO. Назови также проект из нашего предыдущего сообщения, не перечитывая README.']) {
     const sent = await call(`/v1/sessions/${id}/turns`, { requestId: randomUUID(), text });
@@ -54,4 +57,4 @@ try {
   if (resumed.model !== model) throw new Error('smoke_model_mismatch');
   const read = await codex.request('thread/read', { threadId, includeTurns: true });
   console.log(JSON.stringify({ pass: true, threadId, turns: read.thread.turns.length, responses }, null, 2));
-} finally { engine.close(); await servers?.close(); await codex.close(); f.cleanup(); }
+} finally { engine.close(); await servers?.close(); await codex.close(); try { if (threadId) await archiveReleasedDiagnostic(threadId, f.config.projects.demo); } finally { f.cleanup(); } }
