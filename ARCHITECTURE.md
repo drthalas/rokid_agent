@@ -242,3 +242,17 @@ Public turn/steer with exact expectedTurnId supplies a fixed, explicitly untrust
 this is neither a new task nor approval. Metadata identifies the source item and current turn. Original gateway voice history takes precedence over internal
 steering text. Existing native tools read the file and call the normal connector MIME API. No experimental
 API enablement or permission-profile weakening is needed. [Spec/evidence](specs/005-ale-465-device-approval/validation.md).
+
+## ALE-466 isolated meeting prototype (not production)
+
+[Specification and limits](specs/009-ale-466-meeting-recorder/spec.md),
+[prototype contract](specs/009-ale-466-meeting-recorder/contracts/recording.md), and
+[evidence](specs/009-ale-466-meeting-recorder/evidence.md) describe a dormant development path under
+`prototypes/meeting/`. Production entrypoints do not import it. It models RecorderManager capture,
+owner-bound chunk ACK/retry, private restartable Mac storage and bounded local PCM transcription.
+Opus header/payload are preserved as opaque records; device compatibility and decoding are unproven.
+Summary output has an injected text-only adapter and evidence validation, not a production Codex
+integration. Gmail draft and Drive upload proofs use synthetic data in the development session's
+connected apps. Physical RV101 stop/lifecycle/HUD, consent/retention, transcription boundary quality,
+production provider/runtime integration and rollout remain separate gates. No AIUI package is created
+or deployed by this prototype.

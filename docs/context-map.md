@@ -24,3 +24,5 @@ No product feature spec or `specs/` directory has been created by this bootstrap
 Historical bounded task artifact: [HUD history and latency diagnosis](../specs/001-hud-history-latency/spec.md), including physical feedback, acceptance, plan and verification.
 
 Current approval feature: [ALE-465 specification](../specs/005-ale-465-device-approval/spec.md), [contract](../specs/005-ale-465-device-approval/contracts/approvals.md).
+
+Meeting recorder development: [ALE-466 spec](../specs/009-ale-466-meeting-recorder/spec.md), [isolated prototype evidence](../specs/009-ale-466-meeting-recorder/evidence.md). No production rollout.
