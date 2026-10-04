@@ -164,3 +164,103 @@ AIX deploy for HUD → physical RV101 Russian STT and structured-answer comparis
 Keep ALE-470 Needs Test, not Done. No ALE-469 or ALE-471 scope was implemented here.
 Recommend NEW SESSION at this checkpoint. Exact context/token/cached/reasoning/response/
 tool counters and actual model/effort are UNAVAILABLE; no compaction occurred in this work.
+
+## Guarded production release — 2026-10-04
+
+SESSION: CONTINUE. MODEL / EFFORT: actual runtime identifiers UNAVAILABLE;
+requested GPT-6 Astra / Medium. WHY: approved integration, bounded transport
+compatibility prerequisite, and private HUD deployment; stop before physical testing.
+
+Fetched origin/main was `7514d16`; local main fast-forwarded to `86701da75415dd06a67533b7986ccfb7c0623e0b`.
+No push performed. Parked ALE-469 commit `f49d22c` is not an ancestor and its worktree
+was untouched. No deferred ALE-471 work was added. Existing unstaged ALE-465/ALE-471
+validation reports were preserved. Final runtime candidate is `86701da` plus exactly
+one uncommitted line in `src/codex.mjs`: loopback WebSocket maxPayload 8→16 MiB.
+Codex module SHA-256: `b19e5694c4b4cd0011fca60953050979e322931404fdd959a2ff0faedcdaaa13`.
+New targeted test and this release documentation are also uncommitted.
+
+### Verification and recovery
+
+One initial release matrix on `86701da`: root 75/75, AIUI 56/56, AIUI check and real
+Codex recovery smoke PASS. No matrix restart for frontend. After the explicitly approved
+transport change, targeted payload/integration/protocol/history checks 20/20 and affected
+full gateway suite 77/77 PASS. Diff review/check PASS. No public/device HTTP, auth,
+sandbox, approval, exactly-once or uncertain-state implementation changed.
+
+Transferred selected full turbo model to main's ignored private storage; exact model
+SHA-256 matched the checkpoint. Only production STT fields changed: large-v3-turbo,
+gpu=true, ru, selected Russian vocabulary prompt. Isolated authenticated HTTPS STT
+smoke on transferred model PASS: 2.899375 s controlled synthetic input, 1824 ms wall;
+TLS/auth, unchanged response protocol, no task execution and temporary cleanup PASS.
+No private speech collected. Physical microphone quality remains unproven.
+
+First guarded restart exposed an existing 8 MiB transport ceiling: one thread/read
+response disconnected the loopback client, causing three resume_failed/uncertain sessions.
+Original private config/state were backed up. No cloud deployment occurred while blocked.
+Owner explicitly approved only 8→16 MiB after diagnosis. Bounded 16 MiB read-only probes
+measured the three real payloads: 9,974,764 / 3,106 / 3,106 bytes. All fit the new ceiling;
+each latest native completed turn matched its saved turn ID. Regression coverage verifies
+large-history recovery with no duplicate turn/start, and rejects a response above 16 MiB.
+
+Guarded restart with the one-line fix used the existing state as-is. **No manual clearing,
+reset, backup restoration or request replay.** Native recovery reconciled all three sessions
+to Done, error=null, uncertain=false. Session/thread/turn mappings, final texts and request
+deduplication map preserved. Bounded history is semantically exact against pre-failure backup:
+one previously absent optional approvalNotice became null, all other fields equal. Initial
+byte-for-byte history assertion detected this normalization; read-only semantic verification
+confirmed it without another restart. Local/public authenticated health 200, unauthenticated
+401; codex/loggedIn/stt true. All three runtime profiles workspaceWrite/on-request/auto_review.
+Private frontend config unchanged; endpoint/project/session/TTS and credentials preserved.
+Tunnel/account/device binding and native consent configuration were not changed.
+
+### One private cloud deployment
+
+The one local private AIX validation package was retained throughout the gateway-only fix:
+VERSION `b5bcf7fa-c251-46e0-9db9-774a47896f8d`, SHA-256
+`59a33e64de536b55a5bb359db311096a25caacf2d01c1b0a54128caca20c1220`.
+Isolated staging contained only candidate frontend runtime and existing private config.
+Working `aiui-agent/config.js` was never replaced. No local repack after gateway fix.
+
+Imported that staging into existing private Jarvis, one explicit Upload to cloud, one
+Package AIX, one Save Details. Package action also performs its built-in source upload.
+Native picker focus and stale debugger failures were resolved by a fresh foreground Studio
+tab; no source upload/package had occurred in those failed attempts. Automatic approval
+review once stopped an unexecuted menu click because of a usage limit; owner then requested
+continuation, and the same native review path succeeded. No review bypass. No public
+Submit for Review. Existing Network/Camera/Microphone/Speaker permissions retained.
+
+Saved private Draft version **1.2.0** (prior 1.1.17). Authoritative agent metadata returned
+its ACTIVE artifact MD5 and URL. Downloaded that exact artifact once into private storage:
+
+- VERSION: `d3dd71bf-150d-48ba-b37a-c85b2be6427f`
+- MD5: `229c9c8cff4b3488f525ce9555f341dd`
+- SHA-256: `92eb142a4ba66876f044c560a2c08dc610ba4ca3d6a62c2e256abe904f4e6c54`
+
+ACTIVE readback PASS: 14 runtime/metadata/license files match candidate staging; expected
+hudHistory/assistantLines/section-space and executable line projection; persistent consent
+and second confirmation preserved. Exact semantic private config/device token matches;
+admin/old tokens absent; endpoint/project/session/TTS retained; dev files excluded. No token
+or private AIX contents disclosed. This proves cloud artifact identity, not installation or
+physical behavior on RV101.
+
+Physical testing **NOT RUN**, intentionally. ALE-470 ready for Needs Test. Next owner-led
+phase: update glasses resources, compare real Russian microphone transcription and multiline
+HUD/history/TTS behavior. No ALE-469 merge/deploy, no screenshot/email work.
+
+Final checkpoint: Linear Needs Test confirmed. End-to-end wall interval approximately
+48 minutes (includes owner/usage-limit pauses, not active compute time). Actual model/effort,
+context used/max/utilization, input/cached/output/reasoning tokens, model-response count and
+tool-call count UNAVAILABLE. Observed compactions: 0. Git main `86701da`, empty index,
+new fix/test/docs uncommitted plus preserved pre-existing report diffs; no push. Recommendation:
+NEW SESSION for physical acceptance because this authorized release phase is complete.
+
+## Reproducibility checkpoint — 2026-10-04
+
+Owner requested committing/pushing the already-deployed compatibility change before
+physical acceptance. This checkpoint records only that one-line loopback 8→16 MiB fix,
+its existing regression tests and ALE-470 runbook/release evidence. Runtime and test
+bytes remain identical to the verified deployment. The preceding uncommitted/no-push
+statements describe the earlier release checkpoint, not a new pending deployment.
+No AIX repackage/redeploy, production restart, state reset or full release-matrix rerun
+is needed for this source checkpoint. Keep the unrelated ALE-465/ALE-471 reports unstaged.
+The resulting commit and production-source verification are recorded in Linear ALE-470.

@@ -56,7 +56,7 @@ export class Codex extends EventEmitter {
     }, 1000);
   }
   async connect() {
-    const ws = new WebSocket(`ws://127.0.0.1:${this.port}`, { maxPayload: 8 * 1024 * 1024 });
+    const ws = new WebSocket(`ws://127.0.0.1:${this.port}`, { maxPayload: 16 * 1024 * 1024 });
     ws.on('error', () => {});
     await new Promise((resolve, reject) => {
       const timer = setTimeout(() => { ws.terminate(); reject(new Fault('codex_connect_timeout')); }, 800);

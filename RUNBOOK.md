@@ -95,7 +95,9 @@ mkdir -p .local/models
 curl -fL https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin -o .local/models/ggml-base.bin
 ```
 
-Модель multilingual base (~148 MB), не `.en`. Это отдельный локальный runtime, не платный STT API и не часть ChatGPT OAuth. Конфигурация уже добавлена на этой машине:
+Исходная модель — multilingual base (~148 MB), не `.en`; текущий private production
+вариант описан ниже в ALE-470. Это отдельный локальный runtime, не платный STT API
+и не часть ChatGPT OAuth. Исходный config fragment:
 
 ```json
 "stt": {
@@ -117,14 +119,16 @@ node scripts/stt-smoke.mjs
 
 Это проверяет Whisper, не микрофон очков.
 
-### ALE-470: рекомендуемый STT candidate (ещё не production)
+### ALE-470: private production STT (2026-10-04; physical Needs Test)
 
 На Apple M4 / 24 GiB, whisper.cpp 1.9.4 выбран **full large-v3-turbo + Metal + ru**.
 На одинаковых 10 синтетических командах WER снизился с 42,4% до 13,6%, медиана
 wall latency выросла с 1,04 до 1,54 с. Это proxy benchmark, не измерение RV101 микрофона.
 [Полные результаты и ограничения](specs/008-ale-470-stt-hud/evidence.md).
 
-Будущий private config fragment (сохранить остальные поля, применить только в фазе интеграции):
+Выбранная конфигурация применена в private production 2026-10-04. Контролируемый
+HTTPS STT smoke прошёл; качество реального микрофона RV101 ещё не проверено.
+Private config fragment (остальные поля сохраняются):
 
 ```json
 "stt": {
@@ -150,6 +154,12 @@ wall latency выросла с 1,04 до 1,54 с. Это proxy benchmark, не �
 `whisper_model_load: MTL0 total size`; на этой машине выбран Apple M4.
 Sandbox может блокировать аппаратный доступ: использовать штатное native approval,
 не отключать безопасность gateway. Обычный production STT не пишет transcript/stderr в лог.
+
+Loopback Codex app-server WebSocket ограничен **16 MiB** на входящее сообщение.
+Это совместимость с сохранённой recovery-историей размером 9 974 764 bytes;
+public/device HTTP limits не менялись. При превышении 16 MiB остановить release
+и диагностировать; не увеличивать лимит автоматически и не сбрасывать uncertain/state.
+Штатный recovery сверяет сохранённый turn с app-server и сохраняет deduplication.
 
 Воспроизводимый benchmark, строго последовательно (параметры файлов — свои private пути):
 
