@@ -40,9 +40,9 @@ export function createTransport(wx, config) {
   };
 }
 export class Conversation {
-  constructor({ config, transport, storage, id, render, diagnostics = null, schedule = setTimeout, unschedule = clearTimeout }) {
+  constructor({ config, transport, storage, id, render, onTranscript = null, diagnostics = null, schedule = setTimeout, unschedule = clearTimeout }) {
     this.config = validConfig(config); this.transport = transport; this.storage = storage;
-    Object.assign(this, { id, render, schedule, unschedule, diagnostics });
+    Object.assign(this, { id, render, onTranscript, schedule, unschedule, diagnostics });
     this.key = 'mac-codex-session:' + this.config.origin;
     this.saved = storage.get(this.key) || { sessionId: null, seed: '', pending: null };
     if (this.config.sessionId && this.saved.seed !== this.config.sessionId) {
@@ -174,7 +174,7 @@ export class Conversation {
       transcript = result.text;
     } catch (e) { this.failure(e, g); }
     finally { if (g === this.generation) this.operation = false; }
-    if (transcript && this.active && g === this.generation) await this.submit(transcript);
+    if (transcript && this.active && g === this.generation && !this.onTranscript?.(transcript)) await this.submit(transcript);
   }
   async stop() {
     if (!this.active || !this.saved.sessionId) return;

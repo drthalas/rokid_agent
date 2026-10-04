@@ -9,6 +9,8 @@
 import { ApprovalCard } from '../../lib/approval-ui.js';
 import { answerLines } from '../../lib/answer-lines.js';
 import config from '../../config.js';
+import buildInfo from '../../lib/build-info.js';
+import {isBuildQuery, buildLabel} from '../../lib/build-query.js';
 import { Latency } from '../../lib/latency.js';
 import { OneShotAudioSession, PcmVoiceActivityDetector, VOICE_ACTIVITY_LIMITS } from '../../lib/one-shot-audio.js';
 import { pcmToWav } from '../../lib/wav.js';
@@ -16,8 +18,9 @@ import { Conversation, createTransport } from '../../lib/gateway.js';
 import { TempleControls, StatusPulse, ACTIVE_STATES, LABELS, BUSY_STATES, briefAnswer, errorView } from '../../lib/voice-ui.js';
 
 export default {
-  data: { approval:null, approvalAllow:false, approvalSecond:false, approvalSubmitting:false, approvalRemainingSeconds:0, approvalFeedback:'', approvalHeading:'', approvalAcceptLabel:'', approvalScopeText:'', approvalDisclosure:'', phase: 'THINKING', label: 'Подключаюсь', statusActive: false, statusOpacity: 1, history: [], hudHistory: [], errorText: '', hint: '', scroll: 0, scrollTarget: '' },
+  data: { buildInfoText:'', approval:null, approvalAllow:false, approvalSecond:false, approvalSubmitting:false, approvalRemainingSeconds:0, approvalFeedback:'', approvalHeading:'', approvalAcceptLabel:'', approvalScopeText:'', approvalDisclosure:'', phase: 'THINKING', label: 'Подключаюсь', statusActive: false, statusOpacity: 1, history: [], hudHistory: [], errorText: '', hint: '', scroll: 0, scrollTarget: '' },
   onLoad() {
+    this.setData({installedBuildLabel:buildLabel(buildInfo)});
     this.pageEpoch = 0; this.visible = false; this.spokenTurn = null; this.awaitingStop = false; this.trace = [];
     this.approvalCard = new ApprovalCard({decide:(...args)=>this.client.decideApproval(...args),render:(value,done)=>typeof done==='function'?this.setData(value,done):this.setData(value),speak:text=>this.speak(text)});
     this.audio = new OneShotAudioSession({
@@ -28,7 +31,7 @@ export default {
       this.latency = new Latency({storage:{set:(k,v)=>wx.setStorageSync(k,v)},transport:createTransport(wx,config),id:()=>crypto.randomUUID()});
       this.client = new Conversation({ diagnostics: this.latency, config, transport: createTransport(wx, config),
         storage: { get: key => wx.getStorageSync(key), set: (key, value) => wx.setStorageSync(key, value) },
-        id: () => crypto.randomUUID(), render: value => this.renderState(value) });
+        id: () => crypto.randomUUID(), render: value => this.renderState(value), onTranscript: text => this.localTranscript(text) });
       this.recorder = wx.media.getRecorderManager();
       if (this.recorder) this.bindRecorder();
     } catch (_) { this.showError('connection_not_configured'); }
@@ -89,6 +92,13 @@ export default {
       this.spokenOutcomeKey=spokenKey;this.spokenTurn=value.turnId;this.speak(briefAnswer(latest.assistant));
     }
   },
+  localTranscript(text) {
+    if (!isBuildQuery(text)) return false;
+    const label = buildLabel(buildInfo);
+    this.setPhaseData({phase:'DONE', buildInfoText:label, errorText:'', hint:'Нажмите для следующей реплики'});
+    this.speak(label);
+    return true;
+  },
   handleScroll(event) {
     const top = event.detail?.scrollTop;
     if (Number.isFinite(top)) this.scrollPosition = Math.max(0, top);
@@ -140,7 +150,7 @@ export default {
     if (this.data.phase === 'ERROR') { this.client.open(); return; }
     if (!['READY', 'DONE','CANCELLED'].includes(this.data.phase) || this.awaitingStop || this.client.operation) return;
     if (!this.recorder) { this.showError('microphone_unavailable'); return; }
-    this.stopSpeech(); this.latency.sample = null; this.audio.reset(); this.awaitingStop = true;
+    this.stopSpeech(); this.setData({buildInfoText:''}); this.latency.sample = null; this.audio.reset(); this.awaitingStop = true;
     this.audio.begin({ requestId: crypto.randomUUID(), stopRecorder: () => {
       if (this.visible) this.setPhaseData({ phase: 'TRANSCRIBING', label: LABELS.TRANSCRIBING, errorText: '', hint: 'Нажатие — отмена' });
       this.recorder.stop().catch(() => { this.awaitingStop = false; this.recordingError('recording_failed'); });
@@ -189,6 +199,8 @@ export default {
       <text class="state">{{label}}</text>
     </view>
     <text ink:if="{{errorText}}" class="error">{{errorText}}</text>
+    <text ink:if="{{phase === 'ERROR'}}" class="hint">{{installedBuildLabel}}</text>
+    <text ink:if="{{buildInfoText}}" class="body">{{buildInfoText}}</text>
     <view ink:if="{{approval}}" class="approval-card {{approval.scope === 'app' ? 'persistent-approval' : ''}}">
       <text class="approval-action">{{approvalHeading}}</text>
       <text class="body">{{approval.target}}</text>

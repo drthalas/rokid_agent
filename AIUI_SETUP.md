@@ -170,6 +170,8 @@ npm run pack -- --private-package
 - `.local/aiui-private/` — папка для импорта в Craft;
 - `dist/mac-codex-aiui-private.aix` — настроенный личный AIX.
 
+Каждая упаковка создаёт отдельный `releaseId` вместе с Git SHA в `lib/build-info.js` внутри AIX. После отдельно разрешённого private deploy и скачивания именно active cloud AIX команда `node aiui-agent/tools/verify-active-build.mjs LOCAL_AIX ACTIVE_AIX NATIVE_VERSION` сверяет маркер и выдаёт соответствие cloud nativeVersion → releaseId → Git SHA. До cloud package и обновления ресурсов на RV101 это только локальная идентичность кандидата. Запрос «какая версия Jarvis?» после Mac STT показывает встроенный маркер без обращения к Codex. При потере Mac он виден на экране ошибки, но голосовой offline запрос пока невозможен без локального ASR.
+
 **Граница секрета:** флаг `--private-package` намеренно включает device token в `config.js` приватного проекта. AIX не является зашифрованным хранилищем. При Upload этот токен будет доступен Rokid Cloud и пользователям, имеющим доступ к исходникам/пакету. Такой агент нельзя публиковать в общем Store или класть в публичный GitHub. Скрипт не переносит token автоматически из Mac config, требует явный private-флаг, не печатает token и отказывается от известного admin-token. Приватный пакет с device token теперь создан локально по явному запросу пользователя. Приватная cloud-версия уже сохранена в Rokid account; публичная публикация не выполнялась.
 
 Для отзыва доступа смените device-token на Mac и перепакуйте личного агента; текущий gateway использует один общий device token, поэтому это отзовёт и другие клиенты с ним. Account-bound secret provisioning вместо embedded token — отдельное улучшение, не реализованное здесь.

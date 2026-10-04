@@ -7,11 +7,12 @@ import {randomUUID} from 'node:crypto';
 const root=path.resolve(import.meta.dirname,'..');
 let source=fs.readFileSync(path.join(root,'pages/index/index.ink'),'utf8').match(/<script setup>([\s\S]*?)<\/script>/)[1];
 source=source.replace("import config from '../../config.js';", "const config={origin:'https://example.com',token:'a'.repeat(43),tts:true};");
+source=source.replace("import buildInfo from '../../lib/build-info.js';", "const buildInfo={gitSha:'f65d152bc94633cb3dbdd5512bc230267b2a1e9b',releaseId:'00000000-0000-4000-8000-000000000473'};");
 source=source.replace(/from '(\.\.\/\.\.\/lib\/[^']+)'/g,(_,s)=>'from '+JSON.stringify(pathToFileURL(path.resolve(root,'pages/index',s)).href));
 const spec=(await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'))).default;
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 async function waitFor(check){for(let n=0;n<150;n++){if(check())return;await pause(10);}throw Error('page timeout')}
-function harness({beforeLoad=()=>{},beforeShow=()=>{},rejectStatus=false,answer='Я работаю через ваш Mac.'}={}){
+function harness({beforeLoad=()=>{},beforeShow=()=>{},rejectStatus=false,transcript='Скажи одним предложением, что ты работаешь через мой Mac',answer='Я работаю через ваш Mac.'}={}){
  const db=new Map(),calls=[],states=[],callbacks={},spoken=[],order=[];let time=1000,reads=0;const exchanges=[];
  let session={id:randomUUID(),threadId:randomUUID(),turnId:'old-turn',status:'Done',text:'Old setup advice from an earlier conversation'};
  const wx={getStorageSync:k=>db.get(k),setStorageSync:(k,v)=>db.set(k,structuredClone(v)),
@@ -19,7 +20,7 @@ function harness({beforeLoad=()=>{},beforeShow=()=>{},rejectStatus=false,answer=
    if(aborted){o.fail({});o.complete();return;}const route=new URL(o.url).pathname;let data;
    if(route==='/v1/health')data={codex:true,loggedIn:true};
    else if(route==='/v1/diagnostics')data={ok:true};
-   else if(route==='/v1/stt')data={text:'Скажи одним предложением, что ты работаешь через мой Mac',timing:{T2:Date.now(),T3:Date.now(),T4:Date.now()}};
+   else if(route==='/v1/stt')data={text:transcript,timing:{T2:Date.now(),T3:Date.now(),T4:Date.now()}};
    else if(route.endsWith('/turns')){reads=0;session={...session,status:'Working',turnId:randomUUID(),text:'',timing:{requestId:o.data.requestId,T5:Date.now(),T6:Date.now(),T7:Date.now()}};exchanges.push({requestId:o.data.requestId,turnId:session.turnId,user:o.data.text,assistant:'',completed:false});data={...session};}
    else if(route.endsWith('/stop')){session={...session,status:'Error',error:'turn_interrupted'};data={...session};}
    else{if(session.status==='Working'&&++reads>=2)session={...session,status:'Done',text:answer,timing:{...session.timing,T8:Date.now()}};data={...session};}
@@ -57,6 +58,23 @@ test('invocation shows READY, two tap-driven turns retain thread, automatic TTS 
   h.voice();h.tap();await waitFor(()=>h.page.data.phase==='DONE');
   const turns=h.calls.filter(c=>c.url.endsWith('/turns'));assert.equal(turns.length,2);assert.equal(turns[0].url,turns[1].url);
   h.back();assert.equal(h.page.visible,false);assert.equal(h.page.client.active,false);
+ }finally{h.page.cleanup()}
+});
+test('version utterance uses installed marker without a Codex turn',async()=>{
+ const h=harness({transcript:'Какая версия Jarvis?'});try{
+  await waitFor(()=>h.page.data.phase==='READY');h.tap();h.voice();h.tap();
+  await waitFor(()=>h.page.data.buildInfoText.includes('resource 00000000'));
+  assert.equal(h.page.data.phase,'DONE');
+  assert.equal(h.calls.filter(c=>c.url.endsWith('/turns')).length,0);
+  assert.deepEqual(h.spoken,[h.page.data.buildInfoText]);
+  assert.equal(h.page.data.history.length,0);
+ }finally{h.page.cleanup()}
+});
+test('installed marker remains visible when gateway health fails',async()=>{
+ const h=harness();try{
+  h.page.showError('network_or_tls_error');
+  assert.equal(h.page.data.phase,'ERROR');
+  assert.ok(h.page.data.installedBuildLabel.includes('resource 00000000'));
  }finally{h.page.cleanup()}
 });
 test('double tap/Backspace after recording completion cancels delayed upload',async()=>{

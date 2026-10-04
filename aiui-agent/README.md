@@ -32,6 +32,8 @@ Frontend 0.4.0 removes the four-button menu. Tap while ready/done records, tap w
 
 Jarvis uses ВЫ / JARVIS speaker labels and a small active-state opacity pulse. Two-finger gestures are not core controls. Optional input-probe tools are not a release gate or part of the default package.
 
+Each isolated AIX package gets an embedded `gitSha` and random `releaseId` in `lib/build-info.js`. The `pack` command verifies the marker after packaging. Once an authorized deployment produces a downloaded **active** cloud AIX, `node aiui-agent/tools/verify-active-build.mjs LOCAL_AIX ACTIVE_AIX NATIVE_VERSION` compares its marker with the local candidate and prints the nativeVersion → buildInfo mapping. The `package.json` version and cloud nativeVersion are separate values. After Mac STT returns a phrase such as «какая версия Jarvis?», the glasses display and optionally speak the embedded marker without creating a Codex turn. If the Mac is unavailable, the marker remains visible on the connection error screen. Voice recognition itself currently uses Mac STT, so offline voice queries need a verified on-device ASR path before they can work without the Mac.
+
 ALE-470 preserves assistant line breaks as separate column children because Ink `text`
 collapses embedded newlines. Empty lines create a small section gap; existing typography,
 scrolling and canonical history remain unchanged. `hudHistory` is only a display projection;
