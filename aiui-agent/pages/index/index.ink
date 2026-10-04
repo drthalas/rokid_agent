@@ -7,6 +7,7 @@
 </script>
 <script setup>
 import { ApprovalCard } from '../../lib/approval-ui.js';
+import { answerLines } from '../../lib/answer-lines.js';
 import config from '../../config.js';
 import { Latency } from '../../lib/latency.js';
 import { OneShotAudioSession, PcmVoiceActivityDetector, VOICE_ACTIVITY_LIMITS } from '../../lib/one-shot-audio.js';
@@ -15,7 +16,7 @@ import { Conversation, createTransport } from '../../lib/gateway.js';
 import { TempleControls, StatusPulse, ACTIVE_STATES, LABELS, BUSY_STATES, briefAnswer, errorView } from '../../lib/voice-ui.js';
 
 export default {
-  data: { approval:null, approvalAllow:false, approvalSecond:false, approvalSubmitting:false, approvalRemainingSeconds:0, approvalFeedback:'', approvalHeading:'', approvalAcceptLabel:'', approvalScopeText:'', approvalDisclosure:'', phase: 'THINKING', label: 'Подключаюсь', statusActive: false, statusOpacity: 1, history: [], errorText: '', hint: '', scroll: 0, scrollTarget: '' },
+  data: { approval:null, approvalAllow:false, approvalSecond:false, approvalSubmitting:false, approvalRemainingSeconds:0, approvalFeedback:'', approvalHeading:'', approvalAcceptLabel:'', approvalScopeText:'', approvalDisclosure:'', phase: 'THINKING', label: 'Подключаюсь', statusActive: false, statusOpacity: 1, history: [], hudHistory: [], errorText: '', hint: '', scroll: 0, scrollTarget: '' },
   onLoad() {
     this.pageEpoch = 0; this.visible = false; this.spokenTurn = null; this.awaitingStop = false; this.trace = [];
     this.approvalCard = new ApprovalCard({decide:(...args)=>this.client.decideApproval(...args),render:(value,done)=>typeof done==='function'?this.setData(value,done):this.setData(value),speak:text=>this.speak(text)});
@@ -66,7 +67,7 @@ export default {
     const revision = latest ? latest.requestId + ':' + latest.completed + ':' + latest.assistant.length : '';
     const changed = revision !== this.historyRevision;
     this.historyRevision = revision;
-    const update = { history, ...(changed && latest ? { scrollTarget: 'exchange-' + latest.requestId } : {}) };
+    const update = { history, hudHistory: history.map(item => ({ ...item, assistantLines: answerLines(item.assistant) })), ...(changed && latest ? { scrollTarget: 'exchange-' + latest.requestId } : {}) };
     if (value.state === 'ERROR') { this.approvalCard.clear(); this.setData(update); this.showError(value.detail); if(!value.busy&&latest?.turnId===value.turnId&&latest.assistant)this.setData({errorText:briefAnswer(latest.assistant)}); this.speakOutcome(value,latest); return; }
     const phase = value.state;
     if(phase!=='APPROVAL'&&this.approvalCard.current)this.approvalCard.clear();
@@ -200,11 +201,16 @@ export default {
     </view>
     <scroll-view ink:if="{{!approval}}" class="answer" scroll-y="true" scroll-top="{{scroll}}" scroll-into-view="{{scrollTarget}}" bindscroll="handleScroll">
       <view class="content">
-        <view ink:for="{{history}}" ink:key="requestId" id="exchange-{{item.requestId}}" class="exchange">
+        <view ink:for="{{hudHistory}}" ink:key="requestId" id="exchange-{{item.requestId}}" class="exchange">
           <text class="speaker">ВЫ</text>
           <text class="body">{{item.user}}</text>
           <text ink:if="{{item.assistant}}" class="speaker">JARVIS</text>
-          <text ink:if="{{item.assistant}}" class="body">{{item.assistant}}</text>
+          <view ink:if="{{item.assistant}}" class="assistant-lines">
+            <view ink:for="{{item.assistantLines}}" ink:for-item="line" ink:key="id" class="assistant-line">
+              <view ink:if="{{line.blank}}" class="section-space"></view>
+              <text ink:else class="body answer-line">{{line.text}}</text>
+            </view>
+          </view>
         </view>
       </view>
     </scroll-view>
@@ -224,6 +230,10 @@ export default {
 .exchange { gap:4px; padding-top:8px; margin-bottom:8px; border-top:1px solid var(--divider); }
 .error, .body { width:100%; font-size:19px; font-weight:400; line-height:1.35; }
 .body { margin-bottom:8px; }
+.assistant-lines, .assistant-line { display:flex; flex-direction:column; width:100%; }
+.assistant-lines { margin-bottom:8px; }
+.answer-line { margin-bottom:0px; }
+.section-space { height:13px; flex-shrink:0; }
 .speaker { font-family:monospace; font-size:23px; font-weight:700; line-height:1.1; color:var(--primary); }
 .approval-card { display:flex; flex-direction:column; gap:6px; border-top:1px solid var(--divider); padding-top:8px; }
 .approval-choice { font-size:17px; font-weight:700; line-height:1.05; }

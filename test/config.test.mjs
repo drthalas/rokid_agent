@@ -15,3 +15,14 @@ test('canonical project allowlist rejects aliases, symlink replacement and weak 
   fs.rmdirSync(a); fs.symlinkSync(b, a); assert.throws(() => projectPath(loaded, 'demo'), /project_path_changed/);
   fs.chmodSync(c.tokenFile, 0o644); assert.throws(() => loadConfig(file), /private_file_permissions/);
 });
+
+test('STT GPU and vocabulary prompt are bounded private configuration', t => {
+  const f = fixture(); t.after(f.cleanup);
+  const file = path.join(f.dir, 'config.json');
+  const load = stt => { fs.writeFileSync(file, JSON.stringify({ ...f.config, port:8443, adminPort:8791, codexPort:8390, stt })); return loadConfig(file); };
+  assert.equal(load(undefined).stt, undefined);
+  const prompt = 'Русская речь. Названия: Jarvis, Rokid, Codex, Gmail, Google Drive, Linear, GitHub, AIX, Computer Use, Mac mini.';
+  assert.deepEqual(load({ gpu:true, prompt }).stt, { gpu:true, prompt });
+  for (const stt of [null, [], 'x', {gpu:'true'}, {gpu:1}, {prompt:42}, {prompt:'a'.repeat(513)}, {prompt:'line\nbreak'}, {prompt:'bad\0value'}]) assert.throws(() => load(stt), /invalid_stt/);
+  assert.equal(load({prompt:''}).stt.prompt, '');
+});

@@ -6,6 +6,12 @@ import { promisify } from 'node:util';
 import { Fault, requireValue } from './protocol.mjs';
 const run = promisify(execFile);
 export const MAX_AUDIO = 960044; // 30 s, mono 16 kHz signed PCM16 + canonical WAV header.
+export function validateSttConfig(config) {
+  if (config === undefined) return;
+  requireValue(config !== null && typeof config === 'object' && !Array.isArray(config), 'invalid_stt_config');
+  if (Object.hasOwn(config, 'gpu')) requireValue(typeof config.gpu === 'boolean', 'invalid_stt_gpu');
+  if (Object.hasOwn(config, 'prompt')) requireValue(typeof config.prompt === 'string' && config.prompt.length <= 512 && !/[\u0000-\u001f\u007f]/.test(config.prompt), 'invalid_stt_prompt');
+}
 export function validateWav(b) {
   requireValue(b.length > 3244 && b.length <= MAX_AUDIO && b.length % 2 === 0, 'invalid_audio_size');
   requireValue(b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WAVE' &&
@@ -15,7 +21,7 @@ export function validateWav(b) {
     b.readUInt32LE(40) === b.length - 44 && b.readUInt32LE(4) === b.length - 8, 'invalid_wav');
 }
 export class Stt {
-  constructor(config) { this.config = config; this.running = false; }
+  constructor(config) { validateSttConfig(config); this.config = config; this.running = false; }
   async transcribe(bytes) {
     validateWav(bytes);
     requireValue(this.config?.binary && this.config?.model, 'stt_not_configured', 503);
@@ -26,7 +32,7 @@ export class Stt {
       const input = path.join(dir, 'input.wav'), out = path.join(dir, 'result');
       await fs.writeFile(input, bytes, { mode: 0o600 });
       const processStart = Date.now();
-      const { stderr } = await run(this.config.binary, ['-m', this.config.model, '-f', input, '-l', this.config.language ?? 'auto', '-otxt', '-of', out, '-nt', ...(this.config.gpu === true ? [] : ['-ng'])],
+      const { stderr } = await run(this.config.binary, ['-m', this.config.model, '-f', input, '-l', this.config.language ?? 'auto', '-otxt', '-of', out, '-nt', ...(this.config.gpu === true ? [] : ['-ng']), ...(this.config.prompt?.trim() ? ['--prompt', this.config.prompt.trim()] : [])],
         { timeout: 90000, maxBuffer: 1024 * 1024, env: { PATH: process.env.PATH, HOME: process.env.HOME, TMPDIR: process.env.TMPDIR }, shell: false });
       const processEnd = Date.now();
       const text = (await fs.readFile(out + '.txt', 'utf8')).trim();

@@ -7,6 +7,21 @@ import {Engine} from '../src/engine.mjs';
 import {fixture,mockCodex,delay} from './helpers.mjs';
 import {hydrateHistory} from '../src/history.mjs';
 
+test('structured assistant text survives persisted gateway state and Codex resume',async t=>{
+ const fixtureText=JSON.parse(fs.readFileSync(new URL('./fixtures/linear-answer.json',import.meta.url)));
+ const answer=fixtureText.answer+'\n\n'+fixtureText.namesAndUrl;
+ const f=fixture(),mock=await mockCodex(),codex=new Codex({port:mock.port,attach:true});let engine=new Engine(f.config,codex);
+ t.after(async()=>{engine.close();await codex.close();await mock.close();f.cleanup()});
+ await codex.start();await engine.recover();const s=await engine.create({requestId:randomUUID()});
+ const instructions=mock.calls.find(c=>c.method==='thread/start').params.developerInstructions;
+ assert.match(instructions,/one compact bullet or numbered item per line/);assert.match(instructions,/Preserve IDs, names and URLs exactly/);
+ await engine.turn(s.id,{requestId:randomUUID(),text:fixtureText.question});mock.finish(s.threadId,answer);await delay(20);
+ assert.equal(engine.snapshot(engine.get(s.id)).history.exchanges[0].assistant,answer);
+ assert.equal(JSON.parse(fs.readFileSync(f.config.stateFile)).sessions[s.id].history[0].assistant,answer);
+ engine.close();for(const event of ['notification','request','offline','reconnected'])codex.removeAllListeners(event);
+ engine=new Engine(f.config,codex);await engine.recover();assert.equal(engine.snapshot(engine.get(s.id)).history.exchanges[0].assistant,answer);
+});
+
 test('gateway owns six exchanges, dedupes requests, redacts tokens and restores after restart',async t=>{
  const f=fixture(),mock=await mockCodex(),codex=new Codex({port:mock.port,attach:true});let engine=new Engine(f.config,codex);
  t.after(async()=>{engine.close();await codex.close();await mock.close();f.cleanup()});

@@ -2,7 +2,9 @@
 export const BUSY_STATES = ['TRANSCRIBING', 'THINKING', 'WORKING', 'STOPPING'];
 export const LABELS = { STOPPING:'Останавливаю', CANCELLED:'Не выполнено', APPROVAL: 'Требуется подтверждение', READY: 'Готов', LISTENING: 'Слушаю', TRANSCRIBING: 'Распознаю', THINKING: 'Думаю', WORKING: 'Выполняю', DONE: 'Готово', ERROR: 'Ошибка' };
 export function briefAnswer(text, limit = 300) {
-  const plain = String(text || '').replace(/```[\s\S]*?```/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[#*_`>]/g, '').replace(/\s+/g, ' ').trim();
+  const plain = String(text || '').replace(/```[\s\S]*?```/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/^\s*(?:[-*•‣]|\d+[.)])\s+/gm, '').replace(/^\s*[-=_]{3,}\s*$/gm, '')
+    .replace(/[#*_`>]/g, '').replace(/\s+/g, ' ').trim();
   if (!plain) return text ? 'Ответ содержит код. Полный текст ниже.' : '';
   if (plain.length <= limit) return plain;
   const sentences = plain.match(/[^.!?]+[.!?]+(?:\s|$)/g) || [];

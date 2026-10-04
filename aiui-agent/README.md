@@ -31,3 +31,10 @@ Do not confuse successful packaging or browser preview with installation into a 
 Frontend 0.4.0 removes the four-button menu. Tap while ready/done records, tap while listening sends, tap while working cancels. The gateway persists six bounded same-session exchanges and supplies authoritative history snapshots across recording/reopen, including a fresh device cache. Ink list/conditional rendering uses `ink:for`/`ink:if`, not WeChat `wx:` directives. Each assistant answer appears once; a short extractive version is used only for TTS. The newest exchange receives focus; temple swipe scrolls history. The wearer confirmed tap recording/send and states on the earlier build; history rendering and automatic TTS remain a separate acceptance step for this build. Timing telemetry contains only bounded UUIDs/numbers/safe codes; see the task spec and AIUI setup.
 
 Jarvis uses ВЫ / JARVIS speaker labels and a small active-state opacity pulse. Two-finger gestures are not core controls. Optional input-probe tools are not a release gate or part of the default package.
+
+ALE-470 preserves assistant line breaks as separate column children because Ink `text`
+collapses embedded newlines. Empty lines create a small section gap; existing typography,
+scrolling and canonical history remain unchanged. `hudHistory` is only a display projection;
+reopen rebuilds it from gateway history. Normal prose is not split into sentences. The bounded
+TTS preview removes list markers separately. Real Ink WASM reproduction and the pending
+physical acceptance are recorded in [ALE-470 evidence](../specs/008-ale-470-stt-hud/evidence.md).

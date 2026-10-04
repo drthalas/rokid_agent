@@ -11,7 +11,7 @@ source=source.replace(/from '(\.\.\/\.\.\/lib\/[^']+)'/g,(_,s)=>'from '+JSON.str
 const spec=(await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'))).default;
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 async function waitFor(check){for(let n=0;n<150;n++){if(check())return;await pause(10);}throw Error('page timeout')}
-function harness({beforeLoad=()=>{},beforeShow=()=>{},rejectStatus=false}={}){
+function harness({beforeLoad=()=>{},beforeShow=()=>{},rejectStatus=false,answer='Я работаю через ваш Mac.'}={}){
  const db=new Map(),calls=[],states=[],callbacks={},spoken=[],order=[];let time=1000,reads=0;const exchanges=[];
  let session={id:randomUUID(),threadId:randomUUID(),turnId:'old-turn',status:'Done',text:'Old setup advice from an earlier conversation'};
  const wx={getStorageSync:k=>db.get(k),setStorageSync:(k,v)=>db.set(k,structuredClone(v)),
@@ -22,7 +22,7 @@ function harness({beforeLoad=()=>{},beforeShow=()=>{},rejectStatus=false}={}){
    else if(route==='/v1/stt')data={text:'Скажи одним предложением, что ты работаешь через мой Mac',timing:{T2:Date.now(),T3:Date.now(),T4:Date.now()}};
    else if(route.endsWith('/turns')){reads=0;session={...session,status:'Working',turnId:randomUUID(),text:'',timing:{requestId:o.data.requestId,T5:Date.now(),T6:Date.now(),T7:Date.now()}};exchanges.push({requestId:o.data.requestId,turnId:session.turnId,user:o.data.text,assistant:'',completed:false});data={...session};}
    else if(route.endsWith('/stop')){session={...session,status:'Error',error:'turn_interrupted'};data={...session};}
-   else{if(session.status==='Working'&&++reads>=2)session={...session,status:'Done',text:'Я работаю через ваш Mac.',timing:{...session.timing,T8:Date.now()}};data={...session};}
+   else{if(session.status==='Working'&&++reads>=2)session={...session,status:'Done',text:answer,timing:{...session.timing,T8:Date.now()}};data={...session};}
    if(data?.id){if(data.status==='Done'&&exchanges.length){exchanges.at(-1).assistant=data.text;exchanges.at(-1).completed=true;}data.history={sessionId:data.id,threadId:data.threadId,exchanges:structuredClone(exchanges.slice(-6))};}
    o.success({statusCode:200,data});o.complete();});return{abort(){aborted=true}};
   },media:{getRecorderManager:()=>({
@@ -70,9 +70,10 @@ test('fresh opening does not display or speak a completed historical response',a
 
 test('HUD renders each assistant once, retains full long answer and scroll position',async()=>{
  const markup=fs.readFileSync(path.join(root,'pages/index/index.ink'),'utf8').match(/<page>([\s\S]*?)<\/page>/)[1];
- assert.equal((markup.match(/>{{item.assistant}}<\/text>/g)||[]).length,1);
+ assert.equal((markup.match(/>{{line.text}}<\/text>/g)||[]).length,1);
+ assert.ok(markup.includes('ink:for="{{item.assistantLines}}"'));
  assert.ok(!/summary|fullText|Полный ответ/.test(markup));
- assert.ok(markup.includes('ink:for="{{history}}"'));assert.ok(markup.includes('ink:if="{{item.assistant}}"'));assert.ok(!/wx:(for|if|key)/.test(markup));
+ assert.ok(markup.includes('ink:for="{{hudHistory}}"'));assert.ok(markup.includes('ink:if="{{item.assistant}}"'));assert.ok(!/wx:(for|if|key)/.test(markup));
  assert.ok(markup.includes('{{item.user}}'));
  const h=harness();try{await waitFor(()=>h.page.data.phase==='READY');
  const answer='Длинный ответ. '.repeat(100),requestId=randomUUID();
@@ -84,6 +85,18 @@ test('HUD renders each assistant once, retains full long answer and scroll posit
  h.page.renderState(value);assert.equal(h.page.data.scroll,390);assert.equal(h.page.data.scrollTarget,'');
  h.page.showError('Glasses 4060 (sensitive detail)');assert.equal(h.page.safeError,'client_error');
  assert.ok(!h.page.data.errorText.includes('4060'));assert.equal(h.page.data.history.length,1);
+ }finally{h.page.cleanup()}
+});
+
+test('structured Linear answer keeps logical lines and blank section through live HUD and reopen',async()=>{
+ const fixture=JSON.parse(fs.readFileSync(path.join(root,'../test/fixtures/linear-answer.json')));
+ const answer=fixture.answer+'\n\n'+fixture.namesAndUrl;
+ const h=harness({answer});try{
+  await waitFor(()=>h.page.data.phase==='READY');h.tap();h.voice();h.tap();await waitFor(()=>h.page.data.phase==='DONE');await pause(0);
+  const check=()=>{assert.equal(h.page.data.history[0].assistant,answer);const row=h.page.data.hudHistory[0];assert.equal(row.assistant,answer);assert.equal(row.assistantLines.map(l=>l.text).join('\n'),answer);assert.equal(row.assistantLines[1].blank,true);assert.equal(row.assistantLines.filter(l=>l.text.startsWith('•')).length,3);};
+  check();assert.equal(h.spoken.length,1);assert.ok(!/[•*_`#]/.test(h.spoken[0]));assert.ok(h.spoken[0].includes('ALE-470'));
+  h.page.handleScroll({detail:{scrollTop:110}});h.page.onKeyUp({code:'ArrowDown',preventDefault(){}});assert.equal(h.page.data.scroll,220);
+  h.back();h.page.onShow();await waitFor(()=>h.page.data.phase==='READY'&&!h.page.client.operation);check();assert.equal(h.spoken.length,1);
  }finally{h.page.cleanup()}
 });
 

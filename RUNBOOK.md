@@ -115,7 +115,62 @@ ffmpeg -y -loglevel error -i .local/stt-smoke.aiff -ar 16000 -ac 1 -f s16le .loc
 node scripts/stt-smoke.mjs
 ```
 
-Это проверяет Whisper, не микрофон очков. На шумной речи и технических названиях base может ошибаться; можно отдельно настроить larger multilingual model, не меняя протокол.
+Это проверяет Whisper, не микрофон очков.
+
+### ALE-470: рекомендуемый STT candidate (ещё не production)
+
+На Apple M4 / 24 GiB, whisper.cpp 1.9.4 выбран **full large-v3-turbo + Metal + ru**.
+На одинаковых 10 синтетических командах WER снизился с 42,4% до 13,6%, медиана
+wall latency выросла с 1,04 до 1,54 с. Это proxy benchmark, не измерение RV101 микрофона.
+[Полные результаты и ограничения](specs/008-ale-470-stt-hud/evidence.md).
+
+Будущий private config fragment (сохранить остальные поля, применить только в фазе интеграции):
+
+```json
+"stt": {
+  "binary": "/opt/homebrew/bin/whisper-cli",
+  "model": "/absolute/private/models/ggml-large-v3-turbo.bin",
+  "language": "ru",
+  "gpu": true,
+  "prompt": "Русская речь. Названия: Jarvis, Rokid, Codex, Gmail, Google Drive, Linear, GitHub, AIX, Computer Use, Mac mini."
+}
+```
+
+Модель — 1 624 555 275 bytes, SHA-256
+`1fc70f774d38eb169993ac391eea357ef47c88757ef72ee5943879b7e8e2bc69`.
+Источник: [whisper.cpp models](https://huggingface.co/ggerganov/whisper.cpp/blob/main/ggml-large-v3-turbo.bin).
+Хранить только в private ignored model storage; в Git не добавлять.
+`gpu` принимает только boolean, `prompt` — строку до 512 символов без control characters;
+пустой/отсутствующий prompt не передаётся CLI. Сначала проверить `whisper-cli --help`:
+установленная 1.9.4 поддерживает `--prompt`. Bare English vocabulary дал смешанную
+латиницу в русских словах и отклонён; русское введение обязательно для выбранного варианта.
+
+Включение `gpu:true` само по себе не доказывает Metal. На контролируемом WAV проверить
+`whisper_backend_init_gpu: using MTL0 backend` и размещение весов
+`whisper_model_load: MTL0 total size`; на этой машине выбран Apple M4.
+Sandbox может блокировать аппаратный доступ: использовать штатное native approval,
+не отключать безопасность gateway. Обычный production STT не пишет transcript/stderr в лог.
+
+Воспроизводимый benchmark, строго последовательно (параметры файлов — свои private пути):
+
+```sh
+node scripts/stt-benchmark.mjs generate .local/ale-470
+node scripts/stt-benchmark.mjs run .local/ale-470 /opt/homebrew/bin/whisper-cli /absolute/private/models/ggml-base.bin cpu
+node scripts/stt-benchmark.mjs run .local/ale-470 /opt/homebrew/bin/whisper-cli /absolute/private/models/ggml-large-v3-turbo.bin metal
+node scripts/stt-benchmark.mjs run .local/ale-470 /opt/homebrew/bin/whisper-cli /absolute/private/models/ggml-large-v3-turbo.bin metal russian
+node scripts/stt-local-smoke.mjs /absolute/private/candidate-stt.json .local/ale-470/1.wav
+```
+
+`candidate-stt.json` содержит только объект `stt`, не полный gateway config. Smoke
+создаёт отдельный краткоживущий HTTPS server с тестовыми TLS/token, без Codex и без
+production restart. Benchmark сохраняет **только синтетические** transcripts, WAV hashes
+и timing/RSS; не использовать его для private speech. Generated WAV manifest проверяет
+тождественность входов. После сравнения удалить только свой benchmark audio directory;
+выбранную модель сохранить для интеграции. Количественные ошибки включают различия
+«двадцать»/`20`; named entities дополнительно оценивать вручную.
+
+До guarded production switch и физического сравнения RV101 текущий base config остаётся
+неизменным. Quantized turbo не потребовался: full model стабилен, peak process RSS ~1,87 GiB.
 
 ## 3. Сборка APK
 
